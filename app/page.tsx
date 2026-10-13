@@ -34,8 +34,8 @@ export default async function HomePage() {
     <>
       {/* 1. 当前分站与下一场比赛倒计时 */}
       <section className="hero-100 section-dark" id="race">
-        <div className="container" style={{ position: 'relative', width: '100%', zIndex: 2, padding: '40px 24px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px', alignItems: 'center' }}>
+        <div className="container" style={{ position: 'relative', width: '100%', zIndex: 2, paddingTop: '40px', paddingBottom: '40px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'clamp(32px, 5vw, 48px)', alignItems: 'center' }}>
             {/* Left Column: Race Brief & Action */}
             <div>
               <div className="badge-pill badge-red" style={{ marginBottom: '16px' }}>

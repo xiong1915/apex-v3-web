@@ -219,6 +219,9 @@ a {
   .mobile-nav-toggle {
     display: none !important;
   }
+  .mobile-admin-bottom-nav {
+    display: none !important;
+  }
 }
 
 /* Circuit Visual System & Reduced Motion */

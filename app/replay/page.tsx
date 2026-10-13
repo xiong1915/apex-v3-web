@@ -215,15 +215,47 @@ function ReplayContent() {
           </div>
 
           {/* 未收录场次提示卡片 (严禁静默回退为仿真) */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-            <label>回放赛季 <select value={requestedYear} onChange={e => router.push(`/replay?season=${e.target.value}`)}>
-              {Array.from({ length: Math.max(1, new Date().getUTCFullYear() - 2022) }, (_, i) => String(new Date().getUTCFullYear() - i)).map(y => <option key={y} value={y}>{y}</option>)}
-            </select></label>
-            <label>真实正赛 <select value={activeSessionKey} onChange={e => handleSelectSession(e.target.value)}>
-              <option value="">选择已结束的比赛</option>
-              {sessions.map(s => <option key={s.session_key} value={`openf1-${s.session_key}`}>{s.nameZh}</option>)}
-            </select></label>
-            <Link href="/replay?session=demo-singapore">DEMO 演示</Link>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--line-dark)', borderRadius: 'var(--radius-pill)', padding: '4px 12px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>回放赛季</span>
+              <select
+                value={requestedYear}
+                onChange={e => router.push(`/replay?season=${e.target.value}`)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+              >
+                {Array.from({ length: Math.max(1, new Date().getUTCFullYear() - 2022) }, (_, i) => String(new Date().getUTCFullYear() - i)).map(y => <option key={y} value={y} style={{ background: '#121214', color: '#fff' }}>{y} 赛季</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--line-dark)', borderRadius: 'var(--radius-pill)', padding: '4px 12px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>真实正赛</span>
+              <select
+                value={activeSessionKey}
+                onChange={e => handleSelectSession(e.target.value)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="" style={{ background: '#121214', color: '#fff' }}>选择已结束的比赛</option>
+                {sessions.map(s => <option key={s.session_key} value={`openf1-${s.session_key}`} style={{ background: '#121214', color: '#fff' }}>{s.nameZh}</option>)}
+              </select>
+            </div>
+
+            <Link
+              href="/replay?session=demo-singapore"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: 'var(--radius-pill)',
+                fontSize: '12px',
+                fontWeight: 600,
+                background: 'rgba(255, 45, 32, 0.1)',
+                border: '1px solid rgba(255, 45, 32, 0.3)',
+                color: '#ff453a'
+              }}
+            >
+              ✦ DEMO 演示
+            </Link>
           </div>
           {(loading || buffering) && !loadError && <p role="status">正在加载真实比赛数据，请稍候…</p>}
           {loadError && <p role="alert">数据暂不可用：{loadError} <button onClick={() => window.location.reload()}>重试</button></p>}
