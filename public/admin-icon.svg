@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141417" />
+      <stop offset="100%" stop-color="#0a0a0b" />
+    </linearGradient>
+    <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff453a" />
+      <stop offset="100%" stop-color="#ff2d20" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="512" height="512" rx="128" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.12)" stroke-width="8" />
+
+  <!-- Outer Ring Accent -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="rgba(255, 45, 32, 0.2)" stroke-width="4" stroke-dasharray="16 8" />
+
+  <!-- Center Speedometer / Telemetry Curve -->
+  <path d="M 136 330 A 140 140 0 1 1 376 330" fill="none" stroke="url(#redGrad)" stroke-width="20" stroke-linecap="round" filter="url(#glow)" />
+
+  <!-- APEX V3 Control Stylized 'A' Motif -->
+  <path d="M 256 160 L 324 316 L 284 316 L 256 248 L 228 316 L 188 316 Z" fill="#ffffff" />
+  <circle cx="256" cy="304" r="10" fill="url(#redGrad)" />
+
+  <!-- Tick Marks -->
+  <circle cx="256" cy="116" r="6" fill="#ff453a" />
+  <circle cx="156" cy="216" r="5" fill="rgba(255,255,255,0.4)" />
+  <circle cx="356" cy="216" r="5" fill="rgba(255,255,255,0.4)" />
+</svg>

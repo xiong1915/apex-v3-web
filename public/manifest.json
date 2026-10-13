@@ -1,0 +1,19 @@
+{
+  "name": "APEX Control",
+  "short_name": "Control",
+  "description": "APEX V3 私人管理中枢 - 实时监控与 F1 数据同步",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#0a0a0b",
+  "theme_color": "#0a0a0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/admin-icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
