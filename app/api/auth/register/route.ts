@@ -1,7 +1,7 @@
 // app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_CONFIG, isSupabaseConfigured } from '@/lib/auth/config';
-import { createSupabaseServerClient } from '@/lib/auth/server';
+import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 import { sendVerificationEmail } from '@/lib/auth/email';
 
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '密码长度至少需 6 位字符' }, { status: 400 });
     }
 
-    const origin = req.nextUrl.origin || 'https://f1.tike69.cc.cd';
+    const origin = getTrustedPublicOrigin(req);
 
     // 1. Supabase 生产模式
     if (isSupabaseConfigured()) {

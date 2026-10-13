@@ -1,7 +1,7 @@
 // app/auth/confirm/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { isSupabaseConfigured } from '@/lib/auth/config';
-import { createSupabaseServerClient } from '@/lib/auth/server';
+import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const tokenHash = searchParams.get('token_hash') || searchParams.get('token');
   const type = searchParams.get('type') || 'email';
-  const origin = req.nextUrl.origin || 'https://f1.tike69.cc.cd';
+  const origin = getTrustedPublicOrigin(req);
 
   if (!tokenHash) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('缺少验证参数')}`);

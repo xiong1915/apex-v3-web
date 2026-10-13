@@ -38,6 +38,32 @@ export async function createSupabaseServerClient() {
   );
 }
 
+export function getTrustedPublicOrigin(req?: NextRequest): string {
+  if (!req) return 'https://f1.tike69.cc.cd';
+
+  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL;
+  if (configuredOrigin && !configuredOrigin.includes('localhost')) {
+    return configuredOrigin.replace(/\/+$/, '');
+  }
+
+  const forwardedHost = req.headers.get('x-forwarded-host')?.trim();
+  const forwardedProto = req.headers.get('x-forwarded-proto')?.trim() || 'https';
+  if (forwardedHost && !forwardedHost.includes('vercel.app')) {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  const host = req.headers.get('host')?.trim();
+  if (host && !host.includes('vercel.app') && !host.includes('localhost')) {
+    return `https://${host}`;
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://f1.tike69.cc.cd';
+  }
+
+  return req.nextUrl?.origin || 'https://f1.tike69.cc.cd';
+}
+
 function extractTokenFromRequest(req?: NextRequest): string | null {
   if (!req) return null;
 

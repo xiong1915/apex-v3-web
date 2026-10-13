@@ -1,7 +1,7 @@
 // app/auth/callback/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_CONFIG, isSupabaseConfigured } from '@/lib/auth/config';
-import { createSupabaseServerClient } from '@/lib/auth/server';
+import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const code = searchParams.get('code');
   const provider = (searchParams.get('provider') || 'google') as 'google' | 'github';
   const next = searchParams.get('next');
-  const origin = req.nextUrl.origin || 'https://f1.tike69.cc.cd';
+  const origin = getTrustedPublicOrigin(req);
 
   const safeRedirect = getSafeRedirectUrl(next, origin);
   const response = NextResponse.redirect(safeRedirect);

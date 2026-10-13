@@ -1,14 +1,14 @@
 // app/api/auth/oauth/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { isSupabaseConfigured } from '@/lib/auth/config';
-import { createSupabaseServerClient } from '@/lib/auth/server';
+import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get('provider') as 'google' | 'github' | null;
   const next = req.nextUrl.searchParams.get('next') || '/';
-  const origin = req.nextUrl.origin || 'https://f1.tike69.cc.cd';
+  const origin = getTrustedPublicOrigin(req);
 
   if (!provider || (provider !== 'google' && provider !== 'github')) {
     return NextResponse.json({ error: '不支持的 OAuth 提供方' }, { status: 400 });
