@@ -3,13 +3,46 @@
 
 export const AUTH_CONFIG = {
   // Supabase 凭据
-  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  get supabaseUrl(): string {
+    return (this._supabaseUrl !== undefined ? this._supabaseUrl : process.env.NEXT_PUBLIC_SUPABASE_URL) || '';
+  },
+  set supabaseUrl(v: string) {
+    this._supabaseUrl = v;
+  },
+  _supabaseUrl: undefined as string | undefined,
+
+  get supabaseAnonKey(): string {
+    return (this._supabaseAnonKey !== undefined ? this._supabaseAnonKey : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) || '';
+  },
+  set supabaseAnonKey(v: string) {
+    this._supabaseAnonKey = v;
+  },
+  _supabaseAnonKey: undefined as string | undefined,
+
+  get supabaseServiceRoleKey(): string {
+    return (this._supabaseServiceRoleKey !== undefined ? this._supabaseServiceRoleKey : process.env.SUPABASE_SERVICE_ROLE_KEY) || '';
+  },
+  set supabaseServiceRoleKey(v: string) {
+    this._supabaseServiceRoleKey = v;
+  },
+  _supabaseServiceRoleKey: undefined as string | undefined,
 
   // 管理员安全凭据 (必须由 ADMIN_USER_ID 指定真实 Supabase UUID，严禁预置默认值)
-  adminUserId: process.env.ADMIN_USER_ID?.trim() || '',
-  adminEmail: process.env.ADMIN_EMAIL?.trim() || '',
+  get adminUserId(): string {
+    return (this._adminUserId !== undefined ? this._adminUserId : process.env.ADMIN_USER_ID?.trim()) || '';
+  },
+  set adminUserId(v: string) {
+    this._adminUserId = v;
+  },
+  _adminUserId: undefined as string | undefined,
+
+  get adminEmail(): string {
+    return (this._adminEmail !== undefined ? this._adminEmail : process.env.ADMIN_EMAIL?.trim()) || '';
+  },
+  set adminEmail(v: string) {
+    this._adminEmail = v;
+  },
+  _adminEmail: undefined as string | undefined,
 
   // 30 天持久登录体验 (2,592,000 秒)
   sessionMaxAge: 30 * 24 * 60 * 60,
@@ -20,8 +53,12 @@ export const AUTH_CONFIG = {
   sessionCreatedAtCookieName: 'apex_session_created_at',
 
   // 邮件服务 (Resend API 与 Supabase SMTP 隔离)
-  resendApiKey: process.env.RESEND_API_KEY || '',
-  smtpFrom: process.env.SMTP_FROM || 'APEX V3 <noreply@tike69.cc.cd>'
+  get resendApiKey(): string {
+    return process.env.RESEND_API_KEY || '';
+  },
+  get smtpFrom(): string {
+    return process.env.SMTP_FROM || 'APEX V3 <noreply@tike69.cc.cd>';
+  }
 };
 
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
