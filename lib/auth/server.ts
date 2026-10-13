@@ -80,18 +80,16 @@ function extractTokenFromRequest(req?: NextRequest): string | null {
   return null;
 }
 
-function parseJwtIat(token: string): number | null {
+function parseJwtPayload(token: string): any {
   try {
     const parts = token.split('.');
     if (parts.length === 3) {
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
-      if (typeof payload.iat === 'number') {
-        return payload.iat;
-      }
+      return JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
     }
   } catch (_) {}
   return null;
 }
+
 
 export async function getServerSession(req?: NextRequest): Promise<Session | null> {
   const isRealSupabase = isSupabaseConfigured();
@@ -149,12 +147,14 @@ export async function getServerSession(req?: NextRequest): Promise<Session | nul
 
       if (!sessionData) return null;
 
-      const sessionIssuedAt = parseJwtIat(sessionData.access_token) || (sessionData as any)?.created_at || nowSec;
+      const rawTokenPayload = token ? parseJwtPayload(token) : null;
+      const jwtPayload = parseJwtPayload(sessionData.access_token) || rawTokenPayload;
+      const sessionIssuedAt = jwtPayload?.iat || (sessionData as any)?.created_at || nowSec;
       if (nowSec - sessionIssuedAt > AUTH_CONFIG.sessionMaxAge) {
         return null;
       }
 
-      const aalLevel = (sessionData as any)?.aal || (authUser.app_metadata?.aal as any) || 'aal1';
+      const aalLevel = jwtPayload?.aal || rawTokenPayload?.aal || (sessionData as any)?.aal || (authUser.app_metadata?.aal as any) || 'aal1';
 
       return {
         access_token: sessionData.access_token,

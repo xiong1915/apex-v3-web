@@ -1,5 +1,5 @@
-// app/api/admin/mfa/verify/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getServerSession, createSupabaseServerClient } from '@/lib/auth/server';
 import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isProduction, isValidUuid } from '@/lib/auth/config';
 import { mockAuthManager } from '@/lib/auth/mock';
@@ -34,11 +34,17 @@ export async function POST(req: NextRequest) {
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createSupabaseServerClient();
-      const { data: factors, error: factorErr } = await supabase.auth.mfa.listFactors();
-      if (factorErr || !factors?.totp?.length) {
-        return NextResponse.json({ error: '尚未绑定 TOTP 双重验证器，请先在 Supabase 平台完成配置' }, { status: 400 });
+      const requestedFactorId = body?.factorId ? String(body.factorId).trim() : '';
+      let factorId = requestedFactorId;
+
+      if (!factorId) {
+        const { data: factors, error: factorErr } = await supabase.auth.mfa.listFactors();
+        if (factorErr || !factors?.totp?.length) {
+          return NextResponse.json({ error: '尚未绑定 TOTP 双重验证器，请先完成扫码绑定' }, { status: 400 });
+        }
+        const verifiedFactor = factors.totp.find((f: any) => f.status === 'verified');
+        factorId = verifiedFactor?.id || factors.totp[0].id;
       }
-      const factorId = factors.totp[0].id;
       const { data: challengeData, error: challengeErr } = await supabase.auth.mfa.challengeAndVerify({
         factorId,
         code
@@ -54,6 +60,22 @@ export async function POST(req: NextRequest) {
       }, {
         headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
       });
+
+      // 同步 Supabase SSR 内部在 challengeAndVerify 期间写入的 cookieStore cookies
+      try {
+        const cookieStore = await cookies();
+        cookieStore.getAll().forEach((c) => {
+          if (c.name.startsWith('sb-')) {
+            res.cookies.set(c.name, c.value, {
+              path: '/',
+              httpOnly: true,
+              secure: isProduction(),
+              sameSite: 'lax',
+              maxAge: AUTH_CONFIG.sessionMaxAge
+            });
+          }
+        });
+      } catch (_) {}
 
       // 更新会话 Cookie 为升级后的 AAL2 凭证
       if (challengeData?.access_token) {

@@ -10,6 +10,42 @@ import { formatBeijingDisplay } from '@/lib/f1/time';
 
 type AdminTab = 'overview' | 'users' | 'ai' | 'f1';
 
+function renderTotpQr(qr?: string) {
+  if (!qr) return null;
+  const trimmed = qr.trim();
+  if (trimmed.startsWith('data:') || trimmed.startsWith('http')) {
+    return (
+      <img
+        src={trimmed}
+        alt="TOTP 绑定二维码"
+        style={{ width: '180px', height: '180px', display: 'block', margin: '0 auto' }}
+      />
+    );
+  }
+  if (trimmed.startsWith('<svg')) {
+    return (
+      <div
+        dangerouslySetInnerHTML={{ __html: trimmed }}
+        style={{
+          width: '180px',
+          height: '180px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto'
+        }}
+      />
+    );
+  }
+  return (
+    <img
+      src={`data:image/svg+xml;utf-8,${encodeURIComponent(trimmed)}`}
+      alt="TOTP 绑定二维码"
+      style={{ width: '180px', height: '180px', display: 'block', margin: '0 auto' }}
+    />
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
 
@@ -30,11 +66,42 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // TOTP Modal
+  // TOTP Modal & Enroll
   const [showTotpModal, setShowTotpModal] = useState(false);
   const [totpCode, setTotpCode] = useState('');
   const [totpSubmitting, setTotpSubmitting] = useState(false);
   const [totpError, setTotpError] = useState<string | null>(null);
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [enrollData, setEnrollData] = useState<{
+    enrolled?: boolean;
+    verified?: boolean;
+    factorId?: string;
+    qrCode?: string;
+    secret?: string;
+    uri?: string;
+    message?: string;
+  } | null>(null);
+  const [loadingEnroll, setLoadingEnroll] = useState(false);
+
+  const openTotpModal = useCallback(async (rebind = false) => {
+    setShowTotpModal(true);
+    setTotpError(null);
+    setLoadingEnroll(true);
+    try {
+      const url = rebind ? '/api/admin/mfa/enroll?rebind=1' : '/api/admin/mfa/enroll';
+      const res = await fetch(url, { cache: 'no-store' });
+      const data = await res.json();
+      if (res.ok) {
+        setEnrollData(data);
+      } else {
+        setTotpError(data.error || '获取绑定信息失败');
+      }
+    } catch (e: any) {
+      setTotpError(e.message || '网络连接异常');
+    } finally {
+      setLoadingEnroll(false);
+    }
+  }, []);
 
   // F1 Manual Sync
   const [syncing, setSyncing] = useState(false);
@@ -67,8 +134,14 @@ export default function AdminPage() {
         const data = await res.json();
         setIsAdmin(true);
         setAdminUser(user);
-        setAalLevel(data.aal || 'aal1');
+        const resolvedAal = data.aal || 'aal1';
+        setAalLevel(resolvedAal);
         setCheckingAuth(false);
+
+        // 若尚未升级为 AAL2，主动弹出绑定 / 验证引导
+        if (resolvedAal !== 'aal2') {
+          openTotpModal();
+        }
       } catch (_) {
         setIsAdmin(false);
         setCheckingAuth(false);
@@ -78,7 +151,7 @@ export default function AdminPage() {
     return () => {
       mounted = false;
     };
-  }, [router]);
+  }, [router, openTotpModal]);
 
   // 2. 加载数据
   const loadData = useCallback(async () => {
@@ -126,7 +199,10 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/mfa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: totpCode })
+        body: JSON.stringify({
+          code: totpCode,
+          factorId: enrollData?.factorId
+        })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -137,6 +213,8 @@ export default function AdminPage() {
       setAalLevel('aal2');
       setShowTotpModal(false);
       setTotpCode('');
+      // 成功升级为 AAL2 后重新加载后台数据
+      loadData();
     } catch (err: any) {
       setTotpError(err.message || '网络连接异常');
     } finally {
@@ -147,7 +225,7 @@ export default function AdminPage() {
   // 4. 手动同步 F1 数据
   const handleTriggerF1Sync = async () => {
     if (aalLevel !== 'aal2') {
-      setShowTotpModal(true);
+      openTotpModal();
       return;
     }
 
@@ -250,8 +328,8 @@ export default function AdminPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {aalLevel !== 'aal2' && (
-              <GlassButton variant="danger" size="sm" onClick={() => setShowTotpModal(true)}>
-                TOTP 验证
+              <GlassButton variant="danger" size="sm" onClick={() => openTotpModal()}>
+                TOTP 绑定 / 验证
               </GlassButton>
             )}
             <Link href="/" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -263,6 +341,37 @@ export default function AdminPage() {
 
       {/* 主体工作区 */}
       <main className="container" style={{ flex: 1, padding: '24px 20px', maxWidth: '1000px' }}>
+        {/* AAL1 待绑定 / 验证横幅引导 */}
+        {aalLevel !== 'aal2' && (
+          <GlassCard style={{
+            padding: '16px 20px',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            border: '1px solid rgba(255, 159, 10, 0.4)',
+            background: 'rgba(255, 159, 10, 0.08)',
+            borderRadius: '16px',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
+              <span style={{ fontSize: '24px' }}>🛡️</span>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#ff9f0a' }}>
+                  TOTP 双重身份验证 (AAL2) 未就绪
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.5 }}>
+                  您当前处于 AAL1 基础登录状态。为保障 APEX Control 私人管理安全，敏感操作需绑定并验证 6 位动态验证码。
+                </div>
+              </div>
+            </div>
+            <GlassButton variant="primary" size="sm" onClick={() => openTotpModal()} style={{ whiteSpace: 'nowrap' }}>
+              扫码绑定 / 验证
+            </GlassButton>
+          </GlassCard>
+        )}
+
         {/* PC 标签导航 */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }} className="desktop-nav">
           <button
@@ -536,82 +645,300 @@ export default function AdminPage() {
         )}
       </main>
 
-      {/* TOTP 验证弹窗 (AAL2 提升) */}
+      {/* TOTP 绑定与双重验证弹窗 (AAL2 提升) */}
       {showTotpModal && (
         <div style={{
           position: 'fixed',
           inset: 0,
           zIndex: 999,
-          background: 'rgba(0, 0, 0, 0.8)',
+          background: 'rgba(0, 0, 0, 0.85)',
           backdropFilter: 'blur(16px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           padding: '20px'
         }}>
-          <GlassCard style={{ padding: '32px', maxWidth: '380px', width: '100%', borderRadius: '24px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>TOTP 双重身份验证 (AAL2)</h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
-              敏感后台管理操作（如手动数据同步）需验证 6 位动态验证码。
-            </p>
-
-            {totpError && (
-              <div style={{
-                background: 'rgba(255, 45, 32, 0.1)',
-                border: '1px solid rgba(255, 45, 32, 0.3)',
-                color: '#ff453a',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                fontSize: '12px',
-                marginBottom: '16px'
-              }}>
-                {totpError}
+          <GlassCard style={{
+            padding: '28px 24px',
+            maxWidth: '440px',
+            width: '100%',
+            borderRadius: '24px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                  {enrollData?.verified ? 'TOTP 双重身份验证 (AAL2)' : '绑定 TOTP 双重验证器'}
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>
+                  {enrollData?.verified
+                    ? '请输入手机身份验证器中当前的 6 位动态验证码以解锁管理权限。'
+                    : 'APEX Control 仅限专属管理员使用。请使用手机身份验证器扫描二维码完成绑定。'}
+                </p>
               </div>
-            )}
-
-            <form onSubmit={handleVerifyTotp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input
-                type="text"
-                maxLength={6}
-                value={totpCode}
-                onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                autoFocus
+              <button
+                type="button"
+                onClick={() => setShowTotpModal(false)}
                 style={{
-                  width: '100%',
-                  padding: '14px',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid var(--line-dark)',
-                  borderRadius: '12px',
-                  color: '#ffffff',
-                  fontSize: '24px',
-                  letterSpacing: '8px',
-                  textAlign: 'center',
-                  fontFamily: 'var(--font-mono)',
-                  outline: 'none',
-                  boxSizing: 'border-box'
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '20px',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  lineHeight: 1
                 }}
-              />
+              >
+                ✕
+              </button>
+            </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <GlassButton
-                  type="button"
-                  variant="ghost"
-                  style={{ flex: 1 }}
-                  onClick={() => setShowTotpModal(false)}
-                >
-                  取消
-                </GlassButton>
-                <GlassButton
-                  type="submit"
-                  variant="primary"
-                  disabled={totpSubmitting || totpCode.length !== 6}
-                  style={{ flex: 1 }}
-                >
-                  {totpSubmitting ? '验证中...' : '确认授权'}
-                </GlassButton>
+            {loadingEnroll ? (
+              <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                <div style={{
+                  width: '28px',
+                  height: '28px',
+                  border: '2px solid rgba(255, 69, 58, 0.3)',
+                  borderTopColor: '#ff453a',
+                  borderRadius: '50%',
+                  margin: '0 auto 12px'
+                }} />
+                正在生成 TOTP 绑定因子与安全二维码...
               </div>
-            </form>
+            ) : (
+              <>
+                {/* 错误提示 */}
+                {totpError && (
+                  <div style={{
+                    background: 'rgba(255, 45, 32, 0.12)',
+                    border: '1px solid rgba(255, 45, 32, 0.35)',
+                    color: '#ff453a',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    marginBottom: '16px',
+                    lineHeight: 1.5
+                  }}>
+                    {totpError}
+                  </div>
+                )}
+
+                {/* 未绑定状态：展示二维码、密钥及引导步骤 */}
+                {!enrollData?.verified && enrollData?.enrolled && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <div style={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <span style={{
+                        background: '#ff453a',
+                        color: '#fff',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 700
+                      }}>1</span>
+                      第一步：使用手机验证器扫码绑定
+                    </div>
+
+                    <div style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      marginBottom: '12px',
+                      lineHeight: 1.5
+                    }}>
+                      支持：Google Authenticator、微软身份验证器、微信小程序「腾讯身份验证器」或 iPhone「设置 ➔ 密码」。
+                    </div>
+
+                    {/* 二维码展示区 */}
+                    {enrollData.qrCode && (
+                      <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+                        <div style={{
+                          background: '#ffffff',
+                          padding: '12px',
+                          borderRadius: '16px',
+                          display: 'inline-block',
+                          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
+                        }}>
+                          {renderTotpQr(enrollData.qrCode)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 手动输入密钥卡片 */}
+                    {enrollData.secret && (
+                      <div style={{
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid var(--line-dark)',
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px'
+                      }}>
+                        <div style={{ overflow: 'hidden' }}>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>无法扫码可手动输入密钥 (Base32)</div>
+                          <div style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '12px',
+                            color: '#ffffff',
+                            letterSpacing: '1px',
+                            wordBreak: 'break-all',
+                            userSelect: 'all',
+                            marginTop: '2px'
+                          }}>
+                            {enrollData.secret}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (enrollData?.secret) {
+                              navigator.clipboard.writeText(enrollData.secret);
+                              setCopiedSecret(true);
+                              setTimeout(() => setCopiedSecret(false), 2000);
+                            }
+                          }}
+                          style={{
+                            background: copiedSecret ? 'rgba(48, 209, 88, 0.2)' : 'rgba(255, 69, 58, 0.15)',
+                            border: `1px solid ${copiedSecret ? 'rgba(48, 209, 88, 0.4)' : 'rgba(255, 69, 58, 0.3)'}`,
+                            color: copiedSecret ? '#30d158' : '#ff453a',
+                            borderRadius: '6px',
+                            padding: '6px 10px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            flexShrink: 0
+                          }}
+                        >
+                          {copiedSecret ? '已复制 ✓' : '复制密钥'}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* 手机上一键打开 URI */}
+                    {enrollData.uri && (
+                      <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                        <a
+                          href={enrollData.uri}
+                          style={{
+                            fontSize: '11px',
+                            color: '#ff453a',
+                            textDecoration: 'none',
+                            opacity: 0.9
+                          }}
+                        >
+                          在支持的手机验证器中直接打开 ↗
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 步骤 2：输入 6 位验证码 */}
+                <form onSubmit={handleVerifyTotp} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    {!enrollData?.verified && (
+                      <span style={{
+                        background: '#ff453a',
+                        color: '#fff',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '11px',
+                        fontWeight: 700
+                      }}>2</span>
+                    )}
+                    {enrollData?.verified ? '输入 6 位动态验证码' : '第二步：输入验证器中显示的 6 位动态验证码'}
+                  </div>
+
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    value={totpCode}
+                    onChange={e => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="000000"
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid var(--line-dark)',
+                      borderRadius: '12px',
+                      color: '#ffffff',
+                      fontSize: '24px',
+                      letterSpacing: '8px',
+                      textAlign: 'center',
+                      fontFamily: 'var(--font-mono)',
+                      outline: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                    <GlassButton
+                      type="button"
+                      variant="ghost"
+                      style={{ flex: 1 }}
+                      onClick={() => setShowTotpModal(false)}
+                    >
+                      取消
+                    </GlassButton>
+                    <GlassButton
+                      type="submit"
+                      variant="primary"
+                      disabled={totpSubmitting || totpCode.length !== 6}
+                      style={{ flex: 1.4 }}
+                    >
+                      {totpSubmitting ? '验证中...' : enrollData?.verified ? '确认授权' : '确认绑定并授权'}
+                    </GlassButton>
+                  </div>
+
+                  {enrollData?.verified && (
+                    <div style={{ textAlign: 'center', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => openTotpModal(true)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        更换 / 重新绑定手机验证器
+                      </button>
+                    </div>
+                  )}
+                </form>
+              </>
+            )}
           </GlassCard>
         </div>
       )}
