@@ -3,9 +3,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AIMessage, AISource, AIFactCard } from '@/lib/ai/types';
 import { GlassComposer, GlassButton } from '@/components/glass';
 import { MarkdownRenderer } from '@/components/markdown_renderer';
+import { fetchCurrentSession } from '@/lib/auth/client';
 
 export type AIStatus =
   | 'idle'
@@ -44,12 +46,33 @@ export default function AIPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedInput, setLastFailedInput] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
 
+  const router = useRouter();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isComposingRef = useRef(false); // 中文输入法组合保护
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 校验登录状态：未登录访问自动跳转登录页，并保留提问输入
+  useEffect(() => {
+    let mounted = true;
+    fetchCurrentSession().then(({ user }) => {
+      if (!mounted) return;
+      if (!user) {
+        if (input) {
+          sessionStorage.setItem('apex_ai_prompt', input);
+        }
+        router.push('/login?returnUrl=/ai');
+      } else {
+        setAuthChecking(false);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [router, input]);
 
   // 隐藏全局 footer，使 AI 控制台独占视口高度并防止窗口滚动切除顶部
   useEffect(() => {
@@ -155,6 +178,13 @@ export default function AIPage() {
         body: JSON.stringify({ messages: apiPayload, stream: true }),
         signal: controller.signal
       });
+
+      if (res.status === 401) {
+        setStatus('idle');
+        sessionStorage.setItem('apex_ai_prompt', q);
+        router.push('/login?returnUrl=/ai');
+        return;
+      }
 
       if (res.status === 429) {
         setStatus('rate_limited');
@@ -302,6 +332,17 @@ export default function AIPage() {
   };
 
   const isGenerating = status === 'submitting' || status === 'streaming';
+
+  if (authChecking) {
+    return (
+      <div style={{ height: 'calc(100dvh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-red)', animation: 'pulse 1.5s infinite' }}></span>
+          <span>正在核验 AI 智能控制台访问凭据...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

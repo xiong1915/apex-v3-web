@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { defaultAIOrchestrator } from '@/lib/ai/orchestrator';
 import { AIMessage } from '@/lib/ai/types';
 import { getRateLimitStore } from '@/lib/storage';
+import { getServerUser } from '@/lib/auth/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,6 +72,15 @@ function sanitizeErrorMessage(err: any): string {
 
 export async function POST(req: NextRequest) {
   try {
+    // 0. 服务端身份验证：未登录直接返回 401，绝不调用 DeepSeek
+    const user = await getServerUser(req);
+    if (!user) {
+      return NextResponse.json(
+        { error: '未登录用户无法调用 AI 服务，请先登录' },
+        { status: 401 }
+      );
+    }
+
     const clientIp = extractTrustedClientIp(req);
     const body = await req.json().catch(() => null);
 
