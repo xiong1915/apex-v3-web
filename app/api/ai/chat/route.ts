@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { defaultAIOrchestrator } from '@/lib/ai/orchestrator';
 import { AIMessage } from '@/lib/ai/types';
 import { getRateLimitStore } from '@/lib/storage';
+import { MemoryRateLimitStore } from '@/lib/storage/memory';
 import { getServerUser } from '@/lib/auth/server';
 import { recordAIRateLimitHit, recordAIRequestStart, recordAITokenUsage } from '@/lib/admin/service';
 
 export const dynamic = 'force-dynamic';
+
+const memoryFallbackLimiter = new MemoryRateLimitStore();
 
 function extractTrustedClientIp(req: NextRequest): string {
   // 1. 优先采用 Cloudflare 边缘不可伪造的真实客户端 IP (cf-connecting-ip)
@@ -54,9 +57,36 @@ async function checkRateLimit(clientIp: string): Promise<{ allowed: boolean; ret
 
     return { allowed: true, retryAfter: 0 };
   } catch (storeErr) {
-    console.warn('[RateLimit] RateLimitStore check error, safe fail-open fallback:', storeErr);
-    // 当持久化存储网络瞬断时，安全放行单次请求，避免因存储故障导致全站正常问答彻底瘫痪
-    return { allowed: true, retryAfter: 0 };
+    console.warn('[RateLimit] RateLimitStore check error, safe fail-open fallback with strict memory limiter:', storeErr);
+    try {
+      // Redis 异常时自动降级至内存限流器，彻底杜绝无限制放行风险
+      const globalRes = await memoryFallbackLimiter.checkRateLimit('ai:global:hourly', 600, 3600);
+      if (!globalRes.allowed) {
+        return {
+          allowed: false,
+          retryAfter: Math.max(1, Math.ceil((globalRes.resetAt - Date.now()) / 1000)),
+          reason: '服务当前调用量较高，已启用总额度保护，请稍后重试'
+        };
+      }
+
+      const ipRes = await memoryFallbackLimiter.checkRateLimit(`ai:ip:${clientIp}`, 15, 60);
+      if (!ipRes.allowed) {
+        return {
+          allowed: false,
+          retryAfter: Math.max(1, Math.ceil((ipRes.resetAt - Date.now()) / 1000)),
+          reason: '请求过于频繁，请稍后再试'
+        };
+      }
+
+      return { allowed: true, retryAfter: 0 };
+    } catch (_) {
+      // 降级兜底失败时坚决 fail-closed，绝不允许无限放行
+      return {
+        allowed: false,
+        retryAfter: 60,
+        reason: '限流服务保护中，请稍后重试'
+      };
+    }
   }
 }
 
@@ -73,12 +103,19 @@ function sanitizeErrorMessage(err: any): string {
 
 export async function POST(req: NextRequest) {
   try {
-    // 0. 服务端身份验证：未登录直接返回 401，绝不调用 DeepSeek
+    // 0. 服务端身份验证：未登录或未验证邮箱用户直接阻断，绝不调用 DeepSeek
     const user = await getServerUser(req);
     if (!user) {
       return NextResponse.json(
         { error: '未登录用户无法调用 AI 服务，请先登录' },
         { status: 401 }
+      );
+    }
+
+    if (!user.email_confirmed_at) {
+      return NextResponse.json(
+        { error: '未经验证邮箱的用户无法调用 AI 服务，请先完成邮箱验证' },
+        { status: 403 }
       );
     }
 

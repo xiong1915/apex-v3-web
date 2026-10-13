@@ -1,6 +1,6 @@
 // app/api/auth/reset-password/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { isSupabaseConfigured } from '@/lib/auth/config';
+import { isSupabaseConfigured, isMockAuthAllowed } from '@/lib/auth/config';
 import { createSupabaseServerClient } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 
@@ -25,6 +25,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
       return NextResponse.json({ message: '密码重置成功，请重新登录' });
+    }
+
+    // 生产环境绝对禁止 Mock
+    if (!isMockAuthAllowed()) {
+      return NextResponse.json({ error: '系统认证服务未就绪' }, { status: 503 });
     }
 
     // Mock

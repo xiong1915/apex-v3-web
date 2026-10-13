@@ -10,6 +10,8 @@ import { AUTH_CONFIG } from '../lib/auth/config.ts';
 import { getAdminOverview, getAdminUsers, getAdminAIMetrics, executeAdminF1Sync } from '../lib/admin/service.ts';
 
 test('APEX Control 权限安全与管理后台功能测试', async (t) => {
+  AUTH_CONFIG.adminUserId = 'e9b2512a-3c48-4c6e-8e81-79282361cf94';
+  AUTH_CONFIG.adminEmail = 'admin@apex-f1.com';
   mockAuthManager.reset();
 
   await t.test('1. PWA 资源与清单规范审查', () => {

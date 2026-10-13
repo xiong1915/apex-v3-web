@@ -1,7 +1,7 @@
 // app/api/admin/mfa/verify/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession, createSupabaseServerClient } from '@/lib/auth/server';
-import { AUTH_CONFIG, isSupabaseConfigured } from '@/lib/auth/config';
+import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isProduction, isValidUuid } from '@/lib/auth/config';
 import { mockAuthManager } from '@/lib/auth/mock';
 
 export const dynamic = 'force-dynamic';
@@ -12,13 +12,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
-  const isAdmin =
-    session.user.id === AUTH_CONFIG.adminUserId ||
-    session.user.email.toLowerCase() === AUTH_CONFIG.adminEmail.toLowerCase() ||
-    session.user.role === 'admin' ||
-    session.user.app_metadata?.role === 'admin';
+  const configuredAdminId = AUTH_CONFIG.adminUserId;
+  const isConfiguredAdmin = Boolean(
+    configuredAdminId &&
+    isValidUuid(configuredAdminId) &&
+    session.user.id === configuredAdminId
+  );
 
-  if (!isAdmin) {
+  if (!isConfiguredAdmin) {
     return NextResponse.json({ error: '权限不足：仅允许专属管理员进行 TOTP 验证' }, { status: 403 });
   }
 
@@ -38,20 +39,54 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: '尚未绑定 TOTP 双重验证器，请先在 Supabase 平台完成配置' }, { status: 400 });
       }
       const factorId = factors.totp[0].id;
-      const { error: challengeErr } = await supabase.auth.mfa.challengeAndVerify({
+      const { data: challengeData, error: challengeErr } = await supabase.auth.mfa.challengeAndVerify({
         factorId,
         code
       });
       if (challengeErr) {
         return NextResponse.json({ error: challengeErr.message || 'TOTP 验证码错误' }, { status: 400 });
       }
-      return NextResponse.json({ success: true, message: 'TOTP 双重验证成功 (AAL2)' });
+
+      const res = NextResponse.json({
+        success: true,
+        message: 'TOTP 双重验证成功 (AAL2)',
+        aal: 'aal2'
+      }, {
+        headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
+      });
+
+      // 更新会话 Cookie 为升级后的 AAL2 凭证
+      if (challengeData?.access_token) {
+        res.cookies.set(AUTH_CONFIG.cookieName, challengeData.access_token, {
+          httpOnly: true,
+          secure: isProduction(),
+          sameSite: 'lax',
+          maxAge: AUTH_CONFIG.sessionMaxAge,
+          path: '/'
+        });
+      }
+      if (challengeData?.refresh_token) {
+        res.cookies.set(AUTH_CONFIG.refreshCookieName, challengeData.refresh_token, {
+          httpOnly: true,
+          secure: isProduction(),
+          sameSite: 'lax',
+          maxAge: AUTH_CONFIG.sessionMaxAge,
+          path: '/'
+        });
+      }
+
+      return res;
     } catch (e: any) {
       return NextResponse.json({ error: e.message || 'TOTP 验证异常' }, { status: 500 });
     }
   }
 
-  // 2. Mock 模式
+  // 生产环境绝对禁止 Mock
+  if (!isMockAuthAllowed()) {
+    return NextResponse.json({ error: '系统认证服务未就绪，禁止执行 TOTP 验证' }, { status: 503 });
+  }
+
+  // 2. 本地测试 Mock 模式
   const token = req.cookies.get(AUTH_CONFIG.cookieName)?.value || session.access_token;
   const result = mockAuthManager.verifyAdminTOTP(token, code);
 
@@ -70,7 +105,7 @@ export async function POST(req: NextRequest) {
   // 更新会话 Cookie 为升级后的会话
   res.cookies.set(AUTH_CONFIG.cookieName, result.session.access_token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction(),
     sameSite: 'lax',
     maxAge: AUTH_CONFIG.sessionMaxAge,
     path: '/'

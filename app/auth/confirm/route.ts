@@ -1,6 +1,6 @@
 // app/auth/confirm/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { isSupabaseConfigured } from '@/lib/auth/config';
+import { isSupabaseConfigured, isMockAuthAllowed } from '@/lib/auth/config';
 import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 
@@ -32,6 +32,11 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.redirect(`${origin}/login?verified=true`);
+  }
+
+  // 生产环境绝对禁止 Mock 模式
+  if (!isMockAuthAllowed()) {
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('系统认证服务未就绪')}`);
   }
 
   // Mock 模式

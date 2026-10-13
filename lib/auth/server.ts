@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import { User, Session } from './types';
-import { AUTH_CONFIG, isSupabaseConfigured } from './config';
+import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isValidUuid } from './config';
 import { mockAuthManager } from './mock';
 
 export async function createSupabaseServerClient() {
@@ -98,6 +98,17 @@ export async function getServerSession(req?: NextRequest): Promise<Session | nul
 
   if (isRealSupabase) {
     try {
+      const nowSec = Math.floor(Date.now() / 1000);
+
+      // 验证 30 天会话绝对生命周期约束
+      const cookieCreatedAt = req?.cookies.get(AUTH_CONFIG.sessionCreatedAtCookieName)?.value;
+      if (cookieCreatedAt) {
+        const initSec = parseInt(cookieCreatedAt, 10);
+        if (!isNaN(initSec) && nowSec - initSec > AUTH_CONFIG.sessionMaxAge) {
+          return null;
+        }
+      }
+
       const supabase = await createSupabaseServerClient();
       const token = extractTokenFromRequest(req);
 
@@ -116,26 +127,40 @@ export async function getServerSession(req?: NextRequest): Promise<Session | nul
         }
       }
 
+      // 如果 access token 过期，尝试通过 refresh_token 恢复
+      let sessionData: any = null;
+      if (!authUser) {
+        const refreshToken = req?.cookies.get(AUTH_CONFIG.refreshCookieName)?.value;
+        if (refreshToken) {
+          const { data: refreshRes, error: refreshErr } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+          if (!refreshErr && refreshRes.session && refreshRes.user) {
+            authUser = refreshRes.user;
+            sessionData = refreshRes.session;
+          }
+        }
+      }
+
       if (!authUser) return null;
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
+      if (!sessionData) {
+        const { data: { session } } = await supabase.auth.getSession();
+        sessionData = session;
+      }
 
-      // 验证 30 天最大生命周期约束 (基于会话签发时间，绝非账号注册时间)
-      const nowSec = Math.floor(Date.now() / 1000);
-      const sessionIssuedAt = parseJwtIat(session.access_token) || (session as any)?.created_at || nowSec;
+      if (!sessionData) return null;
+
+      const sessionIssuedAt = parseJwtIat(sessionData.access_token) || (sessionData as any)?.created_at || nowSec;
       if (nowSec - sessionIssuedAt > AUTH_CONFIG.sessionMaxAge) {
-        // 超过 30 天硬性周期，拒绝自动刷新
         return null;
       }
 
-      const aalLevel = (session as any)?.aal || (authUser.app_metadata?.aal as any) || 'aal1';
+      const aalLevel = (sessionData as any)?.aal || (authUser.app_metadata?.aal as any) || 'aal1';
 
       return {
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        expires_at: session.expires_at || (nowSec + 3600),
-        expires_in: session.expires_in || 3600,
+        access_token: sessionData.access_token,
+        refresh_token: sessionData.refresh_token,
+        expires_at: sessionData.expires_at || (nowSec + 3600),
+        expires_in: sessionData.expires_in || 3600,
         created_at: sessionIssuedAt,
         user: {
           id: authUser.id,
@@ -157,7 +182,12 @@ export async function getServerSession(req?: NextRequest): Promise<Session | nul
     }
   }
 
-  // Mock / 本地回退模式
+  // 生产环境绝对禁止任何 Mock 会话
+  if (!isMockAuthAllowed()) {
+    return null;
+  }
+
+  // Mock / 本地测试回退模式
   let token = extractTokenFromRequest(req);
   if (!token) {
     try {
@@ -177,7 +207,7 @@ export async function getServerUser(req?: NextRequest): Promise<User | null> {
 
 export async function verifyAdminAccess(
   req?: NextRequest,
-  options: { requireAal2?: boolean } = {}
+  options: { requireAal2?: boolean } = { requireAal2: true }
 ): Promise<{ ok: true; user: User; session: Session } | { ok: false; status: 401 | 403; message: string }> {
   const session = await getServerSession(req);
   if (!session || !session.user) {
@@ -185,17 +215,20 @@ export async function verifyAdminAccess(
   }
 
   const { user } = session;
-  const isAdmin =
-    user.id === AUTH_CONFIG.adminUserId ||
-    user.email.toLowerCase() === AUTH_CONFIG.adminEmail.toLowerCase() ||
-    user.role === 'admin' ||
-    user.app_metadata?.role === 'admin';
 
-  if (!isAdmin) {
+  // 唯一管理员安全校验：只允许 ADMIN_USER_ID 指定的真实 Supabase UUID
+  // 坚决杜绝默认管理员、邮箱匹配和普通角色绕过
+  const configuredAdminId = AUTH_CONFIG.adminUserId;
+  if (!configuredAdminId || !isValidUuid(configuredAdminId)) {
+    return { ok: false, status: 403, message: '系统未配置合法的专属管理员 UUID，管理后台已锁定' };
+  }
+
+  if (user.id !== configuredAdminId) {
     return { ok: false, status: 403, message: '权限不足：仅允许专属管理员访问' };
   }
 
-  if (options.requireAal2) {
+  const requireAal2 = options.requireAal2 !== false;
+  if (requireAal2) {
     const isAal2 = session.aal === 'aal2' || user.app_metadata?.aal === 'aal2';
     if (!isAal2) {
       return { ok: false, status: 403, message: '敏感管理操作需要完成 TOTP 双重安全验证 (AAL2)' };

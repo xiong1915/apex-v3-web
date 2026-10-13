@@ -4,7 +4,7 @@
 import { defaultF1Service } from '@/providers/f1/service';
 import { getStorageInfo, getCacheStore } from '@/lib/storage';
 import { BUILD_ID, BUILD_ENV, BUILD_TIMESTAMP } from '@/lib/build-info';
-import { isSupabaseConfigured, AUTH_CONFIG } from '@/lib/auth/config';
+import { isSupabaseConfigured, isMockAuthAllowed, isValidUuid, AUTH_CONFIG } from '@/lib/auth/config';
 import { mockAuthManager } from '@/lib/auth/mock';
 import { createSupabaseServerClient } from '@/lib/auth/server';
 
@@ -96,7 +96,7 @@ export async function getAdminUsers(): Promise<{ total: number; users: AdminUser
           email: u.email || '未绑定邮箱',
           isVerified: Boolean(u.email_confirmed_at),
           provider: (u.app_metadata?.provider as string) || (u.app_metadata?.providers?.[0] as string) || 'email',
-          role: u.id === AUTH_CONFIG.adminUserId ? '专属管理员' : '普通用户',
+          role: (AUTH_CONFIG.adminUserId && isValidUuid(AUTH_CONFIG.adminUserId) && u.id === AUTH_CONFIG.adminUserId) ? '专属管理员' : '普通用户',
           createdAt: u.created_at
         }));
         return { total: users.length, users };
@@ -106,13 +106,18 @@ export async function getAdminUsers(): Promise<{ total: number; users: AdminUser
     }
   }
 
-  // 2. 本地 Mock 数据源
+  // 生产环境下禁止返回任何 Mock 用户数据
+  if (!isMockAuthAllowed()) {
+    return { total: 0, users: [] };
+  }
+
+  // 2. 本地测试 Mock 数据源
   const mockUsers = mockAuthManager.getAllUsers().map(u => ({
     id: u.id,
     email: u.email,
     isVerified: Boolean(u.email_confirmed_at),
     provider: u.app_metadata?.providers?.[0] || 'email',
-    role: (u.id === AUTH_CONFIG.adminUserId || u.role === 'admin') ? '专属管理员' : '普通用户',
+    role: (AUTH_CONFIG.adminUserId && isValidUuid(AUTH_CONFIG.adminUserId) && u.id === AUTH_CONFIG.adminUserId) ? '专属管理员' : '普通用户',
     createdAt: u.created_at
   }));
 

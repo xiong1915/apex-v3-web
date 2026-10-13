@@ -1,6 +1,6 @@
 // app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { AUTH_CONFIG, isSupabaseConfigured } from '@/lib/auth/config';
+import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed } from '@/lib/auth/config';
 import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 import { sendVerificationEmail } from '@/lib/auth/email';
@@ -42,7 +42,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. 本地 Mock 模式
+    // 2. 本地 Mock 模式门禁：生产环境及未显式开启时彻底禁止
+    if (!isMockAuthAllowed()) {
+      return NextResponse.json(
+        { error: '系统认证服务未就绪，禁止注册。请联系管理员配置认证服务。' },
+        { status: 503 }
+      );
+    }
+
     const result = mockAuthManager.register(email, password);
     if (result.error) {
       return NextResponse.json({ error: result.error.message }, { status: result.error.status || 400 });

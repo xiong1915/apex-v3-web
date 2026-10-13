@@ -1,7 +1,7 @@
 // app/api/admin/mfa/status/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth/server';
-import { AUTH_CONFIG } from '@/lib/auth/config';
+import { AUTH_CONFIG, isValidUuid } from '@/lib/auth/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,13 +11,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: '未登录' }, { status: 401 });
   }
 
-  const isAdmin =
-    session.user.id === AUTH_CONFIG.adminUserId ||
-    session.user.email.toLowerCase() === AUTH_CONFIG.adminEmail.toLowerCase() ||
-    session.user.role === 'admin' ||
-    session.user.app_metadata?.role === 'admin';
+  const configuredAdminId = AUTH_CONFIG.adminUserId;
+  const isConfiguredAdmin = Boolean(
+    configuredAdminId &&
+    isValidUuid(configuredAdminId) &&
+    session.user.id === configuredAdminId
+  );
 
-  if (!isAdmin) {
+  if (!isConfiguredAdmin) {
     return NextResponse.json({ error: '非管理员账号' }, { status: 403 });
   }
 

@@ -3,7 +3,7 @@
 
 import crypto from 'crypto';
 import { User, Session, AuthError } from './types';
-import { AUTH_CONFIG } from './config';
+import { AUTH_CONFIG, isProduction, isValidUuid } from './config';
 
 interface StoredUser {
   user: User;
@@ -39,24 +39,31 @@ class MockAuthManager {
   }
 
   private seedDefaultUsers() {
-    // 默认预置管理员
+    // 生产环境绝对禁止预置任何 Mock 用户与管理员
+    if (isProduction()) {
+      return;
+    }
+
+    // 仅在配置了有效管理员 UUID 时预置测试管理员 (用于本地测试)
     const adminId = AUTH_CONFIG.adminUserId;
     const adminEmail = AUTH_CONFIG.adminEmail;
-    this.users.set(adminEmail.toLowerCase(), {
-      user: {
-        id: adminId,
-        email: adminEmail,
-        email_confirmed_at: '2026-01-01T00:00:00.000Z',
-        role: 'admin',
-        user_metadata: { name: 'APEX Root Admin' },
-        app_metadata: { role: 'admin', providers: ['email'], aal: 'aal1' },
-        created_at: '2026-01-01T00:00:00.000Z'
-      },
-      passwordHash: hashPassword('ApexAdmin2026!'),
-      totpSecret: 'JBSWY3DPEHPK3PXP'
-    });
+    if (adminId && isValidUuid(adminId) && adminEmail) {
+      this.users.set(adminEmail.toLowerCase(), {
+        user: {
+          id: adminId,
+          email: adminEmail,
+          email_confirmed_at: '2026-01-01T00:00:00.000Z',
+          role: 'admin',
+          user_metadata: { name: 'APEX Root Admin' },
+          app_metadata: { role: 'admin', providers: ['email'], aal: 'aal1' },
+          created_at: '2026-01-01T00:00:00.000Z'
+        },
+        passwordHash: hashPassword('ApexAdmin2026!'),
+        totpSecret: 'JBSWY3DPEHPK3PXP'
+      });
+    }
 
-    // 默认预置普通测试用户
+    // 默认预置普通测试用户 (仅本地非生产环境)
     const testEmail = 'tester@apex-f1.com';
     this.users.set(testEmail.toLowerCase(), {
       user: {
@@ -73,6 +80,9 @@ class MockAuthManager {
   }
 
   public register(email: string, password: string): { user: User; session: Session | null; error: AuthError | null } {
+    if (isProduction()) {
+      return { user: null as any, session: null, error: { message: '生产环境彻底禁止 Mock 注册', status: 403 } };
+    }
     const normalized = email.toLowerCase().trim();
     if (!normalized || !password) {
       return { user: null as any, session: null, error: { message: '邮箱和密码不能为空', status: 400 } };
@@ -115,6 +125,9 @@ class MockAuthManager {
   }
 
   public verifyEmail(token: string): { success: boolean; error: AuthError | null } {
+    if (isProduction()) {
+      return { success: false, error: { message: '生产环境彻底禁止 Mock 邮箱验证', status: 403 } };
+    }
     for (const [_, stored] of this.users.entries()) {
       if (stored.verificationToken === token) {
         stored.user.email_confirmed_at = new Date().toISOString();
@@ -126,6 +139,9 @@ class MockAuthManager {
   }
 
   public login(email: string, password: string): { user: User; session: Session; error: AuthError | null } {
+    if (isProduction()) {
+      return { user: null as any, session: null as any, error: { message: '生产环境彻底禁止 Mock 登录', status: 403 } };
+    }
     const normalized = email.toLowerCase().trim();
     const stored = this.users.get(normalized);
     if (!stored || stored.passwordHash !== hashPassword(password)) {
@@ -142,6 +158,9 @@ class MockAuthManager {
   }
 
   public loginOAuth(provider: 'google' | 'github', oauthUser?: Partial<User>): { user: User; session: Session } {
+    if (isProduction()) {
+      throw new Error('生产环境彻底禁止 Mock OAuth 登录');
+    }
     const email = oauthUser?.email || `oauth_${provider}_user@apex-f1.com`;
     const normalized = email.toLowerCase();
     let stored = this.users.get(normalized);
@@ -271,16 +290,19 @@ class MockAuthManager {
   }
 
   public verifyAdminTOTP(token: string, totpCode: string): { success: boolean; session?: Session; error: AuthError | null } {
+    if (isProduction()) {
+      return { success: false, error: { message: '生产环境彻底禁止使用测试 TOTP 验证', status: 403 } };
+    }
     const session = this.getSession(token);
     if (!session) {
       return { success: false, error: { message: '未授权或会话已过期', status: 401 } };
     }
 
-    if (session.user.id !== AUTH_CONFIG.adminUserId && session.user.email !== AUTH_CONFIG.adminEmail) {
+    if (!AUTH_CONFIG.adminUserId || !isValidUuid(AUTH_CONFIG.adminUserId) || session.user.id !== AUTH_CONFIG.adminUserId) {
       return { success: false, error: { message: '非管理员账号无权执行该操作', status: 403 } };
     }
 
-    // 仅接受有效 TOTP 测试验证码 '123456'
+    // 仅在非生产环境下接受测试验证码
     if (totpCode === '123456') {
       // 升级会话至 aal2
       this.sessions.delete(token);

@@ -120,7 +120,11 @@ export class RedisIdempotencyStore implements IdempotencyStore {
   }
 }
 
+import { MemoryRateLimitStore } from '../memory';
+
 export class RedisRateLimitStore implements RateLimitStore {
+  private fallbackStore = new MemoryRateLimitStore();
+
   constructor(private redis: Redis) {}
 
   async checkRateLimit(key: string, limit: number, windowSeconds: number): Promise<RateLimitResult> {
@@ -139,8 +143,9 @@ export class RedisRateLimitStore implements RateLimitStore {
       }
       return { allowed: false, remaining: 0, resetAt };
     } catch (err) {
-      console.warn(`[RedisRateLimitStore] checkRateLimit(${key}) error:`, err);
-      return { allowed: true, remaining: limit, resetAt: now + windowSeconds * 1000 };
+      console.warn(`[RedisRateLimitStore] checkRateLimit(${key}) error, falling back to MemoryRateLimitStore:`, err);
+      // 严禁无限放行：Redis 故障时自动转由实例内存限流器严格防御
+      return this.fallbackStore.checkRateLimit(key, limit, windowSeconds);
     }
   }
 }
