@@ -61,8 +61,12 @@ export default function AIPage() {
     fetchCurrentSession().then(({ user }) => {
       if (!mounted) return;
       if (!user) {
-        if (input) {
-          sessionStorage.setItem('apex_ai_prompt', input);
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          const queryPrompt = urlParams.get('q') || urlParams.get('prompt');
+          if (queryPrompt) {
+            sessionStorage.setItem('apex_ai_prompt', queryPrompt);
+          }
         }
         router.push('/login?returnUrl=/ai');
       } else {
@@ -72,7 +76,7 @@ export default function AIPage() {
     return () => {
       mounted = false;
     };
-  }, [router, input]);
+  }, [router]);
 
   // 隐藏全局 footer，使 AI 控制台独占视口高度并防止窗口滚动切除顶部
   useEffect(() => {
@@ -278,12 +282,13 @@ export default function AIPage() {
     }
   }, [input, messages, status]);
 
-  // 从首页搜索框等携带的 prompt 初始化自动发送
+  // 从首页搜索框等携带的 prompt 初始化自动发送并恢复输入
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedPrompt = sessionStorage.getItem('apex_ai_prompt');
       if (savedPrompt) {
         sessionStorage.removeItem('apex_ai_prompt');
+        setInput(savedPrompt);
         sendMessage(savedPrompt);
       }
     }

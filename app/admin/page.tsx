@@ -212,12 +212,14 @@ export default function AdminPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
-      paddingBottom: 'calc(80px + env(safe-area-inset-bottom, 16px))'
-    }}>
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+      className="admin-page-container"
+    >
       {/* 顶部标题栏 */}
       <header style={{
         position: 'sticky',

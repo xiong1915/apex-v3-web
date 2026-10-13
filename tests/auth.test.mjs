@@ -182,4 +182,47 @@ test('APEX V3 身份认证与权限控制体系专项测试', async (t) => {
     assert.ok(callbackCode.includes("next.startsWith('/')"), '仅允许相对站内路径跳转');
     assert.ok(callbackCode.includes("!next.startsWith('//')"), '阻断协议相对 URL 注入');
   });
+
+  await t.test('11. 30 天持久登录周期严谨性 (账号注册超30天不得被误杀)', async () => {
+    // 模拟注册于 60 天前的老账号
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 3600 * 1000).toISOString();
+    const oldUser = {
+      id: 'usr_old_veteran',
+      email: 'veteran@f1.com',
+      email_confirmed_at: sixtyDaysAgo,
+      role: 'authenticated',
+      created_at: sixtyDaysAgo
+    };
+
+    // 刚刚登录创建的新会话
+    const activeSession = mockAuthManager.createSession(oldUser);
+    assert.ok(activeSession);
+    assert.ok(activeSession.access_token);
+
+    // 会话必须有效恢复，绝不能因用户注册早于30天而被判定过期
+    const retrieved = mockAuthManager.getSession(activeSession.access_token);
+    assert.ok(retrieved, '注册超30天的老账号新登录会话必须正常有效');
+    assert.equal(retrieved?.user.email, 'veteran@f1.com');
+
+    // 会话创建超过 30 天硬性周期时才应过期
+    const nowSec = Math.floor(Date.now() / 1000);
+    const expiredSession = {
+      ...activeSession,
+      expires_at: nowSec - 10
+    };
+    mockAuthManager.sessions.set('expired_tok_xyz', { session: expiredSession });
+    const expiredCheck = mockAuthManager.getSession('expired_tok_xyz');
+    assert.equal(expiredCheck, null, '会话生命周期超过30天必须强制注销');
+  });
+
+  await t.test('12. OAuth 回调防降级穿透审查 (Supabase 生产模式严禁回退至 Mock 登录)', async () => {
+    const fs = await import('fs');
+    const callbackCode = fs.readFileSync('app/auth/callback/route.ts', 'utf8');
+
+    // 生产模式校验
+    assert.ok(callbackCode.includes('if (isSupabaseConfigured())'), '必须具备 Supabase 生产模式分支');
+    assert.ok(callbackCode.includes('exchangeCodeForSession(code)'), '必须使用 exchangeCodeForSession 换取凭证');
+    // 失败重定向
+    assert.ok(callbackCode.includes("return NextResponse.redirect(`${origin}/login?error="), '换取失败必须显式阻断并返回错误提示，绝不允许穿透至 Mock 登录');
+  });
 });

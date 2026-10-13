@@ -3,6 +3,7 @@ import { defaultAIOrchestrator } from '@/lib/ai/orchestrator';
 import { AIMessage } from '@/lib/ai/types';
 import { getRateLimitStore } from '@/lib/storage';
 import { getServerUser } from '@/lib/auth/server';
+import { recordAIRateLimitHit, recordAIRequestStart, recordAITokenUsage } from '@/lib/admin/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -127,6 +128,7 @@ export async function POST(req: NextRequest) {
     // 3. 服务端限流与使用量保护 (基于持久化设施与原子递增)
     const rateCheck = await checkRateLimit(clientIp);
     if (!rateCheck.allowed) {
+      await recordAIRateLimitHit().catch(() => {});
       return NextResponse.json(
         { error: rateCheck.reason, retryAfter: rateCheck.retryAfter },
         {
@@ -139,9 +141,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 4. 记录有效 AI 提问请求 (APEX Control 真实监控统计)
+    await recordAIRequestStart().catch(() => {});
+
     const wantStream = body.stream !== false; // 默认流式
 
-    // 4. 建立请求取消控制器，并设置 25 秒超时与客户端中断监听
+    // 5. 建立请求取消控制器，并设置 25 秒超时与客户端中断监听
     const abortController = new AbortController();
     const timeoutTimer = setTimeout(() => {
       abortController.abort(new Error('REQUEST_TIMEOUT'));
@@ -156,14 +161,23 @@ export async function POST(req: NextRequest) {
       const stream = new ReadableStream({
         async start(controller) {
           const encoder = new TextEncoder();
+          let collectedText = '';
           try {
             for await (const chunk of defaultAIOrchestrator.streamAnswer(messages, clientIp, abortController.signal)) {
               if (abortController.signal.aborted) break;
+              if (chunk.type === 'delta' && chunk.content) {
+                collectedText += chunk.content;
+              }
               const data = `data: ${JSON.stringify(chunk)}\n\n`;
               controller.enqueue(encoder.encode(data));
             }
             if (!abortController.signal.aborted) {
               controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+              // 统计 Token 用量
+              const inChars = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
+              const outChars = collectedText.length;
+              const estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
+              recordAITokenUsage(estTokens).catch(() => {});
             }
           } catch (err: any) {
             if (!abortController.signal.aborted) {
@@ -196,6 +210,10 @@ export async function POST(req: NextRequest) {
     // 非流式回退
     try {
       const result = await defaultAIOrchestrator.answer(messages, clientIp, abortController.signal);
+      const inChars = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
+      const outChars = result.reply?.length || 0;
+      const estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
+      recordAITokenUsage(estTokens).catch(() => {});
       return NextResponse.json(result);
     } finally {
       clearTimeout(timeoutTimer);

@@ -24,6 +24,7 @@ next-env.d.ts
 .env.production
 .env.development
 *.png
+!public/*.png
 .lkg_snapshot.json
 scratch_check_*.cjs
 

@@ -119,6 +119,32 @@ export async function getAdminUsers(): Promise<{ total: number; users: AdminUser
   return { total: mockUsers.length, users: mockUsers };
 }
 
+export async function recordAIRateLimitHit(): Promise<void> {
+  try {
+    const cache = getCacheStore();
+    const hits = (await cache.get<number>('stats:ai:rate_limit_hits')) || 0;
+    await cache.set('stats:ai:rate_limit_hits', hits + 1);
+  } catch (_) {}
+}
+
+export async function recordAIRequestStart(): Promise<void> {
+  try {
+    const cache = getCacheStore();
+    const total = (await cache.get<number>('stats:ai:total_requests')) || 0;
+    await cache.set('stats:ai:total_requests', total + 1);
+    await cache.set('stats:ai:last_request_time', new Date().toISOString());
+  } catch (_) {}
+}
+
+export async function recordAITokenUsage(tokens: number): Promise<void> {
+  try {
+    if (tokens <= 0) return;
+    const cache = getCacheStore();
+    const current = (await cache.get<number>('stats:ai:tokens_estimated')) || 0;
+    await cache.set('stats:ai:tokens_estimated', current + tokens);
+  } catch (_) {}
+}
+
 export async function getAdminAIMetrics(): Promise<AdminAIMetrics> {
   const cache = getCacheStore();
   const total = await cache.get<number>('stats:ai:total_requests') || 0;

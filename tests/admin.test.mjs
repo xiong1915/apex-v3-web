@@ -23,9 +23,12 @@ test('APEX Control 权限安全与管理后台功能测试', async (t) => {
     assert.equal(manifest.start_url, '/admin', '启动路径必须直接指向 /admin');
     assert.ok(manifest.icons && manifest.icons.length > 0, '必须包含应用图标');
 
-    // 检查 admin-icon.svg
+    // 检查 admin-icon.svg 及 PNG 图标
     const iconPath = path.join(process.cwd(), 'public', 'admin-icon.svg');
     assert.ok(fs.existsSync(iconPath), '必须存在 public/admin-icon.svg 图标');
+    assert.ok(fs.existsSync(path.join(process.cwd(), 'public', 'admin-icon-192.png')), '必须存在 public/admin-icon-192.png');
+    assert.ok(fs.existsSync(path.join(process.cwd(), 'public', 'admin-icon-512.png')), '必须存在 public/admin-icon-512.png');
+    assert.ok(fs.existsSync(path.join(process.cwd(), 'public', 'apple-touch-icon.png')), '必须存在 public/apple-touch-icon.png (iOS Safari 专用)');
   });
 
   await t.test('2. 管理员身份隔离验证 (401 / 403 严格门禁)', () => {
@@ -73,7 +76,9 @@ test('APEX Control 权限安全与管理后台功能测试', async (t) => {
     assert.equal(validTotp.session.aal, 'aal2', '验证成功后会话必须升级至 aal2');
   });
 
-  await t.test('4. 真实数据源读取 (无伪造统计)', async () => {
+  await t.test('4. 真实数据源读取 (无伪造统计与指标累加)', async () => {
+    const { recordAIRequestStart, recordAITokenUsage, recordAIRateLimitHit } = await import('../lib/admin/service.ts');
+
     // 网站概览
     const overview = await getAdminOverview();
     assert.ok(overview.health.status);
@@ -86,11 +91,23 @@ test('APEX Control 权限安全与管理后台功能测试', async (t) => {
     assert.ok(Array.isArray(users.users));
     assert.ok(users.total >= 2, '包含预置管理员和测试用户');
 
-    // AI 监控
-    const aiMetrics = await getAdminAIMetrics();
-    assert.ok(typeof aiMetrics.totalRequests === 'number');
-    assert.ok(typeof aiMetrics.rateLimitHits === 'number');
-    assert.equal(aiMetrics.provider, 'deepseek');
+    // AI 监控：先读取基准
+    const aiBefore = await getAdminAIMetrics();
+    const reqBefore = aiBefore.totalRequests;
+    const tokenBefore = aiBefore.estimatedTokens;
+    const rlBefore = aiBefore.rateLimitHits;
+
+    // 模拟真实 API 统计累加
+    await recordAIRequestStart();
+    await recordAITokenUsage(120);
+    await recordAIRateLimitHit();
+
+    // 再次读取验证累加生效
+    const aiAfter = await getAdminAIMetrics();
+    assert.equal(aiAfter.totalRequests, reqBefore + 1, '请求计数必须真实自增');
+    assert.equal(aiAfter.estimatedTokens, tokenBefore + 120, 'Token 用量必须真实累加');
+    assert.equal(aiAfter.rateLimitHits, rlBefore + 1, '限流拦截必须真实计数');
+    assert.ok(aiAfter.lastActiveTime, '必须记录最新请求时间戳');
   });
 
   await t.test('5. F1 手动同步隔离：严禁触发飞书提醒，30 秒冷却防刷', async () => {

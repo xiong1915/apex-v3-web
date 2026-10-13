@@ -222,6 +222,25 @@ a {
   .mobile-admin-bottom-nav {
     display: none !important;
   }
+  .admin-page-container {
+    padding-bottom: 24px !important;
+  }
+}
+
+.admin-page-container {
+  padding-bottom: calc(80px + env(safe-area-inset-bottom, 16px));
+}
+
+.mobile-admin-bottom-nav button {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+@media (max-width: 360px) {
+  .mobile-admin-bottom-nav button {
+    font-size: 10px;
+    gap: 2px;
+  }
 }
 
 /* Circuit Visual System & Reduced Motion */

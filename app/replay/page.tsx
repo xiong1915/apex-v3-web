@@ -219,6 +219,7 @@ function ReplayContent() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--line-dark)', borderRadius: 'var(--radius-pill)', padding: '4px 12px' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>回放赛季</span>
               <select
+                aria-label="回放赛季选择"
                 value={requestedYear}
                 onChange={e => router.push(`/replay?season=${e.target.value}`)}
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
@@ -230,6 +231,7 @@ function ReplayContent() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid var(--line-dark)', borderRadius: 'var(--radius-pill)', padding: '4px 12px' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>真实正赛</span>
               <select
+                aria-label="真实正赛场次选择"
                 value={activeSessionKey}
                 onChange={e => handleSelectSession(e.target.value)}
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}

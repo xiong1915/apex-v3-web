@@ -25,31 +25,36 @@ export async function GET(req: NextRequest) {
   const safeRedirect = getSafeRedirectUrl(next, origin);
   const response = NextResponse.redirect(safeRedirect);
 
-  if (isSupabaseConfigured() && code) {
+  if (isSupabaseConfigured()) {
+    if (!code) {
+      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent('缺少 OAuth 授权码')}`);
+    }
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error && data.session) {
-      response.cookies.set(AUTH_CONFIG.cookieName, data.session.access_token, {
+    if (error || !data.session) {
+      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error?.message || 'OAuth 授权换取会话失败')}`);
+    }
+
+    response.cookies.set(AUTH_CONFIG.cookieName, data.session.access_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: AUTH_CONFIG.sessionMaxAge,
+      path: '/'
+    });
+    if (data.session.refresh_token) {
+      response.cookies.set(AUTH_CONFIG.refreshCookieName, data.session.refresh_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: AUTH_CONFIG.sessionMaxAge,
         path: '/'
       });
-      if (data.session.refresh_token) {
-        response.cookies.set(AUTH_CONFIG.refreshCookieName, data.session.refresh_token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: AUTH_CONFIG.sessionMaxAge,
-          path: '/'
-        });
-      }
-      return response;
     }
+    return response;
   }
 
-  // Mock 模式
+  // 仅在本地未配置 Supabase 生产凭据时进入 Mock 模式
   const { session } = mockAuthManager.loginOAuth(provider);
   response.cookies.set(AUTH_CONFIG.cookieName, session.access_token, {
     httpOnly: true,

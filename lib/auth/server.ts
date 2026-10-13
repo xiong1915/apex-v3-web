@@ -54,45 +54,74 @@ function extractTokenFromRequest(req?: NextRequest): string | null {
   return null;
 }
 
+function parseJwtIat(token: string): number | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+      if (typeof payload.iat === 'number') {
+        return payload.iat;
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
 export async function getServerSession(req?: NextRequest): Promise<Session | null> {
   const isRealSupabase = isSupabaseConfigured();
 
   if (isRealSupabase) {
     try {
       const supabase = await createSupabaseServerClient();
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) return null;
+      const token = extractTokenFromRequest(req);
+
+      let authUser = null;
+      if (token) {
+        const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
+        if (!userErr && userRes.user) {
+          authUser = userRes.user;
+        }
+      }
+
+      if (!authUser) {
+        const { data: userRes, error } = await supabase.auth.getUser();
+        if (!error && userRes.user) {
+          authUser = userRes.user;
+        }
+      }
+
+      if (!authUser) return null;
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return null;
 
-      // 验证 30 天最大生命周期约束
+      // 验证 30 天最大生命周期约束 (基于会话签发时间，绝非账号注册时间)
       const nowSec = Math.floor(Date.now() / 1000);
-      const sessionCreatedAt = (session.user as any)?.created_at ? Math.floor(new Date(session.user.created_at).getTime() / 1000) : nowSec;
-      if (nowSec - sessionCreatedAt > AUTH_CONFIG.sessionMaxAge) {
+      const sessionIssuedAt = parseJwtIat(session.access_token) || (session as any)?.created_at || nowSec;
+      if (nowSec - sessionIssuedAt > AUTH_CONFIG.sessionMaxAge) {
         // 超过 30 天硬性周期，拒绝自动刷新
         return null;
       }
 
-      const aalLevel = (session as any)?.aal || (user.app_metadata?.aal as any) || 'aal1';
+      const aalLevel = (session as any)?.aal || (authUser.app_metadata?.aal as any) || 'aal1';
 
       return {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
         expires_at: session.expires_at || (nowSec + 3600),
         expires_in: session.expires_in || 3600,
-        created_at: sessionCreatedAt,
+        created_at: sessionIssuedAt,
         user: {
-          id: user.id,
-          email: user.email || '',
-          email_confirmed_at: user.email_confirmed_at,
-          role: user.role,
-          user_metadata: user.user_metadata,
+          id: authUser.id,
+          email: authUser.email || '',
+          email_confirmed_at: authUser.email_confirmed_at,
+          role: authUser.role,
+          user_metadata: authUser.user_metadata,
           app_metadata: {
-            ...user.app_metadata,
+            ...authUser.app_metadata,
             aal: aalLevel
           },
-          created_at: user.created_at
+          created_at: authUser.created_at
         },
         aal: aalLevel
       };
