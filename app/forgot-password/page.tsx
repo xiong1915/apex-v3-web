@@ -1,5 +1,6 @@
 // app/forgot-password/page.tsx
 'use client';
+import { AuthIntro } from '@/components/auth-intro';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -41,7 +42,7 @@ export default function ForgotPasswordPage() {
       justifyContent: 'center',
       padding: '40px 16px'
     }}>
-      <div style={{ maxWidth: '420px', width: '100%' }}>
+      <div className="auth-frame"><AuthIntro/>
         <GlassCard style={{ padding: '36px 28px', borderRadius: '24px' }}>
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 8px', color: 'var(--text-primary)' }}>
@@ -82,11 +83,11 @@ export default function ForgotPasswordPage() {
             <>
               {error && (
                 <div style={{
-                  background: 'rgba(255, 45, 32, 0.1)',
+                  background: '#e1060008',
                   border: '1px solid rgba(255, 45, 32, 0.3)',
                   borderRadius: '12px',
                   padding: '10px 14px',
-                  color: '#ff453a',
+                  color: 'var(--accent-red)',
                   fontSize: '13px',
                   marginBottom: '18px'
                 }}>
@@ -108,7 +109,7 @@ export default function ForgotPasswordPage() {
                     style={{
                       width: '100%',
                       padding: '12px 14px',
-                      background: 'rgba(255, 255, 255, 0.04)',
+                      background: 'var(--bg-primary)',
                       border: '1px solid var(--line-dark)',
                       borderRadius: '12px',
                       color: 'var(--text-primary)',

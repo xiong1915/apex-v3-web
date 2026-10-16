@@ -27,10 +27,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#0a0a0b'
+  themeColor: '#F4F3EF'
 };
 
 export default function AdminLayout({
@@ -39,7 +37,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div style={{ minHeight: '100dvh', background: '#0a0a0b', color: '#f5f5f7' }}>
+    <div className="admin-shell" style={{ minHeight: '100dvh', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {children}
     </div>
   );
