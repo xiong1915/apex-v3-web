@@ -1,5 +1,6 @@
 // app/register/page.tsx
 'use client';
+import { AuthIntro } from '@/components/auth-intro';
 
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
@@ -57,7 +58,7 @@ function RegisterForm() {
       justifyContent: 'center',
       padding: '40px 16px'
     }}>
-      <div style={{ maxWidth: '420px', width: '100%' }}>
+      <div className="auth-frame"><AuthIntro/>
         <GlassCard style={{ padding: '36px 28px', borderRadius: '24px' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
@@ -105,11 +106,11 @@ function RegisterForm() {
               {/* Error Alert */}
               {error && (
                 <div style={{
-                  background: 'rgba(255, 45, 32, 0.1)',
+                  background: '#e1060008',
                   border: '1px solid rgba(255, 45, 32, 0.3)',
                   borderRadius: '12px',
                   padding: '10px 14px',
-                  color: '#ff453a',
+                  color: 'var(--accent-red)',
                   fontSize: '13px',
                   marginBottom: '18px'
                 }}>
@@ -132,7 +133,7 @@ function RegisterForm() {
                     style={{
                       width: '100%',
                       padding: '12px 14px',
-                      background: 'rgba(255, 255, 255, 0.04)',
+                      background: 'var(--bg-primary)',
                       border: '1px solid var(--line-dark)',
                       borderRadius: '12px',
                       color: 'var(--text-primary)',
@@ -156,7 +157,7 @@ function RegisterForm() {
                     style={{
                       width: '100%',
                       padding: '12px 14px',
-                      background: 'rgba(255, 255, 255, 0.04)',
+                      background: 'var(--bg-primary)',
                       border: '1px solid var(--line-dark)',
                       borderRadius: '12px',
                       color: 'var(--text-primary)',
@@ -180,7 +181,7 @@ function RegisterForm() {
                     style={{
                       width: '100%',
                       padding: '12px 14px',
-                      background: 'rgba(255, 255, 255, 0.04)',
+                      background: 'var(--bg-primary)',
                       border: '1px solid var(--line-dark)',
                       borderRadius: '12px',
                       color: 'var(--text-primary)',
@@ -197,14 +198,14 @@ function RegisterForm() {
                   disabled={loading}
                   style={{ width: '100%', marginTop: '8px', padding: '12px 0', fontSize: '14px', fontWeight: 700 }}
                 >
-                  {loading ? '正在提交注册...' : '立即注册'}
+                  {loading ? '正在提交注册…' : '立即注册'}
                 </GlassButton>
               </form>
 
               {/* Footer */}
               <div style={{ textAlign: 'center', marginTop: '24px' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>已有账号？</span>{' '}
-                <Link href={`/login${returnUrl !== '/' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`} style={{ fontSize: '13px', color: '#ff453a', fontWeight: 600, textDecoration: 'none' }}>
+                <Link href={`/login${returnUrl !== '/' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`} style={{ fontSize: '13px', color: 'var(--accent-red)', fontWeight: 600, textDecoration: 'none' }}>
                   直接登录
                 </Link>
               </div>

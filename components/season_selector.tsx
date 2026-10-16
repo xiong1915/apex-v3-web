@@ -55,17 +55,17 @@ export function SeasonSelector({
             background: 'var(--bg-secondary, #18181b)',
             color: 'var(--text-primary, #ffffff)',
             border: '1px solid var(--line-dark, rgba(255, 255, 255, 0.15))',
-            borderRadius: '8px',
+            borderRadius: 'var(--radius-pill)',
             padding: '6px 32px 6px 14px',
             fontSize: '14px',
             fontWeight: 700,
             cursor: 'pointer',
             outline: 'none',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+            boxShadow: 'none'
           }}
         >
           {seasons.map(s => (
-            <option key={s} value={s} style={{ background: '#18181b', color: '#ffffff' }}>
+            <option key={s} value={s} style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
               {s} 赛季 {s === '2026' ? '(当前)' : ''}
             </option>
           ))}

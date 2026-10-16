@@ -56,7 +56,7 @@ export function ReplayControls({
         flexDirection: 'column',
         gap: '14px',
         background: 'rgba(18, 18, 20, 0.95)',
-        backdropFilter: 'blur(16px)',
+        backdropFilter: 'none',
         border: '1px solid var(--line-dark)'
       }}
     >
@@ -70,7 +70,7 @@ export function ReplayControls({
         </span>
 
         <input
-          type="range"
+          type="range" aria-label="回放进度"
           min={0}
           max={durationMs}
           step={100}
@@ -137,7 +137,7 @@ export function ReplayControls({
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 255, 255, 0.05)', padding: '3px', borderRadius: '8px' }}>
             {speeds.map(s => (
               <button
-                key={s}
+                key={s} aria-pressed={speed === s}
                 onClick={() => onChangeSpeed(s)}
                 style={{
                   background: speed === s ? 'var(--accent-red, #ff453a)' : 'transparent',

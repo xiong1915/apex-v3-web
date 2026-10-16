@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
+import { PageHeading } from '@/components/page-heading';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   REAL_REPLAY_SESSIONS,
@@ -202,10 +203,10 @@ function ReplayContent() {
   }, [currentMs, durationMs, isPlaying, buffering]);
 
   return (
-    <div className="replay-shell" style={{ minHeight: '100vh', background: 'var(--bg-black, #090a0d)', color: 'var(--text-primary, #ffffff)', paddingBottom: '80px' }}>
+    <div className="replay-shell" style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary, #ffffff)', paddingBottom: '80px' }}>
       {/* 顶部导航与面包装饰 */}
-      <section style={{ borderBottom: '1px solid var(--line-dark, rgba(255,255,255,0.1))', paddingTop: '80px', paddingBottom: '24px' }}>
-        <div className="container"><div className="page-marker"><span>APEX REPLAY</span><span>RACE / BACK TO THE APEX</span></div>
+      <section style={{ borderBottom: '1px solid var(--line-dark, rgba(255,255,255,0.1))', paddingTop: '40px', paddingBottom: '24px' }}>
+        <div className="container"><PageHeading category="APEX REPLAY" title="赛事回放工作台" description="追踪车手、切换视角，在动态赛道与遥测中重新理解比赛。"/>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted, #71717a)', marginBottom: '16px' }}>
             <Link href="/" style={{ color: 'var(--text-secondary, #94a3b8)' }}>首页</Link>
             <span>/</span>
@@ -334,9 +335,9 @@ function ReplayContent() {
                 )}
               </div>
 
-              <h1 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
+              <h2 style={{ fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
                 {metadata.title}
-              </h1>
+              </h2>
 
               <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '14px', maxWidth: '720px', marginTop: '10px', lineHeight: 1.6 }}>
                 {isDemo
