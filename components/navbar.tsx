@@ -1,53 +1,120 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { GlassNav } from '@/components/glass/GlassNav';
 import { fetchCurrentSession, apiLogout } from '@/lib/auth/client';
 import { User } from '@/lib/auth/types';
 
+const NAV_ITEMS = [
+  { href: '/#race', label: '当前分站' },
+  { href: '/races', label: '全季赛历' },
+  { href: '/standings', label: '积分榜' },
+  { href: '/replay', label: '动态回放' },
+  { href: '/drivers', label: '车手' },
+  { href: '/teams', label: '车队' }
+];
+const clockFormatter = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+});
+function BeijingClock({ className = '' }: { className?: string }) {
+  const [time, setTime] = useState('北京时间 --:--:--');
+  useEffect(() => {
+    const update = () => { if (!document.hidden) setTime(`北京时间 ${clockFormatter.format(new Date())}`); };
+    update();
+    const timer = setInterval(update, 1000);
+    document.addEventListener('visibilitychange', update);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', update); };
+  }, []);
+  return <span className={`nav-clock tabular-nums ${className}`}>{time}</span>;
+}
+
 export function Navbar() {
   const router = useRouter();
-  const [bjTimeStr, setBjTimeStr] = useState('北京时间 --:--:--');
+  const pathname = usePathname();
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<(User & { isAdmin?: boolean }) | null>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     fetchCurrentSession().then(({ user }) => {
-      setUser(user as any);
+      if (mounted) setUser(user);
     });
-  }, []);
+    return () => { mounted = false; };
+  }, [pathname]);
 
   const handleLogout = async () => {
+    if (loggingOut) return;
     setUserDropdownOpen(false);
-    await apiLogout();
-    setUser(null);
-    router.refresh();
+    setLogoutError(null);
+    setLoggingOut(true);
+    try {
+      await apiLogout();
+      setUser(null);
+      router.refresh();
+    } catch {
+      setMenuOpen(false);
+      setLogoutError('退出登录失败，请检查网络后重试。当前登录状态仍保留。');
+    } finally { setLoggingOut(false); }
   };
 
   useEffect(() => {
-    const update = () => {
-      try {
-        const s = new Intl.DateTimeFormat('zh-CN', {
-          timeZone: 'Asia/Shanghai',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false
-        }).format(new Date());
-        setBjTimeStr(`北京时间 ${s}`);
-      } catch (_) {}
-    };
+    setMenuOpen(false);
+    setUserDropdownOpen(false);
+  }, [pathname]);
 
-    update();
-    const timer = setInterval(update, 1000);
-    return () => clearInterval(timer);
+  useEffect(() => {
+    const desktop = window.matchMedia('(min-width: 1121px)');
+    const closeOnDesktop = () => { if (desktop.matches) setMenuOpen(false); };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
   }, []);
 
+  useEffect(() => {
+    if (!menuOpen && !userDropdownOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const main = document.querySelector('main');
+    const previousInert = main?.inert ?? false;
+    if (menuOpen) {
+      document.body.style.overflow = 'hidden';
+      if (main) main.inert = true;
+      drawerRef.current?.querySelector<HTMLElement>('button, a')?.focus();
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        setUserDropdownOpen(false);
+        if (menuOpen) toggleRef.current?.focus();
+        else accountRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+      }
+      if (event.key !== 'Tab' || !menuOpen) return;
+      const items = drawerRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
+      if (!items?.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    const outsideAccount = (event: PointerEvent) => {
+      if (!accountRef.current?.contains(event.target as Node)) setUserDropdownOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', outsideAccount);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (main) main.inert = previousInert;
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', outsideAccount);
+    };
+  }, [menuOpen, userDropdownOpen]);
   return (
-    <GlassNav style={{ height: '64px' }}>
+    <GlassNav aria-label="主导航" style={{ height: '64px' }}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
         {/* Brand */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '18px', letterSpacing: '0.08em' }}>
@@ -56,20 +123,18 @@ export function Navbar() {
         </Link>
 
         {/* Desktop Links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }} className="desktop-nav">
-          <Link href="/#race" style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, transition: 'color 0.2s' }}>当前分站</Link>
-          <Link href="/standings" style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, transition: 'color 0.2s' }}>积分榜</Link>
-          <Link href="/replay" style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, transition: 'color 0.2s' }}>动态回放</Link>
-          <Link href="/drivers" style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, transition: 'color 0.2s' }}>车手</Link>
-          <Link href="/teams" style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, transition: 'color 0.2s' }}>车队</Link>
-          <Link href="/races" style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, transition: 'color 0.2s' }}>全季赛历</Link>
+        <div className="desktop-nav nav-links">
+          {NAV_ITEMS.map(item => (
+            <Link key={item.href} href={item.href} className="nav-link"
+              aria-current={pathname === item.href.split('#')[0] ? 'page' : undefined}>
+              {item.label}
+            </Link>
+          ))}
         </div>
 
         {/* Right CTA, User Account & Clock */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span className="tabular-nums desktop-nav" style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
-            {bjTimeStr}
-          </span>
+          <BeijingClock className="desktop-nav" />
 
           <Link href="/ai" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--line-dark)', padding: '6px 14px', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: 600 }}>
             <span>TIKE AI 智能</span>
@@ -78,9 +143,9 @@ export function Navbar() {
 
           {/* User Account / Login Button */}
           {user ? (
-            <div style={{ position: 'relative' }} className="desktop-nav">
+            <div ref={accountRef} style={{ position: 'relative' }} className="desktop-nav">
               <button
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                aria-expanded={userDropdownOpen} aria-controls="account-menu" onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -114,7 +179,7 @@ export function Navbar() {
               </button>
 
               {userDropdownOpen && (
-                <div style={{
+                <div id="account-menu" style={{
                   position: 'absolute',
                   right: 0,
                   top: '100%',
@@ -157,6 +222,7 @@ export function Navbar() {
                   )}
 
                   <button
+                    disabled={loggingOut}
                     onClick={handleLogout}
                     style={{
                       width: '100%',
@@ -170,7 +236,7 @@ export function Navbar() {
                       cursor: 'pointer'
                     }}
                   >
-                    退出登录
+                    {loggingOut ? '正在退出…' : '退出登录'}
                   </button>
                 </div>
               )}
@@ -182,7 +248,7 @@ export function Navbar() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                background: 'var(--accent-red)',
+                background: 'var(--accent-action)',
                 color: '#ffffff',
                 padding: '6px 14px',
                 borderRadius: 'var(--radius-pill)',
@@ -197,7 +263,7 @@ export function Navbar() {
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="mobile-nav-toggle"
+            ref={toggleRef} className="mobile-nav-toggle" aria-expanded={menuOpen} aria-controls="mobile-menu"
             aria-label="切换导航菜单"
             style={{ background: 'none', border: 'none', color: 'var(--text-primary)', cursor: 'pointer', padding: '6px' }}
           >
@@ -212,9 +278,10 @@ export function Navbar() {
         </div>
       </div>
 
+      {logoutError && <div className="nav-feedback" role="alert">{logoutError}</div>}
       {/* Mobile Drawer Overlay */}
       {menuOpen && (
-        <div style={{
+        <div id="mobile-menu" ref={drawerRef} role="dialog" aria-modal="true" aria-label="网站导航" className="mobile-menu" style={{
           position: 'fixed',
           top: '64px',
           left: 0,
@@ -228,6 +295,7 @@ export function Navbar() {
           flexDirection: 'column',
           gap: '20px'
         }}>
+          <button type="button" className="mobile-menu-close" onClick={() => { setMenuOpen(false); toggleRef.current?.focus(); }}>关闭菜单 <span aria-hidden="true">×</span></button>
           <Link href="/#race" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600 }}>当前分站赛程</Link>
           <Link href="/standings" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600 }}>锦标赛积分榜</Link>
           <Link href="/replay" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600 }}>比赛动态回放</Link>
@@ -252,6 +320,7 @@ export function Navbar() {
                   </Link>
                 )}
                 <button
+                  disabled={loggingOut}
                   onClick={async () => {
                     await handleLogout();
                     setMenuOpen(false);
@@ -266,7 +335,7 @@ export function Navbar() {
                     cursor: 'pointer'
                   }}
                 >
-                  退出登录
+                  {loggingOut ? '正在退出…' : '退出登录'}
                 </button>
               </>
             ) : (
@@ -275,7 +344,7 @@ export function Navbar() {
                 onClick={() => setMenuOpen(false)}
                 style={{
                   textAlign: 'center',
-                  background: 'var(--accent-red)',
+                  background: 'var(--accent-action)',
                   color: '#ffffff',
                   padding: '10px 16px',
                   borderRadius: 'var(--radius-pill)',
@@ -287,9 +356,7 @@ export function Navbar() {
               </Link>
             )}
 
-            <div className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>
-              {bjTimeStr} · UTC+8
-            </div>
+            <BeijingClock />
           </div>
         </div>
       )}

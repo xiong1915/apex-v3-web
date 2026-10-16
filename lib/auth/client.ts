@@ -66,9 +66,8 @@ export async function apiRegister(email: string, password: string): Promise<Auth
 }
 
 export async function apiLogout(): Promise<void> {
-  try {
-    await fetch('/api/auth/logout', { method: 'POST' });
-  } catch (_) {}
+  const response = await fetch('/api/auth/logout', { method: 'POST' });
+  if (!response.ok) throw new Error('退出登录失败，请稍后重试');
 }
 
 export async function apiForgotPassword(email: string): Promise<AuthResponse<{ message: string }>> {

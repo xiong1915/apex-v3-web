@@ -33,8 +33,9 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
+        <a href="#main-content" className="skip-link">跳到主要内容</a>
         <Navbar />
-        <main>{children}</main>
+        <main id="main-content" tabIndex={-1}>{children}</main>
         <Footer />
       </body>
     </html>

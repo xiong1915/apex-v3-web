@@ -58,13 +58,17 @@ export function AISearchBox({ defaultLight = false }: { defaultLight?: boolean }
         >
           <input
             type="text"
+            aria-label="向 TIKE AI 提问"
+            name="question"
+            autoComplete="off"
             value={query}
             onChange={e => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder="问点关于 F1 的事（规则、战术、下一站、积分或车手）..."
+            placeholder="询问赛程、积分、车手或比赛规则…"
             style={{
               flex: 1,
+              minWidth: 0,
               background: 'transparent',
               border: 'none',
               outline: 'none',

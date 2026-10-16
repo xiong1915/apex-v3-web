@@ -5,22 +5,24 @@ import { defaultF1Service } from '@/providers/f1/service';
 import { CircuitVisual } from '@/components/circuit_visual';
 import { Countdown } from '@/components/countdown';
 import { AISearchBox } from '@/components/ai_search_box';
-import { TitleSimulator } from '@/components/title_simulator';
+import { LazySimulator } from '@/components/lazy_simulator';
 import { AutoRefresher } from '@/components/auto_refresher';
 import { formatBeijingDisplay } from '@/lib/f1/time';
+import { CircuitRegistry } from '@/lib/circuits/registry';
+import { RaceStateService } from '@/lib/f1/race-state';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  const overview = await defaultF1Service.getOverview();
-  const calendar = await defaultF1Service.getCalendar('2026');
+  const [overview, calendar] = await Promise.all([
+    defaultF1Service.getOverview(), defaultF1Service.getCalendar('2026')
+  ]);
 
   const { currentMeeting, nextSession, driverStandings, previousRace } = overview;
-  const targetUtcMs = nextSession?.targetUtcMs || (currentMeeting.raceStartUTC ? new Date(currentMeeting.raceStartUTC).getTime() : Date.now());
+  const circuit = CircuitRegistry.getCircuit(currentMeeting.circuitId, overview.season);
+  const targetUtcMs = nextSession?.targetUtcMs ?? 0;
+  const hasCountdown = nextSession?.targetUtcMs != null && Number.isFinite(targetUtcMs);
 
-  const leader = driverStandings[0] || { name: '数据加载中', code: '---', points: 0, team: 'F1 车队' };
-  const challenger = driverStandings[1] || { name: '数据加载中', code: '---', points: 0, team: 'F1 车队' };
-  const p3 = driverStandings[2] || { name: '数据加载中', code: '---', points: 0, team: 'F1 车队' };
 
   // 接下来三站：按比赛时间排序，只展示当前分站之后的赛事
   const currentRound = currentMeeting?.round || 0;
@@ -28,7 +30,8 @@ export default async function HomePage() {
     .filter(r => r.round > currentRound)
     .sort((a, b) => a.round - b.round)
     .slice(0, 3);
-  const isSeasonEnded = calendar.length > 0 && upcomingThreeRaces.length === 0;
+  const isSeasonEnded = calendar.length > 0 && upcomingThreeRaces.length === 0 &&
+    RaceStateService.evaluateMeeting(currentMeeting).state === 'WEEKEND_FINISHED';
 
   return (
     <>
@@ -39,11 +42,11 @@ export default async function HomePage() {
             {/* Left Column: Race Brief & Action */}
             <div>
               <div className="badge-pill badge-red" style={{ marginBottom: '16px' }}>
-                第 {currentMeeting.round} 站 / 全季 {calendar.length} 站 · {overview.season} 赛季世界锦标赛
+                {currentMeeting.round > 0 ? `第 ${currentMeeting.round} 站 / 全季 ${calendar.length} 站` : '赛程同步中'} · {overview.season} 赛季世界锦标赛
               </div>
 
               <h1 style={{ fontSize: 'clamp(44px, 7vw, 76px)', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: '12px' }}>
-                {currentMeeting.nameZh || `${currentMeeting.locality || '新加坡'}大奖赛`}
+                {currentMeeting.nameZh || currentMeeting.name || '分站信息待同步'}
               </h1>
 
               <div style={{ fontSize: 'clamp(16px, 2.2vw, 22px)', color: 'var(--text-secondary)', marginBottom: '24px' }}>
@@ -54,8 +57,9 @@ export default async function HomePage() {
                 {currentMeeting.isSprintWeekend && (
                   <span className="badge-pill badge-red">冲刺赛周末</span>
                 )}
-                <span className="badge-pill badge-dark">市街赛道</span>
-                <span className="badge-pill badge-dark">夜赛</span>
+                {circuit && <span className="badge-pill badge-dark">
+                  {circuit.type === 'street' ? '市街赛道' : circuit.type === 'hybrid' ? '混合赛道' : '永久赛道'}
+                </span>}
                 {currentMeeting.specs?.laps && (
                   <span className="badge-pill badge-dark">正赛 {currentMeeting.specs.laps} 圈</span>
                 )}
@@ -70,21 +74,22 @@ export default async function HomePage() {
             {/* Right Column: Dynamic SVG & High-Precision Countdown */}
             <div style={{ position: 'relative' }}>
               <div style={{ position: 'absolute', top: '-40px', right: 0, width: '100%', height: '100%', opacity: 0.35, pointerEvents: 'none', zIndex: 0 }}>
-                <CircuitVisual circuitId={currentMeeting.circuitId} />
+                <CircuitVisual circuitId={currentMeeting.circuitId} season={overview.season} />
               </div>
 
-              <div className="card-dark" style={{ position: 'relative', zIndex: 1, backdropFilter: 'blur(16px)', background: 'rgba(18, 18, 20, 0.85)' }}>
+              <div className="card-dark hero-timing" style={{ position: 'relative', zIndex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--line-dark)', paddingBottom: '14px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-                    {nextSession?.status === 'IN_PROGRESS' ? '当前进行' : '下一节'} · {nextSession?.session?.name || '大奖赛正赛'}
+                    {nextSession?.status === 'IN_PROGRESS' ? '当前进行' : hasCountdown ? '下一节' : '赛程状态'} · {nextSession?.session?.name || '大奖赛'}
                   </span>
                   <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: '#ff453a', fontWeight: 700 }}>
-                    {nextSession?.status === 'IN_PROGRESS' ? '● 进行中' : (nextSession?.session?.startTimeUTC ? formatBeijingDisplay(nextSession.session.startTimeUTC) : '待定')}
+                    {nextSession?.status === 'IN_PROGRESS' ? '● 进行中' : (nextSession?.session?.startTimeUTC ? formatBeijingDisplay(nextSession.session.startTimeUTC) : nextSession?.status === 'FINISHED' ? '已结束' : '待定')}
                   </span>
                 </div>
 
                 {/* 客户端无漂移精准倒计时 */}
-                <Countdown targetUtcMs={targetUtcMs} serverTimeMs={Date.now()} isInProgress={nextSession?.status === 'IN_PROGRESS'} />
+                {hasCountdown ? <Countdown targetUtcMs={targetUtcMs} serverTimeMs={Date.now()} isInProgress={nextSession?.status === 'IN_PROGRESS'} /> :
+                  <p className="timing-empty" role="status">{nextSession?.status === 'FINISHED' ? '本分站赛程已结束' : '下一节开赛时间暂不可用'}</p>}
 
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6, borderTop: '1px solid var(--line-dark)', paddingTop: '16px' }}>
                   {nextSession?.status === 'IN_PROGRESS' ? '比赛进行中，上方计时为预计剩余时间。' : '开赛时间统一换算为北京时间 (UTC+8)。'}
@@ -111,7 +116,7 @@ export default async function HomePage() {
               </p>
             </div>
             <div style={{ fontSize: '12px', color: 'var(--text-dark-secondary)' }}>
-              数据来源：官方同步 · 数据更新于：{formatBeijingDisplay(overview.updatedAt)}
+              数据状态：{overview.dataSource === 'live' ? '上游数据' : overview.dataSource === 'cache' ? '缓存数据' : overview.dataSource === 'lkg' ? '最近可用快照' : '暂不可用'} · 数据更新于：{formatBeijingDisplay(overview.updatedAt)}
               {overview.upstreamSyncSuccess === false ? ' (最近同步失败，保留已有数据)' : overview.isStale ? ' (部分数据待更新)' : ''}
             </div>
           </div>
@@ -120,7 +125,7 @@ export default async function HomePage() {
             {(currentMeeting.sessions || []).map((session, idx) => (
               <div
                 key={session.id || idx}
-                className="card-light"
+                className="card-light session-row"
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -170,44 +175,23 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Top 3 Drivers Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '24px' }}>
-            {/* P1 Leader */}
-            <div className="card-dark" style={{ borderLeft: '4px solid var(--accent-red)', background: 'linear-gradient(180deg, rgba(255,45,32,0.06) 0%, rgba(18,18,20,1) 100%)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 800, color: '#ff453a' }}>P1 · 榜首领跑</span>
-                <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontSize: '28px', fontWeight: 900 }}>
-                  {leader.points} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--text-muted)' }}>分</span>
-                </span>
-              </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>{leader.name}</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{leader.team}</div>
+          {driverStandings.length === 0 ? (
+            <div className="card-dark" role="status">积分数据暂不可用，请稍后重试。未取得数据时不展示推测积分。</div>
+          ) : (
+            <div className="podium-grid">
+              {driverStandings.slice(0, 3).map((driver, index) => (
+                <div key={driver.driverId || driver.code} className={`card-dark podium-card ${index === 0 ? 'podium-leader' : ''}`}>
+                  <div className="podium-heading">
+                    <span className="badge-pill badge-red">P{driver.rank}</span>
+                    <span className="podium-points tabular-nums">{driver.points}<small> 分</small></span>
+                  </div>
+                  <h3>{driver.name}</h3>
+                  <p>{driver.team}</p>
+                  {index > 0 && Number.isFinite(driver.gap) && <p>距榜首 {Math.abs(driver.gap)} 分</p>}
+                </div>
+              ))}
             </div>
-
-            {/* P2 Challenger */}
-            <div className="card-dark">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>P2 · 积分追赶</span>
-                <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontSize: '28px', fontWeight: 900 }}>
-                  {challenger.points} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--text-muted)' }}>分</span>
-                </span>
-              </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>{challenger.name}</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{challenger.team} (落后 {Math.abs(challenger.gap)} 分)</div>
-            </div>
-
-            {/* P3 */}
-            <div className="card-dark">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>P3 · 季军排位</span>
-                <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontSize: '28px', fontWeight: 900 }}>
-                  {p3.points} <span style={{ fontSize: '14px', fontWeight: 400, color: 'var(--text-muted)' }}>分</span>
-                </span>
-              </div>
-              <div style={{ fontSize: '22px', fontWeight: 800, marginBottom: '4px' }}>{p3.name}</div>
-              <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{p3.team} (落后 {Math.abs(p3.gap)} 分)</div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -323,8 +307,10 @@ export default async function HomePage() {
             <div className="card-light" style={{ textAlign: 'center', padding: '40px 20px', fontSize: '16px', fontWeight: 700, color: 'var(--text-dark-secondary)' }}>
               本赛季已结束
             </div>
+          ) : upcomingThreeRaces.length === 0 ? (
+            <div className="card-light" role="status">{calendar.length ? '本分站是赛季收官战，可在上方查看完整赛程。' : '赛历暂不可用，请稍后刷新或前往赛历页重试。'}</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
               {upcomingThreeRaces.map((race, idx) => (
                 <div key={race.meetingId || race.round || idx} className="card-light" style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                   <div>
@@ -375,23 +361,12 @@ export default async function HomePage() {
       {/* 7. 积分试算，默认折叠 */}
       <section className="section-dark" id="simulator">
         <div className="container">
-          <details style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '24px', overflow: 'hidden' }}>
-            <summary style={{ padding: '24px 32px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 800, fontSize: '18px', userSelect: 'none' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span className="badge-pill badge-red" style={{ fontSize: '11px' }}>积分工具</span>
-                <span>本周末积分试算</span>
-              </div>
-              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>点击展开 / 折叠 ▾</span>
-            </summary>
-            <div style={{ padding: '0 20px 24px' }}>
-              <TitleSimulator
-                drivers={driverStandings}
-                isSprintWeekend={Boolean(currentMeeting.isSprintWeekend)}
-                isSprintPending={overview.canSimulateSprint === true}
-                available={overview.canSimulateRace === true}
-              />
-            </div>
-          </details>
+          <LazySimulator
+            drivers={driverStandings}
+            isSprintWeekend={Boolean(currentMeeting.isSprintWeekend)}
+            isSprintPending={overview.canSimulateSprint === true}
+            available={overview.canSimulateRace === true}
+          />
         </div>
       </section>
       <AutoRefresher />

@@ -23,7 +23,8 @@ export default async function TeamsPage() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '24px' }}>
+          {teams.length === 0 && <div className="card-dark" role="status">车队数据暂不可用，请稍后重试。</div>}
           {teams.map(t => (
             <Link
               key={t.teamId}
