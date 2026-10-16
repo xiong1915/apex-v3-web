@@ -12,8 +12,9 @@ export default async function TeamDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const teams = await defaultF1Service.getConstructorStandings('2026');
-  const drivers = await defaultF1Service.getDriverStandings('2026');
+  const [teams, drivers] = await Promise.all([
+    defaultF1Service.getConstructorStandings('2026'), defaultF1Service.getDriverStandings('2026')
+  ]);
 
   const team = teams.find(t => t.teamId === id || t.nameEn.toLowerCase().includes(id.toLowerCase()));
 

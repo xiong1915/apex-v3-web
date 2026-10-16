@@ -1,7 +1,7 @@
 // components/season_selector.tsx
 'use client';
 
-import React from 'react';
+import React, { useTransition, useId } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 interface SeasonSelectorProps {
@@ -17,18 +17,21 @@ export function SeasonSelector({
 }: SeasonSelectorProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+  const selectId = useId();
 
   const handleSeasonChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
+    if (selected === currentSeason) return;
     const params = new URLSearchParams(searchParams.toString());
     params.set('season', selected);
-    router.push(`${baseUrl}?${params.toString()}`);
+    startTransition(() => router.push(`${baseUrl}?${params.toString()}`, { scroll: false }));
   };
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+    <div className="season-control" aria-busy={isPending}>
       <label
-        htmlFor="season-select"
+        htmlFor={selectId}
         style={{
           fontSize: '13px',
           fontWeight: 700,
@@ -41,7 +44,9 @@ export function SeasonSelector({
       </label>
       <div style={{ position: 'relative' }}>
         <select
-          id="season-select"
+          id={selectId}
+          name="season"
+          disabled={isPending}
           value={currentSeason}
           onChange={handleSeasonChange}
           style={{
@@ -79,6 +84,7 @@ export function SeasonSelector({
           ▼
         </span>
       </div>
+      <span className="season-feedback" role="status">{isPending ? '正在切换赛季…' : ''}</span>
     </div>
   );
 }

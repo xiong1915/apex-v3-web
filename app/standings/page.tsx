@@ -89,7 +89,7 @@ export default async function StandingsPage({
 
                 {drivers.map((d, idx) => (
                   <div
-                    key={d.code || d.driverId || idx}
+                    key={d.code || d.driverId || idx} className="standings-row"
                     style={{
                       display: 'grid',
                       gridTemplateColumns: '60px 2.2fr 2.2fr 90px 90px 100px',
@@ -168,7 +168,7 @@ export default async function StandingsPage({
 
                 {constructors.map((c, idx) => (
                   <div
-                    key={c.teamId || idx}
+                    key={c.teamId || idx} className="standings-row"
                     style={{
                       display: 'grid',
                       gridTemplateColumns: '60px 3fr 100px 100px 100px',

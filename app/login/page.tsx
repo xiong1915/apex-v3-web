@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
 import { apiLogin } from '@/lib/auth/client';
+import { safeReturnPath } from '@/lib/auth/redirect';
 
 function LoginForm() {
   const router = useRouter();
@@ -17,7 +18,7 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(urlError ? decodeURIComponent(urlError) : null);
+  const [error, setError] = useState<string | null>(urlError);
   const [successMsg, setSuccessMsg] = useState<string | null>(
     verified ? '邮箱验证成功！您现在可以登录账号。' : null
   );
@@ -41,13 +42,13 @@ function LoginForm() {
     }
 
     // 登录成功，安全跳转
-    const safeUrl = returnUrl.startsWith('/') && !returnUrl.startsWith('//') ? returnUrl : '/';
+    const safeUrl = safeReturnPath(returnUrl);
     router.push(safeUrl);
     router.refresh();
   };
 
   const handleOAuth = (provider: 'google' | 'github') => {
-    const safeNext = encodeURIComponent(returnUrl);
+    const safeNext = encodeURIComponent(safeReturnPath(returnUrl));
     window.location.href = `/api/auth/oauth?provider=${provider}&next=${safeNext}`;
   };
 
