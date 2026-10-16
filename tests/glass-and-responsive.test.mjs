@@ -39,39 +39,16 @@ test('Phase 3 — 1. Glass Component System Completeness', () => {
   assert.match(indexContent, /GlassSheet/);
 });
 
-test('Phase 3 — 2. CSS Mobile Physical Degradation Rules', () => {
-  const cssPath = path.join(ROOT_DIR, 'app', 'globals.css');
-  assert.ok(fs.existsSync(cssPath), 'app/globals.css must exist');
-  const css = fs.readFileSync(cssPath, 'utf8');
-
-  // Verify mobile physical degradation media queries
-  assert.match(
-    css,
-    /@media\s*\(\s*max-width:\s*768px\s*\),\s*\(\s*prefers-reduced-transparency:\s*reduce\s*\)/,
-    'Must include max-width: 768px and prefers-reduced-transparency degradation rule'
-  );
-
-  assert.match(
-    css,
-    /backdrop-filter:\s*none\s*!important/,
-    'Degradation must disable backdrop-filter to protect GPU fill-rate'
-  );
-
-  // Verify reduced motion rule
-  assert.match(
-    css,
-    /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/,
-    'Must include prefers-reduced-motion: reduce rule'
-  );
-
-  // Verify body overflow-x hidden
-  assert.match(
-    css,
-    /overflow-x:\s*hidden/,
-    'html, body must enforce overflow-x: hidden to prevent viewport horizontal shaking'
-  );
+test('Editorial CSS uses solid surfaces, responsive layout and reduced motion', () => {
+  const css = fs.readFileSync(path.join(ROOT_DIR, 'app/globals.css'), 'utf8');
+  const components = fs.readFileSync(path.join(ROOT_DIR, 'app/styles/components.css'), 'utf8');
+  assert.match(css, /@media\s*\(max-width:\s*767px\)/);
+  assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
+  assert.match(css, /animation:\s*none\s*!important/);
+  assert.doesNotMatch(css + components, /backdrop-filter:\s*blur/);
+  // Actual viewport overflow is asserted by tests/browser/editorial.cjs at five widths.
+  assert.match(css, /main\s*\{\s*min-width:\s*0/);
 });
-
 test('Phase 3 — 3. Viewport & Overflow Safety Across Core Pages', () => {
   const pageFiles = [
     'app/page.tsx',

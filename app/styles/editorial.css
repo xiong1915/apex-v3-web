@@ -1,0 +1,583 @@
+/* Route-specific compositions live here; tokens and controls are shared. */
+.editorial-home {
+  background:var(--bg-primary)
+}
+.home-intro {
+  padding-block:32px 16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-size:11px;
+  color:var(--text-secondary)
+}
+.home-intro>span:first-child {
+  display:flex;
+  align-items:center;
+  gap:12px
+}
+.home-intro i {
+  height:1px;
+  width:32px;
+  background:var(--accent-red)
+}
+.race-cover {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:48px;
+  align-items:center;
+  padding:40px;
+  margin-block:8px 24px;
+  background:#17191D;
+  color:#F4F3EF;
+  border-radius:28px;
+  --text-primary:#F4F3EF;
+  --text-secondary:#A5A7AD;
+  --text-muted:#A5A7AD;
+  --line-dark:#ffffff20
+}
+.race-cover-copy {
+  min-width:0
+}
+.race-status {
+  display:flex;
+  gap:12px;
+  align-items:center;
+  font-size:11px;
+  color:var(--text-secondary);
+  margin-bottom:24px
+}
+.race-status>.status-dot {
+  width:6px;
+  height:6px;
+  background:var(--accent-red);
+  border-radius:50%
+}
+.race-cover h1 {
+  font-size:clamp(36px,4.3vw,64px);
+  line-height:1.18;
+  letter-spacing:-.045em;
+  margin-bottom:16px
+}
+.race-cover-subtitle {
+  color:var(--text-secondary);
+  font-size:14px
+}
+.race-cover-date {
+  display:flex;
+  align-items:center;
+  gap:24px;
+  margin-top:32px;
+  font:12px var(--font-mono)
+}
+.race-cover-date small {
+  font:11px var(--font-sans);
+  color:var(--text-secondary)
+}
+.cover-countdown {
+  margin-top:24px;
+  padding-top:24px;
+  border-top:1px solid var(--line-dark);
+  max-width:420px
+}
+.cover-countdown-label {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  font-size:11px;
+  color:var(--text-secondary);
+  margin-bottom:16px
+}
+.cover-actions {
+  display:flex;
+  gap:24px;
+  align-items:center;
+  margin-top:32px;
+  flex-wrap:wrap
+}
+.cover-actions>.text-link {
+  font-size:12px
+}
+.race-cover-visual {
+  min-width:0;
+  background:#e7e6e0;
+  color:var(--text-dark-primary);
+  border-radius:24px;
+  overflow:hidden;
+  position:relative
+}
+.map-topline {
+  display:flex;
+  justify-content:space-between;
+  padding:24px 24px 0;
+  color:#62656b;
+  font:10px var(--font-mono);
+  letter-spacing:.07em
+}
+.cover-circuit {
+  height:300px;
+  padding:16px 24px
+}
+.race-cover-visual .trace-underlay {
+  stroke:#d1d0ca;
+  stroke-width:12
+}
+.race-cover-visual .trace-line {
+  stroke:#44484e;
+  stroke-width:3
+}
+.map-caption {
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  padding:0 24px 24px;
+  gap:16px
+}
+.map-caption>div>strong {
+  display:block;
+  font:600 14px var(--font-sans)
+}
+.map-caption>div>small {
+  font-size:10px;
+  color:#62656b
+}
+.map-specs {
+  display:flex;
+  gap:24px
+}
+.map-specs strong {
+  font:22px var(--font-mono);
+  display:block;
+  line-height:1.3
+}
+.map-specs small {
+  font-size:9px;
+  color:#62656b
+}
+.session-rail {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:8px;
+  margin-bottom:16px
+}
+.session-rail>div {
+  padding:20px 16px;
+  background:#fff;
+  border-radius:16px;
+  font-size:11px
+}
+.session-rail>div:first-child {
+  padding-left:16px
+}
+.session-rail>div:last-child {
+  border:0
+}
+.session-rail strong {
+  display:block;
+  font-weight:500;
+  margin-bottom:8px
+}
+.session-rail time {
+  font:10px var(--font-mono);
+  color:var(--text-secondary);
+  display:block;
+  line-height:1.8
+}
+.session-rail .session-race strong {
+  color:var(--accent-red)
+}
+.home-data-note {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  padding-bottom:32px
+}
+.editorial-section {
+  padding-block:64px
+}
+.section-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:24px;
+  margin-bottom:32px
+}
+.section-head p {
+  font-size:12px;
+  color:var(--text-secondary);
+  margin-top:8px
+}
+.section-head .eyebrow {
+  display:block;
+  margin-bottom:12px;
+  color:var(--text-muted)
+}
+.paper-section {
+  background:transparent;
+  color:var(--text-dark-primary)
+}
+.paper-section .section-head p,.paper-section .data-note,.paper-section .section-head .eyebrow {
+  color:var(--text-dark-secondary)
+}
+.paper-section .text-link {
+  border-color:var(--line-light)
+}
+.championship-spread {
+  display:grid;
+  grid-template-columns:.75fr 1.25fr;
+  gap:64px;
+  align-items:start;
+  background:#fff;
+  padding:40px;
+  border-radius:28px
+}
+.championship-context h2 {
+  font-size:36px;
+  margin-top:16px
+}
+.championship-context>p {
+  font-size:13px;
+  line-height:1.9;
+  color:var(--text-dark-secondary);
+  margin-top:24px;
+  max-width:300px
+}
+.championship-context>.text-link {
+  margin-top:24px
+}
+.championship-context .data-note {
+  margin-top:32px
+}
+.season-preview {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:24px
+}
+.season-preview>a {
+  display:grid;
+  grid-template-columns:56px 1fr;
+  gap:16px;
+  padding:24px 0;
+  border-top:1px solid var(--line-dark);
+  transition:transform var(--motion-fast)
+}
+.season-preview>a:hover {
+  transform:translateY(-3px)
+}
+.season-preview .race-round {
+  font:26px var(--font-mono);
+  color:var(--text-secondary);
+  line-height:1.3
+}
+.season-preview h3 {
+  font-size:18px
+}
+.season-preview p {
+  font-size:11px;
+  color:var(--text-secondary);
+  margin-block:8px 16px
+}
+.season-preview time {
+  font:11px var(--font-mono);
+  color:var(--text-secondary)
+}
+.profiles-spread {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:24px
+}
+.profile-feature {
+  display:flex;
+  justify-content:space-between;
+  align-items:start;
+  gap:24px;
+  background:var(--bg-secondary);
+  border-radius:24px;
+  padding:32px;
+  min-height:210px
+}
+.profile-feature .eyebrow {
+  color:var(--text-secondary);
+  font-size:10px
+}
+.profile-feature h3 {
+  font-size:28px;
+  margin-block:24px 8px
+}
+.profile-feature p {
+  font-size:13px;
+  color:var(--text-secondary)
+}
+.profile-feature .feature-index {
+  font:54px var(--font-mono);
+  color:#17191d12
+}
+.tools-spread {
+  display:grid;
+  grid-template-columns:1.1fr .9fr;
+  gap:64px;
+  padding-top:48px;
+  border-top:1px solid var(--line-dark)
+}
+.tool-ai {
+  min-width:0
+}
+.tool-ai h2 {
+  font-size:32px
+}
+.tool-ai>p {
+  font-size:13px;
+  color:var(--text-secondary);
+  margin:16px 0 24px
+}
+.tool-ai .eyebrow {
+  color:var(--text-secondary);
+  margin-bottom:16px;
+  display:block
+}
+.tool-ai .glass-composer {
+  padding:8px 8px 8px 16px
+}
+.tool-replay {
+  border-left:1px solid var(--line-dark);
+  padding-left:48px
+}
+.tool-replay h2 {
+  font-size:32px;
+  margin-top:16px
+}
+.tool-replay>p {
+  font-size:13px;
+  color:var(--text-secondary);
+  margin:16px 0 24px
+}
+.mini-replay-map {
+  height:120px;
+  opacity:.7;
+  margin-top:24px
+}
+.home-history {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:32px
+}
+.home-history>div {
+  border-top:1px solid var(--line-dark);
+  padding-top:24px
+}
+.home-history small,.home-history span {
+  font-size:11px;
+  color:var(--text-secondary);
+  display:block
+}
+.home-history strong {
+  font-size:18px;
+  display:block;
+  margin-block:12px
+}
+.source-links {
+  display:flex;
+  gap:24px;
+  flex-wrap:wrap;
+  margin-top:24px;
+  font-size:12px
+}
+.home-loading {
+  min-height:650px
+}
+.home-loading h1 {
+  color:var(--text-secondary)
+}
+.home-loading .cover-countdown {
+  min-height:128px
+}
+.home-pending-sections {
+  min-height:300px;
+  padding:48px 24px;
+  text-align:center;
+  color:var(--text-secondary);
+  font-size:12px
+}
+@media(max-width:900px) {
+  .race-cover {
+    gap:32px
+  }
+  .cover-circuit {
+    height:260px
+  }
+  .championship-spread {
+    gap:48px
+  }
+  .map-specs {
+    gap:16px
+  }
+  .cover-actions {
+    gap:16px
+  }
+  .tools-spread {
+    gap:32px
+  }
+  .tool-replay {
+    padding-left:32px
+  }
+}
+@media(max-width:767px) {
+  .home-intro {
+    padding-top:24px;
+    font-size:10px
+  }
+  .home-intro>span:last-child {
+    font-size:9px
+  }
+  .race-cover {
+    grid-template-columns:1fr;
+    gap:24px;
+    padding:24px;
+    margin-block:8px 24px
+  }
+  .race-cover h1 {
+    font-size:34px;
+    max-width:100%
+  }
+  .race-status {
+    margin-bottom:16px;
+    font-size:10px
+  }
+  .race-cover-subtitle {
+    font-size:12px
+  }
+  .race-cover-date {
+    margin-top:24px;
+    gap:16px;
+    font-size:11px
+  }
+  .cover-countdown {
+    margin-top:24px;
+    max-width:none
+  }
+  .cover-actions {
+    margin-top:24px;
+    gap:24px
+  }
+  .cover-circuit {
+    height:200px;
+    padding:0 16px
+  }
+  .map-topline {
+    padding:16px 16px 0;
+    font-size:9px
+  }
+  .map-caption {
+    padding:0 16px 16px
+  }
+  .map-caption>div>strong {
+    font-size:12px
+  }
+  .map-specs strong {
+    font-size:18px
+  }
+  .session-rail {
+    grid-template-columns:1fr 1fr;
+    margin-bottom:16px
+  }
+  .session-rail>div {
+    padding:16px 12px
+  }
+  .session-rail>div:first-child {
+    padding-left:12px
+  }
+  .session-rail>div:last-child {
+    border-bottom:0
+  }
+  .session-rail>div:nth-child(even) {
+    border-right:0
+  }
+  .home-data-note {
+    align-items:start;
+    flex-direction:column;
+    gap:8px;
+    padding-bottom:24px
+  }
+  .editorial-section {
+    padding-block:40px
+  }
+  .section-head {
+    align-items:start;
+    gap:16px
+  }
+  .section-head>.text-link {
+    font-size:11px;
+    white-space:nowrap
+  }
+  .section-head .eyebrow {
+    font-size:10px
+  }
+  .championship-spread {
+    grid-template-columns:1fr;
+    gap:24px;
+    padding:24px;
+    border-radius:24px
+  }
+  .championship-context h2 {
+    font-size:28px
+  }
+  .championship-context>p {
+    margin-top:16px;
+    max-width:none
+  }
+  .championship-context .data-note {
+    margin-top:16px
+  }
+  .championship-context>.text-link {
+    margin-top:8px
+  }
+  .season-preview {
+    grid-template-columns:1fr;
+    gap:0
+  }
+  .season-preview>a {
+    padding:20px 0;
+    grid-template-columns:48px 1fr
+  }
+  .season-preview h3 {
+    font-size:17px
+  }
+  .season-preview p {
+    margin-block:4px 12px
+  }
+  .profiles-spread {
+    grid-template-columns:1fr;
+    gap:16px
+  }
+  .profile-feature {
+    padding:24px;
+    min-height:160px
+  }
+  .profile-feature h3 {
+    font-size:24px;
+    margin-top:16px
+  }
+  .profile-feature .feature-index {
+    font-size:40px
+  }
+  .tools-spread {
+    grid-template-columns:1fr;
+    gap:40px;
+    padding-top:32px
+  }
+  .tool-replay {
+    border-left:0;
+    border-top:1px solid var(--line-dark);
+    padding:32px 0 0
+  }
+  .tool-ai h2,.tool-replay h2 {
+    font-size:28px
+  }
+  .home-history {
+    grid-template-columns:1fr;
+    gap:24px
+  }
+  .home-loading {
+    min-height:850px
+  }
+}

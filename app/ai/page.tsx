@@ -324,7 +324,7 @@ export default function AIPage() {
 
   if (authChecking) {
     return (
-      <div style={{ height: 'calc(100dvh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
+      <div style={{ height: 'calc(100dvh - var(--nav-height))', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-red)', animation: 'pulse 1.5s infinite' }}></span>
           <span>正在连接 APEX AI…</span>
@@ -337,8 +337,8 @@ export default function AIPage() {
     <div
       className="ai-chat-console"
       style={{
-        height: 'calc(100dvh - 64px)',
-        maxHeight: 'calc(100dvh - 64px)',
+        height: 'calc(100dvh - var(--nav-height))',
+        maxHeight: 'calc(100dvh - var(--nav-height))',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -346,7 +346,7 @@ export default function AIPage() {
       }}
     >
       {/* 顶部固定标题栏 (Pinned Header，绝不随滚动消失) */}
-      <div style={{ flexShrink: 0, borderBottom: '1px solid var(--line-dark)', padding: '14px 0', background: 'rgba(10, 10, 11, 0.95)', backdropFilter: 'blur(20px)', zIndex: 10 }}>
+      <div style={{ flexShrink: 0, borderBottom: '1px solid var(--line-dark)', padding: '14px 0', background: 'var(--bg-secondary)', backdropFilter: 'none', zIndex: 10 }}>
         <div className="container" style={{ maxWidth: '880px', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -358,7 +358,7 @@ export default function AIPage() {
               </span>
             </div>
             <h1 style={{ fontSize: 'clamp(20px, 3.5vw, 26px)', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
-              APEX AI / RACE INTELLIGENCE
+              APEX AI · 赛事助手
             </h1>
           </div>
 
@@ -388,9 +388,9 @@ export default function AIPage() {
       >
         <div className="container" style={{ maxWidth: '880px', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {messages.length === 0 && !isGenerating && (
-            <div style={{ textAlign: 'center', padding: '48px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px dashed var(--line-dark)' }}>
-              <div style={{ fontSize: '32px', marginBottom: '14px' }}>✦</div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>准备就绪，欢迎提问</h3>
+            <div className="ai-welcome" style={{ textAlign: 'center', padding: '48px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px dashed var(--line-dark)' }}>
+              <div className="ai-welcome-mark" aria-hidden="true">A</div>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>今天想了解哪场比赛？</h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '480px', margin: '0 auto 20px', lineHeight: 1.6 }}>
                 支持 2026 赛季赛历换算、分站正赛时间、车手与车队积分榜、争冠数学模型以及空气动力学战术推演。
               </p>
@@ -440,7 +440,7 @@ export default function AIPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <span style={{ fontWeight: 800, fontSize: '15px', color: '#ff453a' }}>
+                    <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--accent-red)' }}>
                       {m.factCard.title}
                     </span>
                     {m.factCard.badge && (
@@ -465,14 +465,14 @@ export default function AIPage() {
                   style={{
                     maxWidth: '88%',
                     padding: '14px 18px',
-                    borderRadius: m.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                    borderRadius: '20px',
                     background: m.role === 'user' ? 'var(--accent-red)' : 'var(--bg-secondary)',
                     color: m.role === 'user' ? '#ffffff' : 'var(--text-primary)',
                     border: m.role === 'user' ? 'none' : '1px solid var(--line-dark)',
                     lineHeight: 1.65,
                     fontSize: '15px',
                     wordBreak: 'break-word',
-                    boxShadow: m.role === 'user' ? '0 4px 16px rgba(255,45,32,0.3)' : '0 4px 16px rgba(0,0,0,0.3)'
+                    boxShadow: 'none'
                   }}
                 >
                   {m.role === 'user' ? (
@@ -514,7 +514,7 @@ export default function AIPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <span style={{ fontWeight: 800, fontSize: '15px', color: '#ff453a' }}>
+                    <span style={{ fontWeight: 800, fontSize: '15px', color: 'var(--accent-red)' }}>
                       {streamingFactCard.title}
                     </span>
                     {streamingFactCard.badge && (
@@ -538,7 +538,7 @@ export default function AIPage() {
                 style={{
                   maxWidth: '88%',
                   padding: '14px 18px',
-                  borderRadius: '18px 18px 18px 4px',
+                  borderRadius: '20px',
                   background: 'var(--bg-secondary)',
                   border: '1px solid var(--line-dark)',
                   lineHeight: 1.65,
@@ -578,7 +578,7 @@ export default function AIPage() {
                 background: 'rgba(255,45,32,0.1)',
                 border: '1px solid rgba(255,45,32,0.3)',
                 borderRadius: '14px',
-                color: '#ff453a',
+                color: 'var(--accent-red)',
                 fontSize: '13px',
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -605,7 +605,7 @@ export default function AIPage() {
       </div>
 
       {/* 底部固定输入框 (Pinned Bottom Composer) */}
-      <div style={{ flexShrink: 0, padding: '12px 0 env(safe-area-inset-bottom, 16px)', background: 'rgba(10, 10, 11, 0.95)', borderTop: '1px solid var(--line-dark)', zIndex: 10 }}>
+      <div style={{ flexShrink: 0, padding: '12px 0 env(safe-area-inset-bottom, 16px)', background: 'var(--bg-secondary)', borderTop: '1px solid var(--line-dark)', zIndex: 10 }}>
         <div className="container" style={{ maxWidth: '880px', width: '100%' }}>
           <GlassComposer isFocused={isFocused} style={{ padding: '8px 12px 8px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
