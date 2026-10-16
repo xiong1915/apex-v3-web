@@ -1,0 +1,6 @@
+name = "apex-v3-gateway"
+main = "cf_worker.js"
+compatibility_date = "2024-09-23"
+
+[vars]
+UPSTREAM_ORIGIN = "https://f1-race-reminder-cloud.vercel.app"

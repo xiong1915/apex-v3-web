@@ -31,3 +31,7 @@ scratch_check_*.cjs
 .vercel
 .env*
 *.tsbuildinfo
+
+# Version the gateway source and non-secret deployment configuration.
+!/cf_worker.js
+!/wrangler.toml
