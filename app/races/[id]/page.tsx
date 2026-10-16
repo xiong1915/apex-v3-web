@@ -3,7 +3,8 @@ import React from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { defaultF1Service } from '@/providers/f1/service';
-import { CircuitVisual } from '@/components/circuit_visual';
+import { CircuitTrace } from '@/components/circuit-trace';
+import { PageHeading } from '@/components/page-heading';
 import { CircuitRegistry } from '@/lib/circuits/registry';
 import { formatBeijingDisplay } from '@/lib/f1/time';
 
@@ -44,75 +45,21 @@ export default async function RaceDetailPage({
   const isHistorical = Number(season) < new Date().getUTCFullYear();
 
   return (
-    <div className="section-dark page-shell page-detail page-race-detail" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
-      <div className="container">
-        <div className="page-marker"><span>GRAND PRIX ARCHIVE</span><span>RACE / THE INSIDE LINE</span></div>
-        {/* Navigation */}
-        <div style={{ marginBottom: '32px' }}>
-          <Link href={`/races?season=${season}`} style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            ← 返回 {season} 年度赛历
-          </Link>
-        </div>
-
-        {/* Hero Banner: Track as Hero Visual on PC & Mobile */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '48px', alignItems: 'center', marginBottom: '64px' }}>
-          <div>
-            <div className="badge-pill badge-red" style={{ marginBottom: '14px' }}>
-              第 {race.round} 站 / 全季 {calendar.length} 站 · {season} 赛季
-            </div>
-            <h1 style={{ fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 900, lineHeight: 1.1, marginBottom: '12px' }}>
-              {race.nameZh || race.name}
-            </h1>
-            <div style={{ fontSize: '20px', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-              {circuitMeta?.nameZh || race.circuitName} · {race.locality} ({race.country})
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '32px' }}>
-              {race.isSprintWeekend && <span className="badge-pill badge-red">冲刺周末</span>}
-              {circuitMeta ? (
-                <>
-                  <span className="badge-pill badge-dark">FIA 认证一级赛道</span>
-                  <span className="badge-pill badge-dark">{circuitMeta.turns} 弯道</span>
-                  <span className="badge-pill badge-dark">{circuitMeta.lengthKm} 公里</span>
-                  {circuitMeta.drsZones > 0 && <span className="badge-pill badge-dark">{circuitMeta.drsZones} 个 DRS 区</span>}
-                </>
-              ) : (
-                <span className="badge-pill badge-dark">{season} 历史构型档案</span>
-              )}
-            </div>
-
-            <Link href={`/replay?season=${season}&round=${race.round}`} className="btn-secondary">
-              进入本站历史比赛回放 (APEX REPLAY) →
-            </Link>
-          </div>
-
-          <div
-            className="card-dark"
-            style={{
-              height: 'clamp(280px, 35vw, 420px)',
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '24px',
-              background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.03) 0%, rgba(10,10,11,0.95) 75%)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
-          >
-            <CircuitVisual circuitId={race.circuitId} season={season} />
-          </div>
-        </div>
-
+    <div className="page-shell page-race-detail"><div className="container">
+      <Link href={`/races?season=${season}`} className="breadcrumb">← {season} 赛季日历</Link>
+      <div className="race-detail-cover"><div><PageHeading category={`第 ${race.round} 站 / 共 ${calendar.length} 站 · ${season} 赛季`} title={race.nameZh||race.name} description={`${circuitMeta?.nameZh||race.circuitName} · ${race.locality} / ${race.country}`}/>
+       <div className="race-detail-tags">{race.isSprintWeekend&&<span className="badge-pill badge-red">冲刺周末</span>}{circuitMeta&&<><span className="badge-pill">{circuitMeta.lengthKm} 公里</span><span className="badge-pill">{circuitMeta.turns} 弯角</span>{circuitMeta.drsZones>0&&<span className="badge-pill">{circuitMeta.drsZones} 个 DRS 区</span>}</>}</div>
+       <Link href={`/replay?season=${season}&round=${race.round}`} className="btn-primary">进入本分站回放 ↗</Link>
+      </div><figure className="race-detail-map"><CircuitTrace circuitId={race.circuitId} season={season}/><figcaption>{circuitMeta?.nameZh||race.circuitName} · {season} 构型</figcaption></figure></div>
         {/* 正赛官方赛果列表 */}
         {hasRaceResults && (
           <div style={{ marginBottom: '64px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 800 }}>大奖赛正赛官方赛果 (Race Results)</h2>
+              <h2 style={{ fontSize: '24px', fontWeight: 800 }}>正赛成绩</h2>
               <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>共 {raceResults.length} 位完赛/退赛车手</span>
             </div>
 
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div className="result-panel">
               <div style={{ minWidth: '720px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '60px 2fr 2fr 70px 70px 140px 80px', padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--line-dark)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>
                   <span>名次</span>
@@ -136,7 +83,7 @@ export default async function RaceDetailPage({
                       background: idx === 0 ? 'rgba(255,45,32,0.04)' : 'transparent'
                     }}
                   >
-                    <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '15px', color: idx === 0 ? '#ff453a' : 'inherit' }}>
+                    <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '15px', color: idx === 0 ? 'var(--accent-red)' : 'inherit' }}>
                       {r.position || 'NC'}
                     </span>
 
@@ -180,11 +127,11 @@ export default async function RaceDetailPage({
         {hasSprintResults && (
           <div style={{ marginBottom: '64px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 800 }}>冲刺赛官方赛果 (Sprint Results)</h2>
+              <h2 style={{ fontSize: '24px', fontWeight: 800 }}>冲刺赛成绩</h2>
               <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>冲刺赛前 8 名计入世界锦标赛积分</span>
             </div>
 
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div className="result-panel">
               <div style={{ minWidth: '640px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '60px 2.5fr 2.5fr 70px 140px 80px', padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--line-dark)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>
                   <span>名次</span>
@@ -226,7 +173,7 @@ export default async function RaceDetailPage({
                       {s.time || s.status}
                     </div>
 
-                    <div className="tabular-nums" style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '15px', color: s.points > 0 ? '#ff453a' : 'var(--text-muted)' }}>
+                    <div className="tabular-nums" style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '15px', color: s.points > 0 ? 'var(--accent-red)' : 'var(--text-muted)' }}>
                       {s.points}
                     </div>
                   </div>
@@ -239,14 +186,14 @@ export default async function RaceDetailPage({
         {/* 排位赛官方成绩 */}
         <div style={{ marginBottom: '64px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 800 }}>官方排位赛成绩 (Qualifying Results)</h2>
+            <h2 style={{ fontSize: '24px', fontWeight: 800 }}>排位赛成绩</h2>
             <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
               {hasQualiResults ? `杆位：${qualiResults[0]?.driverName} (${qualiResults[0]?.q3 || qualiResults[0]?.q2 || qualiResults[0]?.q1 || ''})` : '历史档案记录'}
             </span>
           </div>
 
           {hasQualiResults ? (
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div className="result-panel">
               <div style={{ minWidth: '640px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '60px 2.2fr 2.2fr 100px 100px 100px', padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--line-dark)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>
                   <span>发车位</span>
@@ -269,7 +216,7 @@ export default async function RaceDetailPage({
                       background: idx === 0 ? 'rgba(255,45,32,0.04)' : 'transparent'
                     }}
                   >
-                    <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '15px', color: idx === 0 ? '#ff453a' : 'inherit' }}>
+                    <span className="tabular-nums" style={{ fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '15px', color: idx === 0 ? 'var(--accent-red)' : 'inherit' }}>
                       P{q.position}
                     </span>
 
@@ -289,7 +236,7 @@ export default async function RaceDetailPage({
                       {q.q2 || '-'}
                     </div>
 
-                    <div className="tabular-nums" style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: idx === 0 ? '#ff453a' : 'var(--text-primary)' }}>
+                    <div className="tabular-nums" style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: '13px', color: idx === 0 ? 'var(--accent-red)' : 'var(--text-primary)' }}>
                       {q.q3 || '-'}
                     </div>
                   </div>
@@ -319,17 +266,17 @@ export default async function RaceDetailPage({
               {race.sessions.map((s, idx) => (
                 <div
                   key={s.id || idx}
-                  className="card-dark"
+                  className="card-dark detail-session"
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '20px 28px',
-                    borderLeft: s.type === 'race' ? '4px solid #ff2d20' : '1px solid var(--line-dark)'
+                    borderLeft: s.type === 'race' ? '1px solid var(--line-dark)' : '1px solid var(--line-dark)'
                   }}
                 >
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: s.type === 'race' ? '#ff2d20' : 'var(--text-muted)', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: s.type === 'race' ? 'var(--accent-red)' : 'var(--text-muted)', textTransform: 'uppercase' }}>
                       {s.nameEn}
                     </div>
                     <div style={{ fontSize: '17px', fontWeight: 700, marginTop: '2px' }}>

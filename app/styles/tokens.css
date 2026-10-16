@@ -1,0 +1,41 @@
+/* APEX / Premium Motorsport Editorial. One source of truth for visual values. */
+:root {
+  --bg-primary:#F4F3EF;
+  --bg-secondary:#FFFFFF;
+  --bg-elevated:#FFFFFF;
+  --bg-light:#F4F3EF;
+  --bg-light-elevated:#fff;
+  --text-primary:#17191D;
+  --text-secondary:#62656D;
+  --text-muted:#62656D;
+  --text-dark-primary:#17191D;
+  --text-dark-secondary:#5A5D64;
+  --line-dark:#17191d18;
+  --line-light:#17191d20;
+  --accent-red:#E10600;
+  --accent-red-hover:#C90500;
+  --accent-action:#C90500;
+  --accent-cyan:#62656D;
+  --status-good:#28764E;
+  --status-warning:#936023;
+  --font-sans:Arial,'PingFang SC','Microsoft YaHei',sans-serif;
+  --font-display:'Bahnschrift','Arial', 'PingFang SC','Microsoft YaHei',sans-serif;
+  --font-mono:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+  --space-1:8px;
+  --space-2:16px;
+  --space-3:24px;
+  --space-4:32px;
+  --space-5:40px;
+  --space-6:48px;
+  --space-8:64px;
+  --space-10:80px;
+  --radius-sm:12px;
+  --radius-md:20px;
+  --radius-lg:28px;
+  --radius-pill:999px;
+  --content-width:1280px;
+  --nav-height:72px;
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --motion-fast:180ms;
+  --motion-base:280ms;
+}

@@ -303,14 +303,14 @@ export default function AdminPage() {
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        background: 'rgba(10, 10, 11, 0.95)',
-        backdropFilter: 'blur(20px)',
+        background: 'var(--bg-primary)',
+        backdropFilter: 'none',
         borderBottom: '1px solid var(--line-dark)',
         padding: '14px 20px'
       }}>
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontWeight: 900, fontSize: '18px', letterSpacing: '0.08em', color: '#ff453a' }}>
+            <span style={{ fontWeight: 900, fontSize: '18px', letterSpacing: '0.08em', color: 'var(--accent-red)' }}>
               APEX CONTROL
             </span>
             <span style={{
@@ -319,7 +319,7 @@ export default function AdminPage() {
               padding: '2px 8px',
               borderRadius: 'var(--radius-pill)',
               background: aalLevel === 'aal2' ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 159, 10, 0.15)',
-              color: aalLevel === 'aal2' ? '#30d158' : '#ff9f0a',
+              color: aalLevel === 'aal2' ? 'var(--status-good)' : 'var(--status-warning)',
               border: `1px solid ${aalLevel === 'aal2' ? 'rgba(48, 209, 88, 0.4)' : 'rgba(255, 159, 10, 0.4)'}`
             }}>
               {aalLevel === 'aal2' ? '● AAL2 已授权' : '▲ AAL1 (需 TOTP)'}
@@ -340,7 +340,7 @@ export default function AdminPage() {
       </header>
 
       {/* 主体工作区 */}
-      <main className="container" style={{ flex: 1, padding: '24px 20px', maxWidth: '1000px' }}>
+      <div className="container admin-workspace" style={{ flex: 1, padding: '24px 20px', maxWidth: '1000px' }}>
         {/* AAL1 待绑定 / 验证横幅引导 */}
         {aalLevel !== 'aal2' && (
           <GlassCard style={{
@@ -358,7 +358,7 @@ export default function AdminPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
               <span style={{ fontSize: '24px' }}>🛡️</span>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#ff9f0a' }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--status-warning)' }}>
                   TOTP 双重身份验证 (AAL2) 未就绪
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.5 }}>
@@ -381,7 +381,7 @@ export default function AdminPage() {
               borderRadius: 'var(--radius-pill)',
               border: currentTab === 'overview' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
               background: currentTab === 'overview' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'overview' ? '#ff453a' : 'var(--text-secondary)',
+              color: currentTab === 'overview' ? 'var(--accent-red)' : 'var(--text-secondary)',
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer'
@@ -396,7 +396,7 @@ export default function AdminPage() {
               borderRadius: 'var(--radius-pill)',
               border: currentTab === 'users' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
               background: currentTab === 'users' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'users' ? '#ff453a' : 'var(--text-secondary)',
+              color: currentTab === 'users' ? 'var(--accent-red)' : 'var(--text-secondary)',
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer'
@@ -411,7 +411,7 @@ export default function AdminPage() {
               borderRadius: 'var(--radius-pill)',
               border: currentTab === 'ai' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
               background: currentTab === 'ai' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'ai' ? '#ff453a' : 'var(--text-secondary)',
+              color: currentTab === 'ai' ? 'var(--accent-red)' : 'var(--text-secondary)',
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer'
@@ -426,7 +426,7 @@ export default function AdminPage() {
               borderRadius: 'var(--radius-pill)',
               border: currentTab === 'f1' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
               background: currentTab === 'f1' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'f1' ? '#ff453a' : 'var(--text-secondary)',
+              color: currentTab === 'f1' ? 'var(--accent-red)' : 'var(--text-secondary)',
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer'
@@ -442,7 +442,7 @@ export default function AdminPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
               <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>系统健康状态</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: '#30d158' }}>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--status-good)' }}>
                   ● {overviewData?.health?.status === 'healthy' ? '服务全部正常' : '降级运行中'}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
@@ -465,14 +465,14 @@ export default function AdminPage() {
                 <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
                   {overviewData?.f1?.lastSyncTime ? formatBeijingDisplay(overviewData.f1.lastSyncTime) : '暂无数据'}
                 </div>
-                <div style={{ fontSize: '11px', color: overviewData?.f1?.upstreamSyncSuccess === false ? '#ff453a' : '#30d158', marginTop: '6px' }}>
+                <div style={{ fontSize: '11px', color: overviewData?.f1?.upstreamSyncSuccess === false ? 'var(--accent-red)' : 'var(--status-good)', marginTop: '6px' }}>
                   {overviewData?.f1?.upstreamSyncSuccess === false ? '最近同步重试已降级' : '✓ 上游数据对齐正常'}
                 </div>
               </GlassCard>
             </div>
 
             {overviewData?.f1?.errorMessage && (
-              <div style={{ padding: '12px 16px', background: 'rgba(255, 45, 32, 0.1)', border: '1px solid rgba(255, 45, 32, 0.3)', borderRadius: '12px', color: '#ff453a', fontSize: '12px' }}>
+              <div style={{ padding: '12px 16px', background: 'rgba(255, 45, 32, 0.1)', border: '1px solid rgba(255, 45, 32, 0.3)', borderRadius: '12px', color: 'var(--accent-red)', fontSize: '12px' }}>
                 <strong>数据告警：</strong> {overviewData.f1.errorMessage}
               </div>
             )}
@@ -515,13 +515,13 @@ export default function AdminPage() {
                           borderRadius: 'var(--radius-pill)',
                           fontSize: '11px',
                           background: u.role === '专属管理员' ? 'rgba(255, 45, 32, 0.2)' : 'rgba(255,255,255,0.06)',
-                          color: u.role === '专属管理员' ? '#ff453a' : 'var(--text-secondary)'
+                          color: u.role === '专属管理员' ? 'var(--accent-red)' : 'var(--text-secondary)'
                         }}>
                           {u.role}
                         </span>
                       </td>
                       <td style={{ padding: '12px' }}>
-                        <span style={{ color: u.isVerified ? '#30d158' : '#ff9f0a' }}>
+                        <span style={{ color: u.isVerified ? 'var(--status-good)' : 'var(--status-warning)' }}>
                           {u.isVerified ? '✓ 已验证' : '○ 待激活'}
                         </span>
                       </td>
@@ -560,7 +560,7 @@ export default function AdminPage() {
 
               <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>限流拦截次数 (Rate Limit)</div>
-                <div className="tabular-nums" style={{ fontSize: '28px', fontWeight: 900, color: aiData?.rateLimitHits ? '#ff453a' : '#30d158' }}>
+                <div className="tabular-nums" style={{ fontSize: '28px', fontWeight: 900, color: aiData?.rateLimitHits ? 'var(--accent-red)' : 'var(--status-good)' }}>
                   {aiData?.rateLimitHits ?? 0}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>小时全局/IP超额拦截</div>
@@ -571,7 +571,7 @@ export default function AdminPage() {
                 <div style={{ fontSize: '20px', fontWeight: 800, textTransform: 'capitalize' }}>
                   {aiData?.provider || 'DeepSeek'}
                 </div>
-                <div style={{ fontSize: '11px', color: aiData?.isConfigured ? '#30d158' : '#ff9f0a', marginTop: '6px' }}>
+                <div style={{ fontSize: '11px', color: aiData?.isConfigured ? 'var(--status-good)' : 'var(--status-warning)', marginTop: '6px' }}>
                   {aiData?.isConfigured ? '✓ API 密钥已就绪' : '▲ 未配置密钥 (回退事实知识)'}
                 </div>
               </GlassCard>
@@ -619,7 +619,7 @@ export default function AdminPage() {
                   marginBottom: '16px',
                   background: syncResult.success ? 'rgba(48, 209, 88, 0.1)' : 'rgba(255, 45, 32, 0.1)',
                   border: `1px solid ${syncResult.success ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 45, 32, 0.3)'}`,
-                  color: syncResult.success ? '#30d158' : '#ff453a',
+                  color: syncResult.success ? 'var(--status-good)' : 'var(--accent-red)',
                   fontSize: '13px'
                 }}>
                   {syncResult.message}
@@ -637,13 +637,13 @@ export default function AdminPage() {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line-dark)' }}>
                   <span style={{ color: 'var(--text-muted)' }}>飞书提醒隔离门禁</span>
-                  <span style={{ color: '#30d158', fontWeight: 600 }}>✓ 已彻底隔离 (绝不触发飞书提醒)</span>
+                  <span style={{ color: 'var(--status-good)', fontWeight: 600 }}>✓ 已彻底隔离 (绝不触发飞书提醒)</span>
                 </div>
               </div>
             </GlassCard>
           </div>
         )}
-      </main>
+      </div>
 
       {/* TOTP 绑定与双重验证弹窗 (AAL2 提升) */}
       {showTotpModal && (
@@ -652,7 +652,7 @@ export default function AdminPage() {
           inset: 0,
           zIndex: 999,
           background: 'rgba(0, 0, 0, 0.85)',
-          backdropFilter: 'blur(16px)',
+
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -668,7 +668,7 @@ export default function AdminPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#ffffff', margin: 0 }}>
+                <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   {enrollData?.verified ? 'TOTP 双重身份验证 (AAL2)' : '绑定 TOTP 双重验证器'}
                 </h3>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>
@@ -700,7 +700,7 @@ export default function AdminPage() {
                   width: '28px',
                   height: '28px',
                   border: '2px solid rgba(255, 69, 58, 0.3)',
-                  borderTopColor: '#ff453a',
+                  borderTopColor: 'var(--accent-red)',
                   borderRadius: '50%',
                   margin: '0 auto 12px'
                 }} />
@@ -713,7 +713,7 @@ export default function AdminPage() {
                   <div style={{
                     background: 'rgba(255, 45, 32, 0.12)',
                     border: '1px solid rgba(255, 45, 32, 0.35)',
-                    color: '#ff453a',
+                    color: 'var(--accent-red)',
                     padding: '10px 14px',
                     borderRadius: '10px',
                     fontSize: '12px',
@@ -730,14 +730,14 @@ export default function AdminPage() {
                     <div style={{
                       fontSize: '12px',
                       fontWeight: 600,
-                      color: 'rgba(255, 255, 255, 0.9)',
+                      color: 'var(--text-primary)',
                       marginBottom: '8px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px'
                     }}>
                       <span style={{
-                        background: '#ff453a',
+                        background: 'var(--accent-red)',
                         color: '#fff',
                         borderRadius: '50%',
                         width: '18px',
@@ -792,7 +792,7 @@ export default function AdminPage() {
                           <div style={{
                             fontFamily: 'var(--font-mono)',
                             fontSize: '12px',
-                            color: '#ffffff',
+                            color: 'var(--text-primary)',
                             letterSpacing: '1px',
                             wordBreak: 'break-all',
                             userSelect: 'all',
@@ -813,7 +813,7 @@ export default function AdminPage() {
                           style={{
                             background: copiedSecret ? 'rgba(48, 209, 88, 0.2)' : 'rgba(255, 69, 58, 0.15)',
                             border: `1px solid ${copiedSecret ? 'rgba(48, 209, 88, 0.4)' : 'rgba(255, 69, 58, 0.3)'}`,
-                            color: copiedSecret ? '#30d158' : '#ff453a',
+                            color: copiedSecret ? 'var(--status-good)' : 'var(--accent-red)',
                             borderRadius: '6px',
                             padding: '6px 10px',
                             fontSize: '11px',
@@ -834,7 +834,7 @@ export default function AdminPage() {
                           href={enrollData.uri}
                           style={{
                             fontSize: '11px',
-                            color: '#ff453a',
+                            color: 'var(--accent-red)',
                             textDecoration: 'none',
                             opacity: 0.9
                           }}
@@ -851,14 +851,14 @@ export default function AdminPage() {
                   <div style={{
                     fontSize: '12px',
                     fontWeight: 600,
-                    color: 'rgba(255, 255, 255, 0.9)',
+                    color: 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px'
                   }}>
                     {!enrollData?.verified && (
                       <span style={{
-                        background: '#ff453a',
+                        background: 'var(--accent-red)',
                         color: '#fff',
                         borderRadius: '50%',
                         width: '18px',
@@ -889,7 +889,7 @@ export default function AdminPage() {
                       background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid var(--line-dark)',
                       borderRadius: '12px',
-                      color: '#ffffff',
+                      color: 'var(--text-primary)',
                       fontSize: '24px',
                       letterSpacing: '8px',
                       textAlign: 'center',
@@ -950,7 +950,7 @@ export default function AdminPage() {
         left: 0,
         right: 0,
         background: 'rgba(12, 12, 14, 0.98)',
-        backdropFilter: 'blur(20px)',
+        backdropFilter: 'none',
         borderTop: '1px solid var(--line-dark)',
         display: 'flex',
         justifyContent: 'space-around',
@@ -963,7 +963,7 @@ export default function AdminPage() {
           style={{
             background: 'none',
             border: 'none',
-            color: currentTab === 'overview' ? '#ff453a' : 'var(--text-muted)',
+            color: currentTab === 'overview' ? 'var(--accent-red)' : 'var(--text-muted)',
             fontSize: '11px',
             display: 'flex',
             flexDirection: 'column',
@@ -980,7 +980,7 @@ export default function AdminPage() {
           style={{
             background: 'none',
             border: 'none',
-            color: currentTab === 'users' ? '#ff453a' : 'var(--text-muted)',
+            color: currentTab === 'users' ? 'var(--accent-red)' : 'var(--text-muted)',
             fontSize: '11px',
             display: 'flex',
             flexDirection: 'column',
@@ -997,7 +997,7 @@ export default function AdminPage() {
           style={{
             background: 'none',
             border: 'none',
-            color: currentTab === 'ai' ? '#ff453a' : 'var(--text-muted)',
+            color: currentTab === 'ai' ? 'var(--accent-red)' : 'var(--text-muted)',
             fontSize: '11px',
             display: 'flex',
             flexDirection: 'column',
@@ -1014,7 +1014,7 @@ export default function AdminPage() {
           style={{
             background: 'none',
             border: 'none',
-            color: currentTab === 'f1' ? '#ff453a' : 'var(--text-muted)',
+            color: currentTab === 'f1' ? 'var(--accent-red)' : 'var(--text-muted)',
             fontSize: '11px',
             display: 'flex',
             flexDirection: 'column',
