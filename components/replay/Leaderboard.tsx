@@ -34,11 +34,18 @@ export function Leaderboard({
         {sorted.map(car => {
           const isSelected = car.code === selectedDriverCode;
           return (
-            <div
+            <button
+              type="button"
               key={car.code}
+              aria-pressed={isSelected}
+              aria-label={`${isSelected ? '取消跟踪' : '跟踪'} ${car.code}`}
               onClick={() => onSelectDriver(isSelected ? null : car.code)}
               style={{
                 display: 'flex',
+                width: '100%',
+                minHeight: '44px',
+                color: 'inherit',
+                textAlign: 'left',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '8px 10px',
@@ -47,7 +54,7 @@ export function Leaderboard({
                 border: '1px solid',
                 borderColor: isSelected ? car.teamColor || 'var(--accent-red)' : 'transparent',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease'
+                transition: 'background-color 0.15s ease, border-color 0.15s ease'
               }}
             >
               {/* 左侧：名次、车队色条、代号、车号 */}
@@ -121,7 +128,7 @@ export function Leaderboard({
                   )}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
