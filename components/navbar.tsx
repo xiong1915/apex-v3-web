@@ -117,9 +117,9 @@ export function Navbar() {
     <GlassNav aria-label="主导航" style={{ height: '64px' }}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '100%' }}>
         {/* Brand */}
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '18px', letterSpacing: '0.08em' }}>
-          <span>TIKE</span>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-red)' }}></span>
+        <Link href="/" className="nav-brand" aria-label="APEX 首页" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '18px', letterSpacing: '0.08em' }}>
+          <span>APEX</span>
+          <span className="brand-slash" aria-hidden="true" />
         </Link>
 
         {/* Desktop Links */}
@@ -136,8 +136,8 @@ export function Navbar() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <BeijingClock className="desktop-nav" />
 
-          <Link href="/ai" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--line-dark)', padding: '6px 14px', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: 600 }}>
-            <span>TIKE AI 智能</span>
+          <Link href="/ai" className="nav-ai" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.1)', border: '1px solid var(--line-dark)', padding: '6px 14px', borderRadius: 'var(--radius-pill)', fontSize: '12px', fontWeight: 600 }}>
+            <span>APEX AI</span>
             <span style={{ fontSize: '10px', color: '#ff453a' }}>✦</span>
           </Link>
 
@@ -302,7 +302,7 @@ export function Navbar() {
           <Link href="/drivers" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600 }}>正式车手阵容</Link>
           <Link href="/teams" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600 }}>制造商品牌</Link>
           <Link href="/races" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600 }}>2026 全年赛历</Link>
-          <Link href="/ai" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600, color: '#ff453a' }}>TIKE AI 智能控制台 ✦</Link>
+          <Link href="/ai" onClick={() => setMenuOpen(false)} style={{ fontSize: '18px', fontWeight: 600, color: '#ff453a' }}>APEX AI控制台 ✦</Link>
 
           {/* Mobile Auth Section */}
           <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid var(--line-dark)', display: 'flex', flexDirection: 'column', gap: '12px' }}>

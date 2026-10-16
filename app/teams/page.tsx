@@ -9,8 +9,9 @@ export default async function TeamsPage() {
   const teams = await defaultF1Service.getConstructorStandings('2026');
 
   return (
-    <div className="section-dark" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
+    <div className="section-dark page-shell page-teams" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
       <div className="container">
+        <div className="page-marker"><span>THE CONSTRUCTORS</span><span>04 / ENGINEERED TO WIN</span></div>
         <div style={{ marginBottom: '48px' }}>
           <div className="badge-pill badge-red" style={{ marginBottom: '12px' }}>
             2026 赛季 FIA 制造商品牌名录
