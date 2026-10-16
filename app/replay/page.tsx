@@ -202,10 +202,10 @@ function ReplayContent() {
   }, [currentMs, durationMs, isPlaying, buffering]);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-black, #090a0d)', color: 'var(--text-primary, #ffffff)', paddingBottom: '80px' }}>
+    <div className="replay-shell" style={{ minHeight: '100vh', background: 'var(--bg-black, #090a0d)', color: 'var(--text-primary, #ffffff)', paddingBottom: '80px' }}>
       {/* 顶部导航与面包装饰 */}
       <section style={{ borderBottom: '1px solid var(--line-dark, rgba(255,255,255,0.1))', paddingTop: '80px', paddingBottom: '24px' }}>
-        <div className="container">
+        <div className="container"><div className="page-marker"><span>APEX REPLAY</span><span>RACE / BACK TO THE APEX</span></div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted, #71717a)', marginBottom: '16px' }}>
             <Link href="/" style={{ color: 'var(--text-secondary, #94a3b8)' }}>首页</Link>
             <span>/</span>
@@ -350,7 +350,7 @@ function ReplayContent() {
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted, #71717a)', letterSpacing: '0.05em' }}>
                 切换历史回放场次：
               </div>
-              <select
+              <select aria-label="历史回放场次"
                 value={activeSessionKey}
                 onChange={e => handleSelectSession(e.target.value)}
                 style={{
@@ -500,7 +500,7 @@ function ReplayContent() {
 export default function ReplayPage() {
   return (
     <Suspense fallback={
-      <div style={{ minHeight: '100vh', background: '#090a0d', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
+      <div className="replay-shell" style={{ minHeight: '100vh', background: '#090a0d', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
         加载比赛动态回放中...
       </div>
     }>

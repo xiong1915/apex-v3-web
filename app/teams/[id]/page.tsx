@@ -25,8 +25,9 @@ export default async function TeamDetailPage({
   const teamDrivers = drivers.filter(d => d.teamId === team.teamId || d.team.includes(team.name));
 
   return (
-    <div className="section-dark" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
+    <div className="section-dark page-shell page-detail page-team-detail" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
       <div className="container">
+        <div className="page-marker"><span>CONSTRUCTOR PROFILE</span><span>TEAM / BUILT FOR SPEED</span></div>
         <div style={{ marginBottom: '32px' }}>
           <Link href="/teams" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
             ← 返回 2026 车队阵容
@@ -47,7 +48,7 @@ export default async function TeamDetailPage({
 
             <div style={{ display: 'flex', gap: '16px' }}>
               <Link href={`/ai`} className="btn-secondary">
-                用 TIKE AI 深度分析 {team.name} 的空力与底盘套件 →
+                用 APEX AI 深度分析 {team.name} 的空力与底盘套件 →
               </Link>
             </div>
           </div>

@@ -1,67 +1,18 @@
-// components/countdown.tsx
 'use client';
-
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { RaceStateService } from '@/lib/f1/race-state';
-
-interface CountdownProps {
-  targetUtcMs: number;
-  serverTimeMs?: number;
-  isInProgress?: boolean;
-}
-
-export function Countdown({ targetUtcMs, serverTimeMs, isInProgress }: CountdownProps) {
-  // 消除客户端与服务端的本地时钟偏差
-  const [skew] = useState(() => (serverTimeMs ? Date.now() - serverTimeMs : 0));
-  const [delta, setDelta] = useState(() => RaceStateService.calculateCountdown(targetUtcMs, Date.now() - skew));
-
+export function Countdown({ targetUtcMs, serverTimeMs, isInProgress }: { targetUtcMs: number; serverTimeMs?: number; isInProgress?: boolean }) {
+  const [skew] = useState(() => serverTimeMs ? Date.now() - serverTimeMs : 0);
+  const [delta, setDelta] = useState(() => RaceStateService.calculateCountdown(targetUtcMs, serverTimeMs ?? Date.now()));
   useEffect(() => {
-    const update = () => {
-      const adjustedNow = Date.now() - skew;
-      setDelta(RaceStateService.calculateCountdown(targetUtcMs, adjustedNow));
-    };
-
+    const update = () => { if (!document.hidden) setDelta(RaceStateService.calculateCountdown(targetUtcMs, Date.now() - skew)); };
     update();
     const timer = setInterval(update, 1000);
-    return () => clearInterval(timer);
+    document.addEventListener('visibilitychange', update);
+    return () => { clearInterval(timer); document.removeEventListener('visibilitychange', update); };
   }, [targetUtcMs, skew]);
-
-  return (
-    <div>
-      {isInProgress && (
-        <div style={{ fontSize: '11px', color: '#ff453a', fontWeight: 700, letterSpacing: '0.06em', textAlign: 'center', marginBottom: '8px' }}>
-          ● 正在进行中 · 预计剩余时间
-        </div>
-      )}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'clamp(6px, 1.8vw, 16px)', textAlign: 'center', margin: isInProgress ? '8px 0 24px' : '24px 0' }}>
-      <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: 'clamp(10px, 2vw, 16px) 4px', borderRadius: '12px', border: '1px solid var(--line-dark)' }}>
-        <div className="tabular-nums" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 800, color: 'var(--text-primary)' }}>
-          {delta.days}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '4px' }}>天</div>
-      </div>
-
-      <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: 'clamp(10px, 2vw, 16px) 4px', borderRadius: '12px', border: '1px solid var(--line-dark)' }}>
-        <div className="tabular-nums" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 800, color: 'var(--text-primary)' }}>
-          {delta.hours}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '4px' }}>小时</div>
-      </div>
-
-      <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: 'clamp(10px, 2vw, 16px) 4px', borderRadius: '12px', border: '1px solid var(--line-dark)' }}>
-        <div className="tabular-nums" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 800, color: 'var(--text-primary)' }}>
-          {delta.mins}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '4px' }}>分</div>
-      </div>
-
-      <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: 'clamp(10px, 2vw, 16px) 4px', borderRadius: '12px', border: '1px solid var(--line-dark)' }}>
-        <div className="tabular-nums" style={{ fontSize: 'clamp(24px, 4vw, 44px)', fontWeight: 800, color: '#ff453a' }}>
-          {delta.secs}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '4px' }}>秒</div>
-      </div>
-    </div>
-  </div>
-);
+  return <div className="race-countdown">
+    {isInProgress && <p className="countdown-live">进行中 · 预计剩余时间</p>}
+    <div className="countdown-grid">{[[delta.days,'天'],[delta.hours,'小时'],[delta.mins,'分'],[delta.secs,'秒']].map(([value,label]) => <div className="countdown-unit" key={label}><strong className="countdown-number tabular-nums"><span key={value}>{String(value).padStart(2,'0')}</span></strong><small>{label}</small></div>)}</div>
+  </div>;
 }
