@@ -26,8 +26,9 @@ export default async function StandingsPage({
   const isPre1958 = parseInt(season, 10) < 1958;
 
   return (
-    <div className="section-dark" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
+    <div className="section-dark page-shell page-standings" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
       <div className="container">
+        <div className="page-marker"><span>CHAMPIONSHIP</span><span>02 / EVERY POINT COUNTS</span></div>
         {/* Header & Season Selector */}
         <div style={{ marginBottom: '48px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
@@ -76,9 +77,9 @@ export default async function StandingsPage({
               该赛季暂无车手积分榜数据
             </div>
           ) : (
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <div style={{ minWidth: '640px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '60px 2.2fr 2.2fr 90px 90px 100px', padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--line-dark)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            <div className="standings-table standings-drivers" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="standings-table-inner" style={{ minWidth: '640px' }}>
+                <div className="standings-header" style={{ display: 'grid', gridTemplateColumns: '60px 2.2fr 2.2fr 90px 90px 100px', padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--line-dark)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   <span>排名</span>
                   <span>车手</span>
                   <span>所属车队/赛车</span>
@@ -156,9 +157,9 @@ export default async function StandingsPage({
               该赛季暂无车队积分榜数据
             </div>
           ) : (
-            <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-              <div style={{ minWidth: '600px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '60px 3fr 100px 100px 100px', padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--line-dark)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            <div className="standings-table standings-teams" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--line-dark)', borderRadius: '20px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+              <div className="standings-table-inner" style={{ minWidth: '600px' }}>
+                <div className="standings-header" style={{ display: 'grid', gridTemplateColumns: '60px 3fr 100px 100px 100px', padding: '16px 24px', background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--line-dark)', fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                   <span>排名</span>
                   <span>车队名称</span>
                   <span style={{ textAlign: 'right' }}>分站冠军</span>

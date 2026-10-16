@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div style={{
+    <div className="auth-shell" style={{
       minHeight: 'calc(100dvh - 140px)',
       display: 'flex',
       alignItems: 'center',
@@ -96,11 +96,11 @@ export default function ForgotPasswordPage() {
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
+                  <label htmlFor="auth-email" style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
                     注册邮箱
                   </label>
                   <input
-                    type="email"
+                    type="email" id="auth-email" name="email" autoComplete="email" spellCheck={false} aria-label="电子邮箱"
                     required
                     value={email}
                     onChange={e => setEmail(e.target.value)}

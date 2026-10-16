@@ -53,7 +53,7 @@ function LoginForm() {
   };
 
   return (
-    <div style={{
+    <div className="auth-shell" style={{
       minHeight: 'calc(100dvh - 140px)',
       display: 'flex',
       alignItems: 'center',
@@ -65,7 +65,7 @@ function LoginForm() {
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.08em' }}>TIKE</span>
+              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.08em' }}>APEX</span>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-red)' }}></span>
             </div>
             <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '4px 0 8px', color: 'var(--text-primary)' }}>
@@ -108,11 +108,11 @@ function LoginForm() {
           {/* Form */}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
+              <label htmlFor="auth-email" style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
                 电子邮箱
               </label>
               <input
-                type="email"
+                type="email" id="auth-email" name="email" autoComplete="email" spellCheck={false} aria-label="电子邮箱"
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
@@ -133,7 +133,7 @@ function LoginForm() {
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                <label htmlFor="auth-password" style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
                   登录密码
                 </label>
                 <Link href="/forgot-password" style={{ fontSize: '12px', color: 'var(--text-muted)', textDecoration: 'none' }}>
@@ -141,7 +141,7 @@ function LoginForm() {
                 </Link>
               </div>
               <input
-                type="password"
+                type="password" id="auth-password" name="password" autoComplete="current-password"
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}

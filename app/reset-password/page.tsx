@@ -53,7 +53,7 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div style={{
+    <div className="auth-shell" style={{
       minHeight: 'calc(100dvh - 140px)',
       display: 'flex',
       alignItems: 'center',
@@ -115,11 +115,11 @@ function ResetPasswordForm() {
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
+                  <label htmlFor="auth-password" style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
                     新密码 (至少 6 位)
                   </label>
                   <input
-                    type="password"
+                    type="password" id="auth-password" name="password" autoComplete="new-password"
                     required
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -139,11 +139,11 @@ function ResetPasswordForm() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
+                  <label htmlFor="auth-confirm" style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
                     确认新密码
                   </label>
                   <input
-                    type="password"
+                    type="password" id="auth-confirm" name="confirmPassword" autoComplete="new-password"
                     required
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
