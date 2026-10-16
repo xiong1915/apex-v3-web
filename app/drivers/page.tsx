@@ -10,8 +10,9 @@ export default async function DriversPage() {
 
 
   return (
-    <div className="section-dark" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
+    <div className="section-dark page-shell page-drivers" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
       <div className="container">
+        <div className="page-marker"><span>THE DRIVERS</span><span>03 / BEHIND THE VISOR</span></div>
         <div style={{ marginBottom: '48px' }}>
           <div className="badge-pill badge-red" style={{ marginBottom: '12px' }}>
             2026 赛季车手积分记录

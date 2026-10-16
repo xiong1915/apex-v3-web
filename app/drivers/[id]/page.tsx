@@ -20,8 +20,9 @@ export default async function DriverDetailPage({
   }
 
   return (
-    <div className="section-dark" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
+    <div className="section-dark page-shell page-detail page-driver-detail" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
       <div className="container">
+        <div className="page-marker"><span>DRIVER PROFILE</span><span>DRIVER / BEHIND THE VISOR</span></div>
         <div style={{ marginBottom: '32px' }}>
           <Link href="/drivers" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
             ← 返回 2026 车手阵容
@@ -42,7 +43,7 @@ export default async function DriverDetailPage({
 
             <div style={{ display: 'flex', gap: '16px' }}>
               <Link href={`/ai`} className="btn-secondary">
-                用 TIKE AI 分析 {driver.name} 的表现 →
+                用 APEX AI 分析 {driver.name} 的表现 →
               </Link>
             </div>
           </div>

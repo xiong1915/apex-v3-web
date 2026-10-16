@@ -44,8 +44,9 @@ export default async function RaceDetailPage({
   const isHistorical = Number(season) < new Date().getUTCFullYear();
 
   return (
-    <div className="section-dark" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
+    <div className="section-dark page-shell page-detail page-race-detail" style={{ minHeight: 'calc(100vh - 64px)', padding: '60px 0 100px' }}>
       <div className="container">
+        <div className="page-marker"><span>GRAND PRIX ARCHIVE</span><span>RACE / THE INSIDE LINE</span></div>
         {/* Navigation */}
         <div style={{ marginBottom: '32px' }}>
           <Link href={`/races?season=${season}`} style={{ fontSize: '13px', color: 'var(--text-muted)' }}>

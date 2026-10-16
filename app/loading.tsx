@@ -1,18 +1,3 @@
-// app/loading.tsx
-import React from 'react';
-
 export default function Loading() {
-  return (
-    <div role="status" aria-live="polite" aria-busy="true" style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-        <div style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#ff2d20', animation: 'spin 0.8s linear infinite' }} />
-        <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>正在加载赛程与积分数据…</span>
-      </div>
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
-    </div>
-  );
+ return <div role="status" aria-live="polite" aria-busy="true" style={{minHeight:'calc(100svh - 64px)',display:'grid',placeItems:'center'}}><div style={{display:'grid',justifyItems:'center',gap:22}}><span className="eyebrow">GETTING ON THE GRID</span><div className="loading-lights" aria-hidden="true">{[0,1,2,3,4].map(i=><i key={i} style={{'--light':i} as React.CSSProperties}/>)}</div><span style={{fontSize:13,color:'var(--text-muted)'}}>正在加载赛程与积分数据…</span></div></div>;
 }

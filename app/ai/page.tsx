@@ -327,7 +327,7 @@ export default function AIPage() {
       <div style={{ height: 'calc(100dvh - 64px)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-red)', animation: 'pulse 1.5s infinite' }}></span>
-          <span>正在核验 AI 智能控制台访问凭据...</span>
+          <span>正在连接 APEX AI…</span>
         </div>
       </div>
     );
@@ -358,7 +358,7 @@ export default function AIPage() {
               </span>
             </div>
             <h1 style={{ fontSize: 'clamp(20px, 3.5vw, 26px)', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
-              TIKE AI 智能控制台
+              APEX AI / RACE INTELLIGENCE
             </h1>
           </div>
 
@@ -609,7 +609,7 @@ export default function AIPage() {
         <div className="container" style={{ maxWidth: '880px', width: '100%' }}>
           <GlassComposer isFocused={isFocused} style={{ padding: '8px 12px 8px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <textarea
+              <textarea aria-label="向 APEX AI 提问" name="message"
                 ref={textareaRef}
                 rows={1}
                 value={input}
