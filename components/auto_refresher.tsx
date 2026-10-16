@@ -11,8 +11,9 @@ export function AutoRefresher({ intervalMs = 60000 }: { intervalMs?: number }) {
   useEffect(() => {
     function startTimer() {
       if (timerRef.current) clearInterval(timerRef.current);
+      if (document.hidden || !navigator.onLine) return;
       timerRef.current = setInterval(() => {
-        if (!document.hidden) {
+        if (!document.hidden && navigator.onLine) {
           lastRefreshTimeRef.current = Date.now();
           router.refresh();
         }
@@ -27,7 +28,7 @@ export function AutoRefresher({ intervalMs = 60000 }: { intervalMs?: number }) {
     }
 
     function handleVisibilityChange() {
-      if (document.hidden) {
+      if (document.hidden || !navigator.onLine) {
         stopTimer();
       } else {
         // 用户切回前台：若距离上次刷新已超过指定时间间隔，立即静默刷新并重启计时器
@@ -42,10 +43,14 @@ export function AutoRefresher({ intervalMs = 60000 }: { intervalMs?: number }) {
 
     startTimer();
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleVisibilityChange);
+    window.addEventListener('offline', stopTimer);
 
     return () => {
       stopTimer();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleVisibilityChange);
+      window.removeEventListener('offline', stopTimer);
     };
   }, [router, intervalMs]);
 

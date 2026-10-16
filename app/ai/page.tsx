@@ -8,6 +8,7 @@ import { AIMessage, AISource, AIFactCard } from '@/lib/ai/types';
 import { GlassComposer, GlassButton } from '@/components/glass';
 import { MarkdownRenderer } from '@/components/markdown_renderer';
 import { fetchCurrentSession } from '@/lib/auth/client';
+import { consumeAIStream } from '@/lib/ai/client-stream';
 
 export type AIStatus =
   | 'idle'
@@ -77,6 +78,11 @@ export default function AIPage() {
       mounted = false;
     };
   }, [router]);
+
+  useEffect(() => () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+  }, []);
 
   // 隐藏全局 footer，使 AI 控制台独占视口高度并防止窗口滚动切除顶部
   useEffect(() => {
@@ -183,6 +189,8 @@ export default function AIPage() {
         signal: controller.signal
       });
 
+      if (abortControllerRef.current !== controller || controller.signal.aborted) return;
+
       if (res.status === 401) {
         setStatus('idle');
         sessionStorage.setItem('apex_ai_prompt', q);
@@ -195,7 +203,7 @@ export default function AIPage() {
         const retryAfter = res.headers.get('Retry-After') || '60';
         const errJson = await res.json().catch(() => null);
         const reason = errJson?.error || '请求过于频繁，请稍候再试';
-        throw new Error(`${reason} (请等待 ${retryAfter} 秒)`);
+        throw Object.assign(new Error(`${reason} (请等待 ${retryAfter} 秒)`), { status: 429 });
       }
 
       if (!res.ok) {
@@ -206,49 +214,23 @@ export default function AIPage() {
         throw new Error('无法建立数据流连接通道');
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder('utf-8');
-      let buffer = '';
       let collectedText = '';
       let collectedSources: AISource[] = [];
       let collectedFactCard: AIFactCard | null = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data:')) continue;
-          const dataStr = trimmed.slice(5).trim();
-          if (dataStr === '[DONE]') break;
-
-          try {
-            const parsed = JSON.parse(dataStr);
-            if (parsed.type === 'delta' && parsed.content) {
-              collectedText += parsed.content;
-              setStreamingContent(collectedText);
-            } else if (parsed.type === 'fact_card' && parsed.factCard) {
-              collectedFactCard = parsed.factCard;
-              setStreamingFactCard(collectedFactCard);
-            } else if (parsed.type === 'sources' && Array.isArray(parsed.sources)) {
-              collectedSources = parsed.sources;
-              setStreamingSources(collectedSources);
-            } else if (parsed.type === 'error') {
-              throw new Error(parsed.error || '模型生成异常');
-            }
-          } catch (e: any) {
-            if (e.message && e.message !== 'Unexpected end of JSON input') {
-              // Non-JSON SSE syntax or thrown error
-            }
-          }
+      await consumeAIStream(res.body, parsed => {
+        if (abortControllerRef.current !== controller || controller.signal.aborted) return;
+        if (parsed.type === 'delta' && parsed.content) {
+          collectedText += parsed.content;
+          setStreamingContent(collectedText);
+        } else if (parsed.type === 'fact_card' && parsed.factCard) {
+          collectedFactCard = parsed.factCard;
+          setStreamingFactCard(collectedFactCard);
+        } else if (parsed.type === 'sources' && Array.isArray(parsed.sources)) {
+          collectedSources = parsed.sources;
+          setStreamingSources(collectedSources);
         }
-      }
-
+      }, controller.signal);
+      if (abortControllerRef.current !== controller || controller.signal.aborted) return;
       // 完成流式
       setMessages(prev => [
         ...prev,
@@ -266,6 +248,7 @@ export default function AIPage() {
       setStreamingFactCard(null);
       setStatus('completed');
     } catch (err: any) {
+      if (abortControllerRef.current !== controller) return;
       if (err.name === 'AbortError' || controller.signal.aborted) {
         setStatus('aborted');
       } else if (!navigator.onLine) {
@@ -273,17 +256,18 @@ export default function AIPage() {
         setErrorMessage('网络已断开，请检查网络连接');
         setLastFailedInput(q);
       } else {
-        setStatus('error');
+        setStatus(err.status === 429 ? 'rate_limited' : 'error');
         setErrorMessage(err.message || '请求超时或连接失败');
         setLastFailedInput(q);
       }
     } finally {
-      abortControllerRef.current = null;
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
     }
   }, [input, messages, status]);
 
   // 从首页搜索框等携带的 prompt 初始化自动发送并恢复输入
   useEffect(() => {
+    if (authChecking) return;
     if (typeof window !== 'undefined') {
       const savedPrompt = sessionStorage.getItem('apex_ai_prompt');
       if (savedPrompt) {
@@ -292,7 +276,7 @@ export default function AIPage() {
         sendMessage(savedPrompt);
       }
     }
-  }, [sendMessage]);
+  }, [sendMessage, authChecking]);
 
   // 恢复失败前提问内容至输入框
   const handleRestoreInput = () => {

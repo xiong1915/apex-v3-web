@@ -248,6 +248,7 @@ export interface DataFetchResult<T> {
 export class F1Service {
   private cache: CacheStore;
   private lkg: LastKnownGoodStore;
+  private inFlight = new Map<string, Promise<DataFetchResult<any>>>();
 
   constructor(cache: CacheStore = defaultCache, lkg: LastKnownGoodStore = defaultLkgStore) {
     this.cache = cache;
@@ -270,6 +271,18 @@ export class F1Service {
       attemptedAt: known.map(r => r.attemptedAt).sort((a, b) => Date.parse(a) - Date.parse(b)).at(-1)!};
   }
   private async loadDomain<T>(season: string, domain: string, key: string, ttl: number, freshness: number,
+    fetcher: () => Promise<T>, valid: (data: T) => boolean, force = false): Promise<DataFetchResult<T>> {
+    const requestKey = `${key}:${force ? 'refresh' : 'read'}`;
+    const pending = this.inFlight.get(requestKey);
+    if (pending) return pending;
+    const request = this.loadDomainOnce(season, domain, key, ttl, freshness, fetcher, valid, force);
+    this.inFlight.set(requestKey, request);
+    try { return await request; }
+    finally {
+      if (this.inFlight.get(requestKey) === request) this.inFlight.delete(requestKey);
+    }
+  }
+  private async loadDomainOnce<T>(season: string, domain: string, key: string, ttl: number, freshness: number,
     fetcher: () => Promise<T>, valid: (data: T) => boolean, force = false): Promise<DataFetchResult<T>> {
     if (!force) {
       const cached = await this.cache.get<any>(key);

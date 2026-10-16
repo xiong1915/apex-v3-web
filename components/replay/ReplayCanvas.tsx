@@ -23,6 +23,7 @@ export function ReplayCanvas({
 }: ReplayCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawRef = useRef<() => void>(() => {});
 
   // 内部缓存画布尺寸，仅在尺寸变化时重设 buffer，禁止每帧重设
   const sizeRef = useRef<{ width: number; height: number; dpr: number }>({
@@ -39,9 +40,9 @@ export function ReplayCanvas({
 
     const updateSize = () => {
       const rect = container.getBoundingClientRect();
-      const w = Math.max(300, Math.floor(rect.width));
+      const w = Math.max(1, Math.floor(rect.width));
       const h = Math.max(240, Math.floor(rect.height || (w * 0.65)));
-      const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+      const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1;
 
       if (sizeRef.current.width !== w || sizeRef.current.height !== h || sizeRef.current.dpr !== dpr) {
         sizeRef.current = { width: w, height: h, dpr };
@@ -54,6 +55,7 @@ export function ReplayCanvas({
           ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置矩阵
           ctx.scale(dpr, dpr);
         }
+        drawRef.current();
       }
     };
 
@@ -218,6 +220,7 @@ export function ReplayCanvas({
   }, [metadata, vehicles, selectedDriverCode]);
 
   useEffect(() => {
+    drawRef.current = draw;
     draw();
   }, [draw]);
 
@@ -269,6 +272,8 @@ export function ReplayCanvas({
     >
       <canvas
         ref={canvasRef}
+        role="img"
+        aria-label="比赛回放赛道。可使用车手列表按钮选择要跟踪的赛车。"
         onClick={handleClick}
         style={{
           display: 'block',
