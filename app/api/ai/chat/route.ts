@@ -5,6 +5,7 @@ import { getRateLimitStore } from '@/lib/storage';
 import { MemoryRateLimitStore } from '@/lib/storage/memory';
 import { getServerUser } from '@/lib/auth/server';
 import { recordAIRateLimitHit, recordAIRequestStart, recordAITokenUsage } from '@/lib/admin/service';
+import { recordAIOutcome } from '@/lib/admin/ai-monitor';
 
 export const dynamic = 'force-dynamic';
 
@@ -180,6 +181,7 @@ export async function POST(req: NextRequest) {
 
     // 4. 记录有效 AI 提问请求 (APEX Control 真实监控统计)
     await recordAIRequestStart().catch(() => {});
+    const startedAt = Date.now();
 
     const wantStream = body.stream !== false; // 默认流式
 
@@ -199,12 +201,16 @@ export async function POST(req: NextRequest) {
         async start(controller) {
           const encoder = new TextEncoder();
           let collectedText = '';
+          let completed = false;
+          let failed = false;
           try {
             for await (const chunk of defaultAIOrchestrator.streamAnswer(messages, clientIp, abortController.signal)) {
               if (abortController.signal.aborted) break;
               if (chunk.type === 'delta' && chunk.content) {
                 collectedText += chunk.content;
               }
+              if (chunk.type === 'done') completed = true;
+              if (chunk.type === 'error') failed = true;
               const data = `data: ${JSON.stringify(chunk)}\n\n`;
               controller.enqueue(encoder.encode(data));
             }
@@ -217,6 +223,7 @@ export async function POST(req: NextRequest) {
               recordAITokenUsage(estTokens).catch(() => {});
             }
           } catch (err: any) {
+            failed ||= !abortController.signal.aborted;
             if (!abortController.signal.aborted) {
               const safeErr = sanitizeErrorMessage(err);
               const errData = `data: ${JSON.stringify({ type: 'error', error: safeErr })}\n\n`;
@@ -224,6 +231,7 @@ export async function POST(req: NextRequest) {
             }
           } finally {
             clearTimeout(timeoutTimer);
+            await recordAIOutcome(failed ? 'error' : completed ? 'success' : abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error', startedAt);
             try {
               controller.close();
             } catch (_) {}
@@ -251,7 +259,11 @@ export async function POST(req: NextRequest) {
       const outChars = result.reply?.length || 0;
       const estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
       recordAITokenUsage(estTokens).catch(() => {});
+      await recordAIOutcome('success', startedAt);
       return NextResponse.json(result);
+    } catch (error) {
+      await recordAIOutcome(abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error', startedAt);
+      throw error;
     } finally {
       clearTimeout(timeoutTimer);
     }

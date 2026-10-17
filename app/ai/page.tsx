@@ -9,6 +9,10 @@ import { GlassComposer, GlassButton } from '@/components/glass';
 import { MarkdownRenderer } from '@/components/markdown_renderer';
 import { fetchCurrentSession } from '@/lib/auth/client';
 import { consumeAIStream } from '@/lib/ai/client-stream';
+import type { ChatTurn } from '@/lib/ai/conversation-types';
+import { useConversationHistory } from '@/lib/ai/use-conversation-history';
+import { buildChatContext } from '@/lib/ai/chat-context';
+import { ConversationSidebar } from '@/components/conversation-sidebar';
 
 export type AIStatus =
   | 'idle'
@@ -28,15 +32,6 @@ const PROMPT_SUGGESTIONS = [
   '谁是上一场大奖赛的分站冠军？'
 ];
 
-interface ChatTurn {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  sources?: AISource[];
-  factCard?: AIFactCard;
-  status?: 'completed' | 'streaming' | 'error' | 'aborted';
-}
-
 export default function AIPage() {
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState('');
@@ -48,6 +43,9 @@ export default function AIPage() {
   const [lastFailedInput, setLastFailedInput] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const closeHistory = useCallback(() => setHistoryOpen(false), []);
+  const isGenerating = status === 'submitting' || status === 'streaming';
 
   const router = useRouter();
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -55,6 +53,17 @@ export default function AIPage() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const isComposingRef = useRef(false); // 中文输入法组合保护
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const replaceConversationMessages = useCallback((turns: ChatTurn[]) => {
+    setMessages(turns);
+    setErrorMessage(null);
+    setLastFailedInput(null);
+    setStreamingContent('');
+    setStreamingSources([]);
+    setStreamingFactCard(null);
+    setStatus('idle');
+    userScrolledUpRef.current = false;
+  }, []);
+  const history = useConversationHistory(!authChecking, messages, replaceConversationMessages, isGenerating);
 
   // 校验登录状态：未登录访问自动跳转登录页，并保留提问输入
   useEffect(() => {
@@ -149,7 +158,9 @@ export default function AIPage() {
   // 发送消息
   const sendMessage = useCallback(async (textToSend?: string) => {
     const q = (textToSend !== undefined ? textToSend : input).trim();
-    if (!q || status === 'submitting' || status === 'streaming') return;
+    if (!q || status === 'submitting' || status === 'streaming' || history.saving || history.loading) return;
+    if (q.length > 1000) { setErrorMessage('每次提问最多 1000 字，请缩短后发送'); return; }
+    if (messages.length >= 98) { setErrorMessage('这段对话已达到 100 条消息上限，请新建对话继续'); return; }
 
     // 清除上一次中断
     if (abortControllerRef.current) {
@@ -175,12 +186,11 @@ export default function AIPage() {
     setStreamingFactCard(null);
     setErrorMessage(null);
 
-    const apiPayload: AIMessage[] = nextHistory.map(m => ({
-      role: m.role,
-      content: m.content
-    }));
+    const apiPayload: AIMessage[] = buildChatContext(nextHistory);
 
     try {
+      await history.save(nextHistory);
+      if (controller.signal.aborted) return;
       setStatus('streaming');
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
@@ -263,7 +273,7 @@ export default function AIPage() {
     } finally {
       if (abortControllerRef.current === controller) abortControllerRef.current = null;
     }
-  }, [input, messages, status]);
+  }, [input, messages, status, history.save, history.saving, history.loading]);
 
   // 从首页搜索框等携带的 prompt 初始化自动发送并恢复输入
   useEffect(() => {
@@ -310,17 +320,13 @@ export default function AIPage() {
   };
 
   const handleClear = () => {
-    if (status === 'streaming') {
-      handleStop();
-    }
-    setMessages([]);
+    if (isGenerating) return;
+    void history.startNew();
     setStreamingContent('');
     setStreamingSources([]);
     setErrorMessage(null);
     setStatus('idle');
   };
-
-  const isGenerating = status === 'submitting' || status === 'streaming';
 
   if (authChecking) {
     return (
@@ -334,6 +340,8 @@ export default function AIPage() {
   }
 
   return (
+    <div className="ai-workspace">
+    <ConversationSidebar history={history} disabled={isGenerating} open={historyOpen} onClose={closeHistory}/>
     <div
       className="ai-chat-console"
       style={{
@@ -363,9 +371,10 @@ export default function AIPage() {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button className="btn-secondary history-toggle" aria-controls="conversation-history" aria-expanded={historyOpen} onClick={() => setHistoryOpen(true)}>历史对话</button>
             {messages.length > 0 && (
-              <GlassButton variant="ghost" size="sm" onClick={handleClear}>
-                清空对话
+              <GlassButton variant="ghost" size="sm" onClick={handleClear} disabled={isGenerating || history.saving}>
+                新建对话
               </GlassButton>
             )}
             <Link href="/system" style={{ fontSize: '12px', color: 'var(--text-muted)', padding: '6px 10px' }}>
@@ -374,6 +383,8 @@ export default function AIPage() {
           </div>
         </div>
       </div>
+
+      <div className="history-save-status" role="status">{history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</div>
 
       {/* 消息滚动区 (Scrollable Messages Stream) */}
       <div
@@ -629,7 +640,7 @@ export default function AIPage() {
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="输入 F1 问题（Enter 发送，Shift+Enter 换行）..."
-                disabled={isGenerating}
+                disabled={isGenerating || history.saving || history.loading}
                 style={{
                   flex: 1,
                   background: 'transparent',
@@ -654,7 +665,7 @@ export default function AIPage() {
                   variant="primary"
                   size="md"
                   onClick={() => sendMessage()}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || history.saving || history.loading}
                   style={{ opacity: !input.trim() ? 0.5 : 1, cursor: !input.trim() ? 'not-allowed' : 'pointer' }}
                 >
                   发送
@@ -667,6 +678,7 @@ export default function AIPage() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

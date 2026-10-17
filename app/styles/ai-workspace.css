@@ -1,0 +1,83 @@
+/* Account-owned conversations and private AI operations dashboard. */
+.ai-workspace { display:grid; grid-template-columns:272px minmax(0,1fr); height:calc(100dvh - var(--nav-height)); }
+.ai-chat-console { min-width:0; }
+.conversation-sidebar { display:flex; flex-direction:column; min-height:0; gap:16px; padding:24px 16px; background:#fff; border-right:1px solid var(--line-dark); }
+.history-heading { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.history-heading h2 { font-size:20px; }
+.conversation-sidebar>input { width:100%; min-width:0; padding:12px; background:var(--bg-primary); font-size:13px; }
+.history-list { overflow:auto; flex:1; min-height:0; }
+.history-item { border-radius:16px; padding:8px; margin-bottom:8px; border:1px solid transparent; }
+.history-item:hover { background:#f8f7f3; }
+.history-item.is-active { background:#f4f3ef; border-color:var(--line-dark); }
+.history-select { width:100%; border:0; background:none; text-align:left; padding:8px; color:var(--text-primary); }
+.history-select strong { display:block; font-size:13px; font-weight:600; overflow-wrap:anywhere; }
+.history-select small { display:block; color:var(--text-secondary); font-size:10px; margin-top:8px; }
+.history-item-actions { display:flex; gap:8px; padding-inline:8px; }
+.history-item-actions button,.history-item form button { border:0; background:none; color:var(--text-secondary); font-size:11px; padding:8px; min-height:36px; border-radius:12px; }
+.history-item-actions button:hover { background:#17191d08; }
+.history-item form { padding:8px; }
+.history-item form input { width:100%; padding:8px; font-size:13px; }
+.history-empty { font-size:12px; color:var(--text-secondary); padding:16px 8px; }
+.history-footer { border-top:1px solid var(--line-dark); padding-top:16px; }
+.history-footer .btn-secondary { width:100%; }
+.history-footer p { font-size:10px; color:var(--text-secondary); margin-top:12px; line-height:1.9; }
+.history-toggle,.history-close { display:none; }
+.history-save-status { flex-shrink:0; padding:8px 24px; text-align:center; font-size:11px; color:var(--text-secondary); overflow-wrap:anywhere; }
+.history-save-status:has(button) { color:#a3231f; background:#e1060008; }
+.history-save-status button { margin-left:12px; border:0; background:transparent; text-decoration:underline; padding:8px; color:inherit; }
+.history-backdrop { position:fixed; inset:var(--nav-height) 0 0; z-index:130; background:#17191d50; }
+.ai-monitor-panel { display:flex; flex-direction:column; gap:24px; }
+.monitor-heading { display:flex; justify-content:space-between; align-items:end; flex-wrap:wrap; gap:24px; }
+.monitor-heading h2 { font-size:30px; margin-top:8px; }
+.monitor-heading p { font-size:12px; color:var(--text-secondary); margin-top:12px; }
+.monitor-actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+.monitor-actions .btn-secondary { padding:10px 16px; font-size:12px; }
+.monitor-actions label,.monitor-events label { display:flex; gap:8px; align-items:center; font-size:12px; color:var(--text-secondary); }
+.ai-monitor-panel input[type=checkbox] { min-height:0; width:16px; height:16px; accent-color:var(--accent-red); }
+.monitor-config,.monitor-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.monitor-config>div,.monitor-stats>div,.monitor-chart,.monitor-events { background:#fff; border-radius:24px; padding:24px; min-width:0; }
+.monitor-config small,.monitor-stats small { display:block; font-size:11px; color:var(--text-secondary); }
+.monitor-config strong { display:block; font-size:15px; margin-top:16px; overflow-wrap:anywhere; }
+.monitor-config p,.monitor-stats span { display:block; font-size:11px; color:var(--text-secondary); margin-top:12px; line-height:1.8; }
+.monitor-stats strong { display:block; font:28px var(--font-mono); margin-top:16px; }
+.monitor-alert { padding:16px 24px; border-radius:16px; background:#fff5e8; color:#86551d; font-size:13px; }
+.monitor-bars { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:16px; padding-block:24px; }
+.monitor-bars>div { text-align:center; font-size:12px; color:var(--text-secondary); }
+.monitor-bar-track { height:120px; border-radius:12px; background:#f4f3ef; display:flex; align-items:end; justify-content:center; margin:12px 0; padding:0 12px; overflow:hidden; }
+.monitor-bar-track i { display:block; width:100%; max-width:40px; background:#747c7b; border-radius:8px 8px 0 0; }
+.monitor-chart details { font-size:12px; color:var(--text-secondary); }
+.monitor-chart summary { padding-block:12px; }
+.monitor-table-wrap { overflow:auto; }
+.monitor-table-wrap table { width:100%; border-collapse:collapse; white-space:nowrap; }
+.monitor-table-wrap th,.monitor-table-wrap td { text-align:left; border-top:1px solid var(--line-dark); }
+.monitor-events .section-head { gap:16px; flex-wrap:wrap; }
+.monitor-events ul { list-style:none; }
+.monitor-events li { display:grid; grid-template-columns:minmax(0,1fr) 88px 72px; gap:16px; border-top:1px solid var(--line-dark); padding:16px 0; font-size:12px; align-items:center; }
+.monitor-events li>span:last-child { text-align:right; }
+.monitor-outcome { border-radius:999px; background:#f4f3ef; padding:4px 12px; text-align:center; font-size:11px; }
+.outcome-success { color:#28764e; background:#eff6f1; }
+.outcome-error,.outcome-timeout { color:#a3231f; background:#fff0ee; }
+.monitor-footnote { font-size:11px; line-height:1.9; color:var(--text-secondary); }
+@media(max-width:1000px) {
+ .ai-workspace { grid-template-columns:minmax(0,1fr); }
+ .conversation-sidebar { display:none; position:fixed; top:var(--nav-height); bottom:0; left:0; width:min(320px,90vw); z-index:131; border-radius:0 24px 24px 0; box-shadow:8px 0 40px #17191d12; }
+ .conversation-sidebar.is-open { display:flex; }
+ .history-toggle,.history-close { display:inline-flex; }
+ .history-close { padding:8px 12px; font-size:12px; }
+}
+@media(max-width:767px) {
+ .ai-chat-console>div:first-child .container { flex-wrap:wrap; gap:12px; }
+ .ai-chat-console>div:first-child .container>div:last-child { width:100%; justify-content:space-between; }
+ .history-save-status { padding:4px 16px; font-size:10px; }
+ .monitor-heading h2 { font-size:26px; }
+ .monitor-config { grid-template-columns:1fr; }
+ .monitor-stats { grid-template-columns:1fr 1fr; }
+ .monitor-config>div,.monitor-stats>div,.monitor-chart,.monitor-events { padding:20px; }
+ .monitor-stats strong { font-size:24px; }
+ .monitor-stats span { font-size:10px; }
+ .monitor-bars { gap:8px; }
+ .monitor-bar-track { padding:0 4px; height:100px; }
+ .monitor-bars small { font-size:9px; }
+ .monitor-events li { grid-template-columns:minmax(0,1fr) 64px 56px; gap:8px; font-size:10px; }
+ .monitor-outcome { padding:4px 8px; }
+}
