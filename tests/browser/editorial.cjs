@@ -86,6 +86,12 @@ const widths = [375, 390, 768, 1440, 1920];
   assert.equal((await page.request.get(base + '/api/admin/overview')).status(), 401);
   results.checks.push('visible keyboard focus; anonymous AI/login and admin API gates');
   await page.route('**/api/auth/session', r => r.fulfill({ json: { user: { id: 'browser-test', email: 'browser@example.invalid' }, session: null } }));
+  let fixtureHistory = null;
+  await page.route('**/api/ai/conversations*', r => {
+   if (r.request().method() === 'GET') return r.fulfill({ json: { conversations: [] } });
+   fixtureHistory = { id: '00000000-0000-4000-8000-000000000001', title: '浏览器验收对话', revision: (fixtureHistory?.revision || 0) + 1, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), messages: r.request().postDataJSON().messages || [] };
+   return r.fulfill({ json: { conversation: fixtureHistory } });
+  });
   await page.route('**/api/ai/chat', r => r.fulfill({ contentType: 'text/event-stream', body: 'data: {"type":"delta","content":"浏览器测试：策略解读。"}\n\ndata: {"type":"done"}\n\n' }));
   await capture('ai-local-fixture', '/ai');
   const input = page.getByRole('textbox', { name: '向 APEX AI 提问' });

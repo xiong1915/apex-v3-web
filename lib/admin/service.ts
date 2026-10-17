@@ -7,6 +7,7 @@ import { BUILD_ID, BUILD_ENV, BUILD_TIMESTAMP } from '@/lib/build-info';
 import { isSupabaseConfigured, isMockAuthAllowed, isValidUuid, AUTH_CONFIG } from '@/lib/auth/config';
 import { mockAuthManager } from '@/lib/auth/mock';
 import { createSupabaseServerClient } from '@/lib/auth/server';
+import { providerConfiguration, readAIMonitor } from './ai-monitor';
 
 export interface AdminOverview {
   health: {
@@ -48,6 +49,10 @@ export interface AdminAIMetrics {
   provider: string;
   isConfigured: boolean;
   lastActiveTime?: string;
+  model: string;
+  monitoring: Awaited<ReturnType<typeof readAIMonitor>>;
+  limits: { hourly: number; perMinute: number; requestTimeoutSeconds: number };
+  historyStorageConfigured: boolean;
 }
 
 // 内存单例用于本地审计与冷却控制
@@ -157,14 +162,14 @@ export async function getAdminAIMetrics(): Promise<AdminAIMetrics> {
   const tokenCount = await cache.get<number>('stats:ai:tokens_estimated') || 0;
   const lastActive = await cache.get<string>('stats:ai:last_request_time');
 
-  const hasKey = Boolean(process.env.DEEPSEEK_API_KEY);
-
   return {
     totalRequests: total,
     rateLimitHits,
     estimatedTokens: tokenCount,
-    provider: process.env.AI_PROVIDER || 'deepseek',
-    isConfigured: hasKey,
+    ...providerConfiguration(),
+    monitoring: await readAIMonitor(),
+    limits: { hourly: 600, perMinute: 15, requestTimeoutSeconds: 25 },
+    historyStorageConfigured: Boolean((process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL) && (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN) && process.env.STORAGE_PROVIDER !== 'memory'),
     lastActiveTime: lastActive || undefined
   };
 }
