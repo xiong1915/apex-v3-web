@@ -955,6 +955,14 @@ body:has(.ai-chat-console) {
   max-width:1200px!important;
   padding:24px 40px!important
 }
+.admin-tabs {
+  flex-wrap:wrap;
+}
+@media(max-width:768px) {
+  .admin-tabs {
+    display:none!important;
+  }
+}
 .admin-page-container .glass-surface {
   background:#fff;
   border:0;
