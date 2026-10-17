@@ -2,6 +2,7 @@
 @import './styles/components.css';
 @import './styles/editorial.css';
 @import './styles/pages.css';
+@import './styles/ai-workspace.css';
 * {
   box-sizing:border-box;
   margin:0;

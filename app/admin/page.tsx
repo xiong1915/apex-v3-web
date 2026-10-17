@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
 import { fetchCurrentSession, apiLogout } from '@/lib/auth/client';
 import { formatBeijingDisplay } from '@/lib/f1/time';
+import { AdminAIMonitor } from '@/components/admin-ai-monitor';
 
 type AdminTab = 'overview' | 'users' | 'ai' | 'f1';
 
@@ -61,6 +62,9 @@ export default function AdminPage() {
   const [overviewData, setOverviewData] = useState<any>(null);
   const [usersData, setUsersData] = useState<any>(null);
   const [aiData, setAiData] = useState<any>(null);
+  const [aiRefreshing, setAiRefreshing] = useState(false);
+  const [aiMonitorError, setAiMonitorError] = useState<string | null>(null);
+  const [autoRefreshAI, setAutoRefreshAI] = useState(false);
   const [f1Data, setF1Data] = useState<any>(null);
 
   const [loading, setLoading] = useState(false);
@@ -183,6 +187,23 @@ export default function AdminPage() {
       loadData();
     }
   }, [isAdmin, loadData]);
+
+  const refreshAIMonitor = useCallback(async () => {
+    if (!isAdmin) return;
+    setAiRefreshing(true);
+    try {
+      const response = await fetch('/api/admin/ai', { cache: 'no-store' });
+      if (!response.ok) throw new Error(response.status === 403 ? '请先完成双重验证后刷新' : 'AI 监控读取失败');
+      setAiData(await response.json());
+      setAiMonitorError(null);
+    } catch (error) { setAiMonitorError(error instanceof Error ? error.message : 'AI 监控读取失败'); }
+    finally { setAiRefreshing(false); }
+  }, [isAdmin]);
+  useEffect(() => {
+    if (!autoRefreshAI || currentTab !== 'ai' || !isAdmin) return;
+    const timer = setInterval(() => { if (!document.hidden) void refreshAIMonitor(); }, 30000);
+    return () => clearInterval(timer);
+  }, [autoRefreshAI, currentTab, isAdmin, refreshAIMonitor]);
 
   // 3. 提交 TOTP 双重验证
   const handleVerifyTotp = async (e: React.FormEvent) => {
@@ -546,45 +567,8 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tab 3: AI 监控 */}
-        {currentTab === 'ai' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-              <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>总调用次数 (Requests)</div>
-                <div className="tabular-nums" style={{ fontSize: '28px', fontWeight: 900 }}>
-                  {aiData?.totalRequests ?? 0}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>真实累计处理对话</div>
-              </GlassCard>
-
-              <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>限流拦截次数 (Rate Limit)</div>
-                <div className="tabular-nums" style={{ fontSize: '28px', fontWeight: 900, color: aiData?.rateLimitHits ? 'var(--accent-red)' : 'var(--status-good)' }}>
-                  {aiData?.rateLimitHits ?? 0}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>小时全局/IP超额拦截</div>
-              </GlassCard>
-
-              <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>上游模型服务提供商</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, textTransform: 'capitalize' }}>
-                  {aiData?.provider || 'DeepSeek'}
-                </div>
-                <div style={{ fontSize: '11px', color: aiData?.isConfigured ? 'var(--status-good)' : 'var(--status-warning)', marginTop: '6px' }}>
-                  {aiData?.isConfigured ? '✓ API 密钥已就绪' : '▲ 未配置密钥 (回退事实知识)'}
-                </div>
-              </GlassCard>
-            </div>
-
-            <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '8px' }}>隐私与合规保护说明</h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
-                严格遵循用户隐私准则：后台仅监控脱敏的请求总量、限流计数与 Token 估算，绝不采集或持久化存储任何用户聊天提问及模型输出内容。
-              </p>
-            </GlassCard>
-          </div>
-        )}
+        {/* Tab 3: AI 运行监控 */}
+        {currentTab === 'ai' && <AdminAIMonitor data={aiData} loading={aiRefreshing || loading} error={aiMonitorError} refresh={refreshAIMonitor} automatic={autoRefreshAI} setAutomatic={setAutoRefreshAI}/>}
 
         {/* Tab 4: F1 数据调度 */}
         {currentTab === 'f1' && (
