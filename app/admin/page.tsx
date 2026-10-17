@@ -373,7 +373,7 @@ export default function AdminPage() {
         )}
 
         {/* PC 标签导航 */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }} className="desktop-nav">
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }} className="admin-tabs" aria-label="后台栏目">
           <button
             onClick={() => setCurrentTab('overview')}
             style={{
