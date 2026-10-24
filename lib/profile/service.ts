@@ -1,11 +1,11 @@
 // lib/profile/service.ts
 // APEX V3 APEX ID 个人中心服务端核心业务逻辑
-// 聚合 Supabase PostgreSQL 持久化、Storage 隔离存储与本地测试无缝降级
+// 生产环境严格强制 Supabase PostgreSQL & Storage 持久化，禁止虚假成功与内存掩盖
 
 import { User } from '@/lib/auth/types';
-import { isSupabaseConfigured, AUTH_CONFIG } from '@/lib/auth/config';
+import { isSupabaseConfigured, isProduction } from '@/lib/auth/config';
 import { createSupabaseServerClient } from '@/lib/auth/server';
-import { validateDisplayName, validateFavoriteTeamIds, validateAvatarBuffer, AvatarFormat } from './validation';
+import { validateDisplayName, validateFavoriteTeamIds, validateAvatarBuffer } from './validation';
 
 export interface UserProfile {
   id: string;
@@ -19,7 +19,7 @@ export interface UserProfile {
   updated_at: string;
 }
 
-// 内存降级存储 (用于本地单元测试、离线环境及数据库表就绪前的平滑过渡)
+// 仅在隔离的本地测试/Mock 模式下使用的内存存储 (生产环境严格禁止使用)
 const memoryProfileStore = new Map<string, {
   display_name?: string;
   avatar_path?: string | null;
@@ -27,15 +27,16 @@ const memoryProfileStore = new Map<string, {
   updated_at: string;
 }>();
 
-// 内存头像二进制存储 (离线测试使用)
+// 内存头像二进制存储 (仅限本地测试使用)
 const memoryAvatarStore = new Map<string, { buffer: Buffer; mimeType: string }>();
 
 export function getMemoryAvatar(path: string): { buffer: Buffer; mimeType: string } | undefined {
+  if (isProduction()) return undefined;
   return memoryAvatarStore.get(path);
 }
 
 export function resetMemoryProfileStore(): void {
-  memoryProfileStore.clear;
+  memoryProfileStore.clear();
   memoryAvatarStore.clear();
 }
 
@@ -68,79 +69,96 @@ export async function getUserProfile(user: User): Promise<UserProfile> {
   const { displayName: defaultName, thirdPartyAvatar, provider } = resolveInitialProfileData(user);
   const nowIso = new Date().toISOString();
 
-  // 1. 如果配置了真实 Supabase
+  // 1. 真实 Supabase 环境
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createSupabaseServerClient();
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .maybeSingle();
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
 
-      if (!error && data) {
-        // 已有资料记录
-        let finalAvatarUrl: string | null = thirdPartyAvatar;
-        if (data.avatar_path) {
-          try {
-            const { data: signedData } = await supabase.storage
-              .from('avatars')
-              .createSignedUrl(data.avatar_path, 86400); // 24小时签名有效期
-            if (signedData?.signedUrl) {
-              finalAvatarUrl = signedData.signedUrl;
-            } else {
-              finalAvatarUrl = `/api/profile/avatar/view?path=${encodeURIComponent(data.avatar_path)}`;
-            }
-          } catch {
+    if (error) {
+      console.error('[Profile Service] Supabase read profile failed:', error.message, error.code);
+      if (isProduction()) {
+        throw new Error('数据库读取失败，请稍后重试');
+      }
+    }
+
+    if (data) {
+      let finalAvatarUrl: string | null = thirdPartyAvatar;
+      if (data.avatar_path) {
+        try {
+          const { data: signedData } = await supabase.storage
+            .from('avatars')
+            .createSignedUrl(data.avatar_path, 86400); // 24小时有效签名
+          if (signedData?.signedUrl) {
+            finalAvatarUrl = signedData.signedUrl;
+          } else {
             finalAvatarUrl = `/api/profile/avatar/view?path=${encodeURIComponent(data.avatar_path)}`;
           }
+        } catch {
+          finalAvatarUrl = `/api/profile/avatar/view?path=${encodeURIComponent(data.avatar_path)}`;
         }
+      }
 
+      return {
+        id: user.id,
+        email: user.email,
+        display_name: data.display_name || defaultName,
+        avatar_url: finalAvatarUrl,
+        avatar_path: data.avatar_path || null,
+        favorite_team_ids: Array.isArray(data.favorite_team_ids) ? data.favorite_team_ids : [],
+        provider,
+        created_at: data.created_at || user.created_at || nowIso,
+        updated_at: data.updated_at || nowIso
+      };
+    }
+
+    // 记录尚不存在时自动补建
+    if (!error || error.code === 'PGRST116') {
+      const newRecord = {
+        id: user.id,
+        display_name: defaultName,
+        avatar_path: null,
+        favorite_team_ids: [],
+        created_at: nowIso,
+        updated_at: nowIso
+      };
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('profiles')
+        .insert(newRecord)
+        .select()
+        .single();
+
+      if (!insertError && inserted) {
         return {
           id: user.id,
           email: user.email,
-          display_name: data.display_name || defaultName,
-          avatar_url: finalAvatarUrl,
-          avatar_path: data.avatar_path || null,
-          favorite_team_ids: Array.isArray(data.favorite_team_ids) ? data.favorite_team_ids : [],
-          provider,
-          created_at: data.created_at || user.created_at || nowIso,
-          updated_at: data.updated_at || nowIso
-        };
-      }
-
-      // 如果未查到记录且非致命架构错误，尝试自动补建 Profile
-      if (!error || error.code === 'PGRST116') {
-        const newRecord = {
-          id: user.id,
-          display_name: defaultName,
+          display_name: inserted.display_name || defaultName,
+          avatar_url: thirdPartyAvatar,
           avatar_path: null,
           favorite_team_ids: [],
-          created_at: nowIso,
-          updated_at: nowIso
+          provider,
+          created_at: inserted.created_at || nowIso,
+          updated_at: inserted.updated_at || nowIso
         };
-
-        const { error: insertError } = await supabase.from('profiles').insert(newRecord);
-        if (!insertError) {
-          return {
-            id: user.id,
-            email: user.email,
-            display_name: defaultName,
-            avatar_url: thirdPartyAvatar,
-            avatar_path: null,
-            favorite_team_ids: [],
-            provider,
-            created_at: nowIso,
-            updated_at: nowIso
-          };
-        }
       }
-    } catch (e: any) {
-      console.warn('[Profile Service] Supabase read profile degraded to memory:', e?.message);
+
+      if (insertError && isProduction()) {
+        console.error('[Profile Service] Profile auto-provisioning failed:', insertError.message);
+        throw new Error('个人资料初始化失败，请稍后重试');
+      }
     }
   }
 
-  // 2. 内存/本地回退逻辑
+  // 生产环境绝对禁止内存伪造
+  if (isProduction()) {
+    throw new Error('持久化存储未配置或不可用');
+  }
+
+  // 2. 本地测试/离线回退
   const mem = memoryProfileStore.get(user.id);
   let finalAvatarUrl: string | null = thirdPartyAvatar;
   if (mem?.avatar_path) {
@@ -161,16 +179,58 @@ export async function getUserProfile(user: User): Promise<UserProfile> {
 }
 
 /**
+ * 细化数据库错误信息映射
+ */
+function mapDatabaseError(error: any): string {
+  if (!error) return '数据库操作失败';
+  const code = String(error.code || '');
+  const msg = String(error.message || '').toLowerCase();
+
+  if (code === '42501' || msg.includes('permission denied') || msg.includes('row-level security')) {
+    return '权限不足：无法修改其他用户的个人资料';
+  }
+  if (code === '23505' || msg.includes('unique constraint') || msg.includes('duplicate key')) {
+    return '更新冲突，请刷新后重试';
+  }
+  if (code === 'PGRST116' || msg.includes('no rows')) {
+    return '未找到该用户的个人档案记录';
+  }
+  if (code === '57014' || msg.includes('timeout') || msg.includes('aborted')) {
+    return '数据库请求超时，请检查网络后重试';
+  }
+  return error.message || '数据库服务异常，请稍后重试';
+}
+
+/**
  * 更新用户个人资料 (昵称与车队收藏)
  */
 export async function updateUserProfile(
   user: User,
   updates: { display_name?: string; favorite_team_ids?: string[] }
 ): Promise<{ profile: UserProfile; error?: string }> {
-  const current = await getUserProfile(user);
+  let current: UserProfile;
+  try {
+    current = await getUserProfile(user);
+  } catch (e: any) {
+    return {
+      profile: {
+        id: user.id,
+        email: user.email,
+        display_name: user.email?.split('@')[0] || 'APEX 车迷',
+        avatar_url: null,
+        avatar_path: null,
+        favorite_team_ids: [],
+        provider: 'email',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      error: e.message || '获取当前资料失败'
+    };
+  }
+
   const patch: { display_name?: string; favorite_team_ids?: string[] } = {};
 
-  // 1. 校验昵称
+  // 1. 严格校验昵称
   if (updates.display_name !== undefined) {
     const val = validateDisplayName(updates.display_name);
     if (!val.valid || !val.value) {
@@ -179,7 +239,7 @@ export async function updateUserProfile(
     patch.display_name = val.value;
   }
 
-  // 2. 校验车队收藏
+  // 2. 严格校验车队收藏
   if (updates.favorite_team_ids !== undefined) {
     const val = validateFavoriteTeamIds(updates.favorite_team_ids);
     if (!val.valid) {
@@ -190,7 +250,7 @@ export async function updateUserProfile(
 
   const nowIso = new Date().toISOString();
 
-  // 3. Supabase 持久化
+  // 3. 生产/真实 Supabase 持久化
   if (isSupabaseConfigured()) {
     try {
       const supabase = await createSupabaseServerClient();
@@ -207,26 +267,38 @@ export async function updateUserProfile(
         .select()
         .single();
 
-      if (!error && data) {
-        // 同步更新内存缓存以保持快速一致
-        memoryProfileStore.set(user.id, {
-          display_name: data.display_name,
-          avatar_path: data.avatar_path,
-          favorite_team_ids: data.favorite_team_ids || [],
-          updated_at: data.updated_at
-        });
-
+      if (error || !data) {
+        console.error('[Profile Service] Supabase update failed:', error?.message);
         return {
-          profile: await getUserProfile(user)
+          profile: current,
+          error: mapDatabaseError(error)
         };
       }
+
+      // 重新读取并验证数据库中的最终有效状态
+      const verifiedProfile = await getUserProfile(user);
+      return { profile: verifiedProfile };
     } catch (e: any) {
-      console.warn('[Profile Service] Supabase update profile degraded to memory:', e?.message);
+      console.error('[Profile Service] Supabase update exception:', e?.message);
+      return {
+        profile: current,
+        error: isProduction() ? '保存失败，数据库连接异常' : (e.message || '保存失败')
+      };
     }
   }
 
-  // 4. 内存回退保存
+  // 生产环境绝对禁止内存回退伪造保存成功
+  if (isProduction()) {
+    return {
+      profile: current,
+      error: '生产环境持久化服务不可用'
+    };
+  }
+
+  // 4. 仅限本地测试环境的内存更新
   const existingMem = memoryProfileStore.get(user.id) || {
+    display_name: current.display_name,
+    avatar_path: current.avatar_path,
     favorite_team_ids: current.favorite_team_ids,
     updated_at: nowIso
   };
@@ -236,87 +308,114 @@ export async function updateUserProfile(
   existingMem.updated_at = nowIso;
   memoryProfileStore.set(user.id, existingMem);
 
-  return {
-    profile: await getUserProfile(user)
-  };
+  const updatedProfile = await getUserProfile(user);
+  return { profile: updatedProfile };
 }
 
 /**
- * 上传或替换用户头像
+ * 上传或替换用户头像 (严格安全流程：上传新图 -> 确认DB更新 -> 清理旧图)
  */
 export async function uploadUserAvatar(
   user: User,
   fileBuffer: Buffer
 ): Promise<{ profile: UserProfile; error?: string }> {
+  let current: UserProfile;
+  try {
+    current = await getUserProfile(user);
+  } catch (e: any) {
+    return {
+      profile: {
+        id: user.id,
+        email: user.email,
+        display_name: user.email?.split('@')[0] || 'APEX 车迷',
+        avatar_url: null,
+        avatar_path: null,
+        favorite_team_ids: [],
+        provider: 'email',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      error: '读取当前用户信息失败'
+    };
+  }
+
   // 1. 严格校验文件二进制与魔数
   const validation = validateAvatarBuffer(fileBuffer);
   if (!validation.valid || !validation.ext || !validation.mimeType) {
-    const current = await getUserProfile(user);
     return { profile: current, error: validation.error || '上传的文件不符合要求' };
   }
 
-  const current = await getUserProfile(user);
   const nowMs = Date.now();
-  const filePath = `${user.id}/avatar-${nowMs}.${validation.ext}`;
+  const newFilePath = `${user.id}/avatar-${nowMs}.${validation.ext}`;
   const nowIso = new Date().toISOString();
 
-  // 2. 如果配置了真实 Supabase
+  // 2. 真实 Supabase 环境执行事务型管道
   if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
-      // 上传至 avatars 存储桶
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, fileBuffer, {
-          contentType: validation.mimeType,
-          upsert: true
-        });
+    // 步骤 A: 上传新头像到 Storage (当前用户独立 UUID 目录)
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(newFilePath, fileBuffer, {
+        contentType: validation.mimeType,
+        upsert: true
+      });
 
-      if (!uploadError) {
-        // 清理旧头像 (如果有)
-        if (current.avatar_path && current.avatar_path !== filePath) {
-          await supabase.storage.from('avatars').remove([current.avatar_path]).catch(() => null);
-        }
-
-        // 更新 profiles 表的 avatar_path
-        await supabase
-          .from('profiles')
-          .update({ avatar_path: filePath, updated_at: nowIso })
-          .eq('id', user.id);
-
-        memoryProfileStore.set(user.id, {
-          display_name: current.display_name,
-          avatar_path: filePath,
-          favorite_team_ids: current.favorite_team_ids,
-          updated_at: nowIso
-        });
-
-        return {
-          profile: await getUserProfile(user)
-        };
-      } else {
-        console.warn('[Profile Service] Supabase upload failed, falling back to memory:', uploadError.message);
-      }
-    } catch (e: any) {
-      console.warn('[Profile Service] Supabase storage exception:', e?.message);
+    if (uploadError) {
+      console.error('[Profile Service] Storage upload failed:', uploadError.message);
+      return { profile: current, error: '头像存储失败: ' + uploadError.message };
     }
+
+    // 步骤 B: 确认新头像上传成功后，更新数据库中的新头像路径
+    const { data: dbData, error: dbError } = await supabase
+      .from('profiles')
+      .update({ avatar_path: newFilePath, updated_at: nowIso })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    // 步骤 C: 如数据库更新失败，必须执行失败恢复：清理刚才上传的孤立新文件，保留旧头像和旧资料！
+    if (dbError || !dbData) {
+      console.error('[Profile Service] DB update failed after avatar upload, rolling back file:', dbError?.message);
+      await supabase.storage.from('avatars').remove([newFilePath]).catch(() => null);
+      return {
+        profile: current,
+        error: '数据库头像记录更新失败: ' + mapDatabaseError(dbError)
+      };
+    }
+
+    // 步骤 D: 数据库成功指向新头像后，再安全清理旧头像文件 (如存在且不同)
+    if (current.avatar_path && current.avatar_path !== newFilePath) {
+      try {
+        await supabase.storage.from('avatars').remove([current.avatar_path]);
+      } catch (cleanErr) {
+        console.warn('[Profile Service] Clean old avatar warning (non-fatal):', cleanErr);
+      }
+    }
+
+    // 步骤 E: 重新读取并验证数据库中的有效状态
+    const verifiedProfile = await getUserProfile(user);
+    return { profile: verifiedProfile };
   }
 
-  // 3. 内存回退存储
-  memoryAvatarStore.set(filePath, { buffer: fileBuffer, mimeType: validation.mimeType });
+  // 生产环境绝对禁止内存回退伪造成功
+  if (isProduction()) {
+    return { profile: current, error: '生产环境持久化存储不可用' };
+  }
+
+  // 3. 仅限本地测试环境的内存更新
+  memoryAvatarStore.set(newFilePath, { buffer: fileBuffer, mimeType: validation.mimeType });
   const existingMem = memoryProfileStore.get(user.id) || {
     display_name: current.display_name,
     favorite_team_ids: current.favorite_team_ids,
     updated_at: nowIso
   };
-  existingMem.avatar_path = filePath;
+  existingMem.avatar_path = newFilePath;
   existingMem.updated_at = nowIso;
   memoryProfileStore.set(user.id, existingMem);
 
-  return {
-    profile: await getUserProfile(user)
-  };
+  const updatedProfile = await getUserProfile(user);
+  return { profile: updatedProfile };
 }
 
 /**
@@ -325,26 +424,67 @@ export async function uploadUserAvatar(
 export async function deleteUserAvatar(
   user: User
 ): Promise<{ profile: UserProfile; error?: string }> {
-  const current = await getUserProfile(user);
-  const nowIso = new Date().toISOString();
-
-  if (current.avatar_path) {
-    if (isSupabaseConfigured()) {
-      try {
-        const supabase = await createSupabaseServerClient();
-        await supabase.storage.from('avatars').remove([current.avatar_path]).catch(() => null);
-        await supabase
-          .from('profiles')
-          .update({ avatar_path: null, updated_at: nowIso })
-          .eq('id', user.id);
-      } catch (e: any) {
-        console.warn('[Profile Service] Supabase delete avatar exception:', e?.message);
-      }
-    }
-
-    memoryAvatarStore.delete(current.avatar_path);
+  let current: UserProfile;
+  try {
+    current = await getUserProfile(user);
+  } catch (e: any) {
+    return {
+      profile: {
+        id: user.id,
+        email: user.email,
+        display_name: user.email?.split('@')[0] || 'APEX 车迷',
+        avatar_url: null,
+        avatar_path: null,
+        favorite_team_ids: [],
+        provider: 'email',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      },
+      error: '获取个人资料失败'
+    };
   }
 
+  const nowIso = new Date().toISOString();
+
+  // 若无自定义头像，直接返回
+  if (!current.avatar_path) {
+    return { profile: current };
+  }
+
+  const oldPath = current.avatar_path;
+
+  // 1. 真实 Supabase 环境：先更新数据库状态置空，再删除 Storage 文件
+  if (isSupabaseConfigured()) {
+    const supabase = await createSupabaseServerClient();
+
+    // 步骤 A: 优先更新数据库
+    const { data: dbData, error: dbError } = await supabase
+      .from('profiles')
+      .update({ avatar_path: null, updated_at: nowIso })
+      .eq('id', user.id)
+      .select()
+      .single();
+
+    if (dbError || !dbData) {
+      console.error('[Profile Service] DB update failed during avatar deletion:', dbError?.message);
+      return { profile: current, error: '删除头像记录失败: ' + mapDatabaseError(dbError) };
+    }
+
+    // 步骤 B: 数据库更新成功后，清理 Storage 文件
+    await supabase.storage.from('avatars').remove([oldPath]).catch(() => null);
+
+    // 步骤 C: 重新读取并验证状态
+    const verifiedProfile = await getUserProfile(user);
+    return { profile: verifiedProfile };
+  }
+
+  // 生产环境禁止假成功
+  if (isProduction()) {
+    return { profile: current, error: '生产环境持久化存储不可用' };
+  }
+
+  // 2. 本地测试环境的内存清理
+  memoryAvatarStore.delete(oldPath);
   const existingMem = memoryProfileStore.get(user.id);
   if (existingMem) {
     existingMem.avatar_path = null;
@@ -352,7 +492,6 @@ export async function deleteUserAvatar(
     memoryProfileStore.set(user.id, existingMem);
   }
 
-  return {
-    profile: await getUserProfile(user)
-  };
+  const updatedProfile = await getUserProfile(user);
+  return { profile: updatedProfile };
 }
