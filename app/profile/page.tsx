@@ -25,6 +25,7 @@ export default function ProfilePage() {
 
   // 认证与基本状态
   const [loading, setLoading] = useState(true);
+  const [networkError, setNetworkError] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
@@ -38,6 +39,7 @@ export default function ProfilePage() {
   const [favoriteTeamIds, setFavoriteTeamIds] = useState<string[]>([]);
   const [savingTeams, setSavingTeams] = useState(false);
   const [teamsSavedNotice, setTeamsSavedNotice] = useState(false);
+  const [teamsError, setTeamsError] = useState<string | null>(null);
 
   // 头像裁剪与上传模态框状态
   const [cropModalOpen, setCropModalOpen] = useState(false);
@@ -46,47 +48,73 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  // 1. 初始化鉴权与读取 Profile
-  useEffect(() => {
-    let mounted = true;
+  // 1. 初始化鉴权与读取 Profile (严格区分未登录与网络/服务端临时异常)
+  const init = async () => {
+    setLoading(true);
+    setNetworkError(null);
+    try {
+      const { user: currentSessionUser, error: authError } = await fetchCurrentSession();
 
-    async function init() {
-      try {
-        const { user: currentSessionUser, error: authError } = await fetchCurrentSession();
-        if (!mounted) return;
-
-        if (authError || !currentSessionUser) {
-          router.replace('/login?returnUrl=/profile');
-          return;
-        }
-
-        setUser(currentSessionUser);
-
-        const { profile: userProfile } = await fetchUserProfile();
-        if (!mounted) return;
-
-        if (userProfile) {
-          setProfile(userProfile);
-          setNicknameInput(userProfile.display_name || '');
-          setFavoriteTeamIds(userProfile.favorite_team_ids || []);
-        } else {
-          // 降级以 sessionUser 兜底
-          const fallbackName = currentSessionUser.user_metadata?.name || currentSessionUser.email?.split('@')[0] || 'APEX 车迷';
-          setNicknameInput(fallbackName);
-        }
-      } catch (e) {
-        console.error('Failed to load profile session:', e);
-      } finally {
-        if (mounted) setLoading(false);
+      if (authError) {
+        // 网络抖动或身份服务临时异常，绝不误判为未登录而强行登出
+        setNetworkError(authError);
+        return;
       }
-    }
 
+      if (!currentSessionUser) {
+        // 明确未登录状态，重定向至登录页
+        router.replace('/login?returnUrl=/profile');
+        return;
+      }
+
+      setUser(currentSessionUser);
+
+      const { profile: userProfile, error: profileErr } = await fetchUserProfile();
+
+      if (userProfile) {
+        setProfile(userProfile);
+        setNicknameInput(userProfile.display_name || '');
+        setFavoriteTeamIds(userProfile.favorite_team_ids || []);
+      } else {
+        const fallbackName =
+          currentSessionUser.user_metadata?.name ||
+          currentSessionUser.email?.split('@')[0] ||
+          'APEX 车迷';
+        setNicknameInput(fallbackName);
+        if (profileErr) {
+          console.warn('[APEX Profile] Profile read notice:', profileErr);
+        }
+      }
+    } catch (e: any) {
+      console.error('Failed to load profile session:', e);
+      setNetworkError(e?.message || '网络连接异常，请重试');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     init();
+  }, [router]);
+
+  // 防模态框背景滚动与 Escape 键监听
+  useEffect(() => {
+    if (!cropModalOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !uploadingAvatar) {
+        setCropModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      mounted = false;
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [router]);
+  }, [cropModalOpen, uploadingAvatar]);
 
   // 2. 实时校验昵称输入
   const handleNicknameChange = (val: string) => {
@@ -107,6 +135,7 @@ export default function ProfilePage() {
   // 3. 保存昵称
   const handleSaveNickname = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (savingNickname) return;
     const check = validateDisplayName(nicknameInput);
     if (!check.valid || !check.value) {
       setNicknameError(check.error || '请输入合法的昵称');
@@ -206,7 +235,7 @@ export default function ProfilePage() {
 
   // 6. 执行裁切并上传至 Supabase Storage
   const handleConfirmCropAndUpload = async () => {
-    if (!cropImageSrc) return;
+    if (!cropImageSrc || uploadingAvatar) return;
     setUploadingAvatar(true);
     setAvatarError(null);
 
@@ -262,6 +291,7 @@ export default function ProfilePage() {
 
   // 7. 恢复默认头像
   const handleResetAvatar = async () => {
+    if (uploadingAvatar) return;
     if (!confirm('确定恢复为初始默认头像吗？')) return;
     setUploadingAvatar(true);
     setAvatarError(null);
@@ -291,13 +321,15 @@ export default function ProfilePage() {
 
   // 9. 保存车队收藏
   const handleSaveTeams = async () => {
+    if (savingTeams) return;
     setSavingTeams(true);
+    setTeamsError(null);
     try {
       const { profile: updated, error } = await updateUserProfileApi({
         favorite_team_ids: favoriteTeamIds
       });
       if (error) {
-        alert(error);
+        setTeamsError(error);
       } else if (updated) {
         setProfile(updated);
         setFavoriteTeamIds(updated.favorite_team_ids || []);
@@ -305,7 +337,7 @@ export default function ProfilePage() {
         setTimeout(() => setTeamsSavedNotice(false), 3000);
       }
     } catch {
-      alert('保存车队偏好失败，请稍后重试');
+      setTeamsError('保存车队偏好失败，请稍后重试');
     } finally {
       setSavingTeams(false);
     }
@@ -316,6 +348,46 @@ export default function ProfilePage() {
       <div className="profile-page-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center', color: '#8E929C' }}>
           <div className="mono" style={{ fontSize: '13px', letterSpacing: '0.1em' }}>APEX ID 载入中…</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (networkError) {
+    return (
+      <div className="profile-page-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <div className="apex-card" style={{ maxWidth: '440px', width: '90%', textAlign: 'center', margin: '0 auto' }}>
+          <div style={{ color: '#E10600', marginBottom: '16px', display: 'flex', justifyContent: 'center' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+          </div>
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#FFF', marginBottom: '8px' }}>
+            无法连接至 APEX 身份中心
+          </h2>
+          <p style={{ fontSize: '13px', color: '#8E929C', marginBottom: '24px', lineHeight: 1.6 }}>
+            网络连接不稳定或身份服务出现临时波动。系统未检测到登出状态，您的个人资料未受影响。
+          </p>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="button"
+              className="avatar-mini-btn"
+              style={{ flex: 1, justifyContent: 'center', minHeight: '40px' }}
+              onClick={() => router.push('/')}
+            >
+              返回首页
+            </button>
+            <button
+              type="button"
+              className="apex-btn-primary"
+              style={{ flex: 1, minHeight: '40px' }}
+              onClick={init}
+            >
+              重新连接
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -571,7 +643,8 @@ export default function ProfilePage() {
                   </svg>
                   2026 赛季制造商阵容
                 </h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                  {teamsError && <span className="form-feedback error">{teamsError}</span>}
                   {teamsSavedNotice && <span className="form-feedback success">✓ 车队偏好已持久化</span>}
                   <button
                     type="button"
@@ -631,7 +704,17 @@ export default function ProfilePage() {
 
       {/* 头像圆形裁剪 Modal */}
       {cropModalOpen && (
-        <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-crop-title">
+        <div
+          className="modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-crop-title"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !uploadingAvatar) {
+              setCropModalOpen(false);
+            }
+          }}
+        >
           <div className="modal-content">
             <div className="modal-header">
               <h3 id="modal-crop-title">调整头像位置与缩放</h3>

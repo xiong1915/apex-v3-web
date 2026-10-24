@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:browser": "node tests/browser/editorial.cjs && node tests/browser/admin-navigation.cjs && node tests/browser/ai-history-monitor.cjs && node tests/browser/performance-regressions.cjs",
+    "test:browser": "node tests/browser/editorial.cjs && node tests/browser/admin-navigation.cjs && node tests/browser/ai-history-monitor.cjs && node tests/browser/performance-regressions.cjs && node tests/browser/profile.cjs",
     "test": "node ./node_modules/tsx/dist/cli.mjs --test tests/*.test.*",
     "check:copy": "node scripts/check-copy.mjs",
     "check:dates": "node ./node_modules/tsx/dist/cli.mjs --test tests/date-rules.test.mjs",
