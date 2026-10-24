@@ -56,4 +56,3 @@ export const SILVERSTONE_DEMO_METADATA: ReplaySessionMetadata = {
   ],
   sourceProvider: 'curated_demo'
 };
-
