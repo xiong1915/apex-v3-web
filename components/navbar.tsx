@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { fetchCurrentSession, apiLogout } from '@/lib/auth/client';
+import { fetchUserProfile, UserProfile } from '@/lib/profile/client';
 import { User } from '@/lib/auth/types';
 
 const NAV_ITEMS = [
@@ -14,9 +15,11 @@ const NAV_ITEMS = [
   { href: '/drivers', label: '车手' },
   { href: '/teams', label: '车队' }
 ];
+
 const clockFormatter = new Intl.DateTimeFormat('zh-CN', {
   timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
 });
+
 function BeijingClock({ className = '' }: { className?: string }) {
   const [time, setTime] = useState('北京时间 --:--:--');
   useEffect(() => {
@@ -29,6 +32,65 @@ function BeijingClock({ className = '' }: { className?: string }) {
   return <span className={`nav-clock tabular-nums ${className}`}>{time}</span>;
 }
 
+function UserAvatar({
+  url,
+  name,
+  size = 24
+}: {
+  url?: string | null;
+  name: string;
+  size?: number;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const initial = (name || 'A').trim().charAt(0).toUpperCase();
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [url]);
+
+  if (url && !imgFailed) {
+    return (
+      <img
+        src={url}
+        alt={name}
+        className="nav-user-avatar"
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          display: 'block',
+          flexShrink: 0
+        }}
+        onError={() => setImgFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="nav-user-avatar nav-avatar-fallback"
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        borderRadius: '50%',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #e10600 0%, #ff8000 100%)',
+        color: '#fff',
+        fontWeight: 600,
+        fontSize: `${Math.max(10, Math.floor(size * 0.42))}px`,
+        userSelect: 'none',
+        flexShrink: 0
+      }}
+      aria-hidden="true"
+    >
+      {initial}
+    </span>
+  );
+}
+
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -37,6 +99,7 @@ export function Navbar() {
   const accountRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<(User & { isAdmin?: boolean }) | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -44,9 +107,29 @@ export function Navbar() {
   useEffect(() => {
     let mounted = true;
     fetchCurrentSession().then(({ user, error }) => {
-      if (mounted && !error) setUser(user);
+      if (mounted && !error) {
+        setUser(user);
+        if (user) {
+          fetchUserProfile().then(({ profile }) => {
+            if (mounted && profile) setProfile(profile);
+          });
+        } else {
+          setProfile(null);
+        }
+      }
     });
-    return () => { mounted = false; };
+
+    const onProfileUpdated = (e: CustomEvent) => {
+      if (mounted && e.detail) {
+        setProfile(e.detail);
+      }
+    };
+    window.addEventListener('apex:profile-updated', onProfileUpdated as EventListener);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('apex:profile-updated', onProfileUpdated as EventListener);
+    };
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -57,6 +140,7 @@ export function Navbar() {
     try {
       await apiLogout();
       setUser(null);
+      setProfile(null);
       router.refresh();
     } catch {
       setMenuOpen(false);
@@ -112,10 +196,15 @@ export function Navbar() {
       document.removeEventListener('pointerdown', outsideAccount);
     };
   }, [menuOpen, userDropdownOpen]);
+
   const currentIndex = NAV_ITEMS.findIndex(item => {
     const route = item.href.split('#')[0];
     return route === '/' ? pathname === '/' : pathname === route || pathname.startsWith(route + '/');
   });
+
+  const displayName = profile?.display_name || user?.user_metadata?.name || user?.email?.split('@')[0] || '我的账户';
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || null;
+
   return <header className="site-header">
    <div className="container nav-inner">
     <Link href="/" className="nav-brand" aria-label="APEX 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19L11 4h6l4 15h-5l-1-4H9l-2 4zM11 11h3l-1-4z" fill="currentColor"/></svg><span>APEX</span></Link>
@@ -123,7 +212,59 @@ export function Navbar() {
      {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}</Link>)}
     </nav>
     <div className="nav-actions"><BeijingClock className="desktop-nav"/><Link href="/ai" className="nav-ai">APEX AI <span aria-hidden="true">↗</span></Link>
-     {user?<div className="account-wrap desktop-nav" ref={accountRef}><button type="button" className="account-button" aria-expanded={userDropdownOpen} aria-controls="account-menu" onClick={()=>setUserDropdownOpen(!userDropdownOpen)}>{user.user_metadata?.name||user.email?.split('@')[0]||'我的账户'} ↓</button>{userDropdownOpen&&<div className="account-menu" id="account-menu"><span>{user.email}</span>{user.isAdmin&&<Link href="/admin" className="btn-secondary" onClick={()=>setUserDropdownOpen(false)}>管理工作台 ↗</Link>}<button type="button" className="glass-button glass-btn-ghost" onClick={handleLogout} disabled={loggingOut}>{loggingOut?'正在退出…':'退出登录'}</button></div>}</div>:<Link href="/login" className="nav-login desktop-nav">登录</Link>}
+     {user ? (
+       <div className="account-wrap desktop-nav" ref={accountRef}>
+         <button
+           type="button"
+           className="account-button"
+           aria-expanded={userDropdownOpen}
+           aria-controls="account-menu"
+           onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+         >
+           <UserAvatar url={avatarUrl} name={displayName} size={22} />
+           <span className="account-button-text">{displayName}</span>
+           <span aria-hidden="true" style={{ fontSize: '10px', opacity: 0.7 }}>↓</span>
+         </button>
+         {userDropdownOpen && (
+           <div className="account-menu" id="account-menu">
+             <div className="account-menu-header">
+               <UserAvatar url={avatarUrl} name={displayName} size={36} />
+               <div className="account-menu-meta">
+                 <strong className="account-menu-name">{displayName}</strong>
+                 <span className="account-menu-email">{user.email}</span>
+               </div>
+             </div>
+             <Link
+               href="/profile"
+               className="btn-secondary"
+               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+               onClick={() => setUserDropdownOpen(false)}
+             >
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                 <circle cx="12" cy="7" r="4"/>
+               </svg>
+               APEX ID 个人中心
+             </Link>
+             {user.isAdmin && (
+               <Link href="/admin" className="btn-secondary" onClick={() => setUserDropdownOpen(false)}>
+                 管理工作台 ↗
+               </Link>
+             )}
+             <button
+               type="button"
+               className="glass-button glass-btn-ghost"
+               onClick={handleLogout}
+               disabled={loggingOut}
+             >
+               {loggingOut ? '正在退出…' : '退出登录'}
+             </button>
+           </div>
+         )}
+       </div>
+     ) : (
+       <Link href="/login" className="nav-login desktop-nav">登录</Link>
+     )}
      <button type="button" className="mobile-nav-toggle" ref={toggleRef} aria-expanded={menuOpen} aria-controls="mobile-menu" aria-label="切换导航菜单" onClick={()=>setMenuOpen(!menuOpen)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d={menuOpen?'M6 6l12 12M18 6L6 18':'M4 8h16M4 16h16'}/></svg></button>
     </div>
    </div>
@@ -132,7 +273,33 @@ export function Navbar() {
     <button type="button" className="mobile-menu-close" onClick={()=>{setMenuOpen(false);toggleRef.current?.focus()}}>网站导航 <span>关闭 ×</span></button>
     {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label} <span aria-hidden="true">↗</span></Link>)}
     <Link href="/ai" onClick={()=>setMenuOpen(false)}>APEX AI ↗</Link>
-    <div className="mobile-account">{user?<><span className="data-note">{user.email}</span>{user.isAdmin&&<Link href="/admin" onClick={()=>setMenuOpen(false)}>管理工作台 ↗</Link>}<button type="button" className="btn-secondary" disabled={loggingOut} onClick={async()=>{await handleLogout();setMenuOpen(false)}}>{loggingOut?'正在退出…':'退出登录'}</button></>:<Link href="/login" className="btn-primary" onClick={()=>setMenuOpen(false)}>登录 / 注册</Link>}<BeijingClock/></div>
+    <div className="mobile-account">
+      {user ? (
+        <>
+          <div className="mobile-profile-card">
+            <UserAvatar url={avatarUrl} name={displayName} size={36} />
+            <div className="mobile-profile-info">
+              <strong>{displayName}</strong>
+              <span className="data-note">{user.email}</span>
+            </div>
+          </div>
+          <Link href="/profile" className="btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} onClick={()=>setMenuOpen(false)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            APEX ID 个人中心
+          </Link>
+          {user.isAdmin && <Link href="/admin" onClick={()=>setMenuOpen(false)}>管理工作台 ↗</Link>}
+          <button type="button" className="btn-secondary" disabled={loggingOut} onClick={async()=>{await handleLogout();setMenuOpen(false)}}>
+            {loggingOut?'正在退出…':'退出登录'}
+          </button>
+        </>
+      ) : (
+        <Link href="/login" className="btn-primary" onClick={()=>setMenuOpen(false)}>登录 / 注册</Link>
+      )}
+      <BeijingClock/>
+    </div>
    </div>}
   </header>;
 }

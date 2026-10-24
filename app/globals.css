@@ -3,6 +3,7 @@
 @import './styles/editorial.css';
 @import './styles/pages.css';
 @import './styles/ai-workspace.css';
+@import './styles/profile.css';
 * {
   box-sizing:border-box;
   margin:0;
