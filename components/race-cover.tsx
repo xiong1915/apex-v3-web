@@ -5,9 +5,9 @@ import { CircuitTrace } from './circuit-trace';
 import { Countdown } from './countdown';
 import { formatBeijingDisplay } from '@/lib/f1/time';
 
-export function RaceCover({ overview, seasonEnded }: { overview: F1Overview; seasonEnded: boolean }) {
+export function RaceCover({ overview, seasonEnded }: { overview: Pick<F1Overview, 'season'|'currentMeeting'|'nextSession'|'dataSource'|'updatedAt'|'isStale'|'upstreamSyncSuccess'>; seasonEnded: boolean }) {
  const { currentMeeting: meeting, nextSession, season } = overview;
- const circuit = CircuitRegistry.getCircuit(meeting.circuitId, season);
+ const circuit = CircuitRegistry.getCircuit(meeting.circuitId, season, {meetingName:meeting.name});
  const target = nextSession?.targetUtcMs;
  const hasTime = target != null && Number.isFinite(target);
  return <>
@@ -22,7 +22,7 @@ export function RaceCover({ overview, seasonEnded }: { overview: F1Overview; sea
     </div>
     <div className="cover-actions"><Link className="btn-primary" href={meeting.round ? `/races/${meeting.round}` : '/races'}>分站详情 <span aria-hidden="true">↗</span></Link><a className="text-link" href="#weekend">周末赛程 ↓</a><Link className="text-link" href="/replay">赛事回放 ↗</Link></div>
    </div>
-   <figure className="race-cover-visual"><div className="map-topline"><span>赛道档案</span><span>{circuit?.direction === 'anti-clockwise' ? '逆时针方向' : circuit?.direction === 'clockwise' ? '顺时针方向' : '方向待确认'}</span></div><div className="cover-circuit"><CircuitTrace circuitId={meeting.circuitId} season={season}/></div><figcaption className="map-caption"><div><strong>{meeting.circuitName}</strong><small>{circuit?.type === 'street' ? '市街赛道' : circuit?.type === 'hybrid' ? '混合赛道' : circuit ? '永久赛道' : '构型待同步'}</small></div>{circuit && <div className="map-specs"><div><strong>{circuit.lengthKm}</strong><small>公里</small></div><div><strong>{circuit.turns}</strong><small>弯角</small></div></div>}</figcaption></figure>
+   <figure className="race-cover-visual"><div className="map-topline"><span>赛道档案</span><span>{circuit?.direction === 'anti-clockwise' ? '逆时针方向' : circuit?.direction === 'clockwise' ? '顺时针方向' : '方向待确认'}</span></div><div className="cover-circuit"><CircuitTrace circuitId={meeting.circuitId} season={season} meetingName={meeting.name}/></div><figcaption className="map-caption"><div><strong>{meeting.circuitName}</strong><small>{circuit?.type === 'street' ? '市街赛道' : circuit?.type === 'hybrid' ? '混合赛道' : circuit ? '永久赛道' : '构型待同步'}</small></div>{circuit && <div className="map-specs"><div><strong>{circuit.lengthKm}</strong><small>公里</small></div><div><strong>{circuit.turns}</strong><small>弯角</small></div></div>}</figcaption></figure>
   </div>
   <div className="session-rail" id="weekend" aria-label="本分站完整周末赛程">{(meeting.sessions || []).map((session,i) => <div key={session.id || i} className={session.type === 'race' ? 'session-race' : ''}><strong>{session.name}</strong><time dateTime={session.startTimeUTC}>{session.startTimeUTC ? formatBeijingDisplay(session.startTimeUTC) : '时间待定'}</time></div>)}{!meeting.sessions?.length && <div role="status">各节赛程暂不可用。</div>}</div>
   <div className="home-data-note"><p className="data-note">{overview.dataSource === 'live' ? '上游数据' : overview.dataSource === 'cache' ? '缓存数据' : overview.dataSource === 'lkg' ? '最近可用快照' : '数据暂不可用'} · 更新于 {formatBeijingDisplay(overview.updatedAt)}{overview.upstreamSyncSuccess === false ? ' · 最近同步失败，保留已有数据' : overview.isStale ? ' · 部分数据待更新' : ''}</p><Link href="/system" className="data-note">查看数据状态 ↗</Link></div>

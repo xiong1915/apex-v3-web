@@ -20,14 +20,15 @@ export function getSupabaseBrowserClient() {
   return browserClient;
 }
 
-export async function fetchCurrentSession(): Promise<{ user: User | null; session: Session | null }> {
+export async function fetchCurrentSession(): Promise<{ user: User | null; session: Session | null; error?: string }> {
   try {
     const res = await fetch('/api/auth/session', { cache: 'no-store' });
-    if (!res.ok) return { user: null, session: null };
+    if (res.status === 401) return {user:null,session:null};
+    if (!res.ok) return {user:null,session:null,error:'身份服务暂不可用，请重试'};
     const data = await res.json();
     return { user: data.user || null, session: data.session || null };
   } catch (_) {
-    return { user: null, session: null };
+    return { user: null, session: null, error:'身份服务暂不可用，请重试' };
   }
 }
 

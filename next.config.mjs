@@ -1,3 +1,6 @@
+import { execFileSync } from 'node:child_process';
+let buildSha=process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_GIT_SHA || '';
+try {if(!buildSha)buildSha=execFileSync('git',['-c',`safe.directory=${process.cwd().replaceAll('\\','/')}`,'rev-parse','HEAD'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();} catch {}
 /** @type {import('next').NextConfig} */
 const securityHeaders = [
   {
@@ -34,6 +37,7 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  env: { NEXT_PUBLIC_GIT_SHA: buildSha, NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(), NEXT_PUBLIC_REPOSITORY:'xiong1915/apex-v3-web' },
   poweredByHeader: false,
   async headers() {
     return [

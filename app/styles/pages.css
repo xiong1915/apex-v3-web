@@ -1105,3 +1105,10 @@ body:has(.ai-chat-console) {
     font-size:28px
   }
 }
+
+@media(max-width:768px){
+ .replay-stage{display:flex;flex-direction:column}
+ .replay-stage .replay-controls-card{order:-1;padding:12px!important}
+ .replay-stage .replay-canvas-area{min-height:320px!important}
+ .replay-stage .replay-canvas-container{min-height:300px}
+}

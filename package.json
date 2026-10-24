@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test:browser": "node tests/browser/editorial.cjs && node tests/browser/admin-navigation.cjs && node tests/browser/ai-history-monitor.cjs",
+    "test:browser": "node tests/browser/editorial.cjs && node tests/browser/admin-navigation.cjs && node tests/browser/ai-history-monitor.cjs && node tests/browser/performance-regressions.cjs",
     "test": "node ./node_modules/tsx/dist/cli.mjs --test tests/*.test.*",
     "check:copy": "node scripts/check-copy.mjs",
     "check:dates": "node ./node_modules/tsx/dist/cli.mjs --test tests/date-rules.test.mjs",
@@ -20,7 +20,7 @@
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
     "@upstash/redis": "^1.34.4",
-    "next": "16.4.3",
+    "next": "16.4.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "zod": "^4.6.5"

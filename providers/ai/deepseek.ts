@@ -129,13 +129,12 @@ export class DeepSeekProvider implements AIProvider {
     const reader = res.body.getReader();
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
+    let completed = false;
 
     try {
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
+        buffer += done ? decoder.decode() + '\n' : decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
@@ -151,7 +150,17 @@ export class DeepSeekProvider implements AIProvider {
 
           try {
             const parsed = JSON.parse(dataStr);
-            const delta = parsed.choices?.[0]?.delta?.content || parsed.delta?.content || '';
+            if (parsed.error || parsed.type === 'response.failed') {
+              yield { type: 'error', error: '模型输出失败，请重试' };
+              return;
+            }
+            const reason = parsed.choices?.[0]?.finish_reason;
+            if (reason === 'stop' || parsed.type === 'response.completed') completed = true;
+            if (reason && reason !== 'stop') {
+              yield { type: 'error', error: '模型输出未完整结束，请重试' };
+              return;
+            }
+            const delta = parsed.choices?.[0]?.delta?.content || parsed.delta?.content || (parsed.type === 'response.output_text.delta' ? parsed.delta : '') || '';
             if (delta) {
               yield { type: 'delta', content: delta };
             }
@@ -159,8 +168,13 @@ export class DeepSeekProvider implements AIProvider {
             // 忽略非 JSON SSE 行
           }
         }
+        if (done) break;
       }
 
+      if (!completed) {
+        yield { type: 'error', error: '模型连接提前结束，已保留部分回答，请重试' };
+        return;
+      }
       this.lastSuccessIso = new Date().toISOString();
       yield { type: 'done' };
     } catch (streamErr: any) {

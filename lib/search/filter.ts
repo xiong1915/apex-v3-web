@@ -1,3 +1,4 @@
+import { DRIVER_TRANSLATIONS } from '../f1/normalize';
 // lib/search/filter.ts
 // 搜索候选结果相关性与实体严格筛选器
 
@@ -28,6 +29,10 @@ export function filterAndRankCandidates(
   if (!Array.isArray(items) || items.length === 0) return [];
 
   const qLower = context.query.toLowerCase();
+  const entities=Object.values(DRIVER_TRANSLATIONS).map(driver=>[driver.zh.split('·').at(-1)!,driver.fullZh.match(/\(([^)]+)\)/)?.[1]?.split(' ').at(-1)?.toLowerCase()].filter((name):name is string=>Boolean(name)));
+  const requestedEntities=entities.filter(names=>names.some(name=>qLower.includes(name.toLowerCase())));
+  const f1Query=requestedEntities.length>0 || /(f1|formula\s*(?:1|one)|一级方程式|大奖赛|车手|车队|赛车|排位|杆位|冲刺|积分榜)/i.test(context.query);
+
   const isSingaporeQuery = /(新加坡|marina bay|滨海湾)/i.test(context.query);
   const isQualiQuery = /(排位|杆位|qualifying|pole)/i.test(context.query);
   const isSprintQuery = /(冲刺|sprint)/i.test(context.query);
@@ -49,6 +54,14 @@ export function filterAndRankCandidates(
     if (!safety.safe) continue;
 
     const normalizedUrl = safety.normalizedUrl;
+    if (/(?:tickets?|shop|store|merchandise|hospitality|buy-now)(?:[/.?_-]|$)/i.test(new URL(normalizedUrl).pathname) || /门票|购票|商品|立即购买|buy tickets/i.test(title)) continue;
+    if (f1Query && !/(f1|formula\s*(?:1|one)|一级方程式|大奖赛|车手|车队|赛车|排位|杆位|冲刺)/i.test(combinedText)) continue;
+    if (requestedEntities.some(names=>!names.some(name=>combinedText.includes(name.toLowerCase())))) continue;
+    if (isQualiQuery && !/(排位|杆位|qualifying|pole)/i.test(combinedText)) continue;
+    if (isSprintQuery && !/(冲刺|sprint)/i.test(combinedText)) continue;
+    if (isHamiltonQuery && !/(汉密尔顿|hamilton)/i.test(combinedText)) continue;
+    if (isFerrariQuery && !/(法拉利|ferrari)/i.test(combinedText)) continue;
+
     if (seenUrls.has(normalizedUrl)) continue;
     seenUrls.add(normalizedUrl);
 
@@ -133,7 +146,7 @@ export function filterAndRankCandidates(
     const targetSeason = context.season || context.query.match(/(19\d\d|20\d\d)/)?.[1];
     if (targetSeason) {
       const mentionedYears: string[] = combinedText.match(/\b(?:19|20)\d{2}\b/g) || [];
-      if (mentionedYears.length && !mentionedYears.includes(targetSeason)) continue;
+      if (!mentionedYears.includes(targetSeason) && !normalizedUrl.includes(targetSeason)) continue;
     }
     if (targetSeason && combinedText.includes(targetSeason)) {
       score += 15;

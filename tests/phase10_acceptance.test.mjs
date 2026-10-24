@@ -1,3 +1,4 @@
+import { trustedClientBucket } from '../lib/auth/client-ip.ts';
 // tests/phase10_acceptance.test.mjs
 // Phase 10 专项全链路针对性验收与严谨性核验测试套件
 
@@ -134,8 +135,9 @@ test('Phase 10 专项验收与严谨性核验', async (t) => {
   await t.test('5. AI 限流、IP 防伪与费用保护核验', () => {
     const routeSource = fs.readFileSync('app/api/ai/chat/route.ts', 'utf8');
     // 5.1 可信 IP 提取
-    assert.ok(routeSource.includes("req.headers.get('cf-connecting-ip')"), '优先采用 Cloudflare 不可伪造真实 IP');
-    assert.ok(routeSource.includes("req.headers.get('x-real-ip')"), '其次采用 Vercel 真实 IP');
+    assert.equal(trustedClientBucket(new Headers({'cf-connecting-ip':'1.1.1.1','x-real-ip':'2.2.2.2'}),true),'unknown-peer','直连源站不能伪造 Cloudflare 身份');
+    assert.equal(trustedClientBucket(new Headers({'x-vercel-forwarded-for':'1.1.1.1'}),true),'1.1.1.1');
+    assert.equal(trustedClientBucket(new Headers({'x-forwarded-for':'1.1.1.1'}),false),'unknown-peer');
 
     // 5.2 统一持久化存储与原子计数
     assert.ok(routeSource.includes('getRateLimitStore'), '限流统一通过存储门面调度');

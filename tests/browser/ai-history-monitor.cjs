@@ -9,7 +9,8 @@ const base = process.env.QA_BASE_URL || 'http://127.0.0.1:3100';
 if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw Error('Localhost required');
 const out = process.env.QA_ARTIFACT_DIR || require('node:os').tmpdir();
 const service = new ConversationService(new MemoryConversationStore());
-let failWrites = false, modelFailure = false, modelContext = [], aiReads = 0;
+let draftDelay = 0, draftSettled = false, chatStartedBeforeDraft = false;
+let failWrites = false, modelFailure = false, partialFailure = false, modelContext = [], aiReads = 0;
 const errors = [];
 const monitor = new MemoryAIMonitor();
 async function fixtures(context, owner = 'test-owner') {
@@ -17,6 +18,7 @@ async function fixtures(context, owner = 'test-owner') {
  await context.route('**/api/ai/conversations*', async r => {
   const req = r.request(), id = new URL(req.url()).searchParams.get('id');
   const method = req.method(), body = method === 'GET' ? {} : req.postDataJSON();
+  if(draftDelay && method==='POST') await new Promise(resolve=>setTimeout(resolve,draftDelay));
   if (failWrites && method !== 'GET') return r.fulfill({ status: 503, json: { error: '本地验收：云端保存失败，当前内容尚未保存' } });
   try {
    let json;
@@ -24,11 +26,14 @@ async function fixtures(context, owner = 'test-owner') {
    if (method === 'POST') json = { conversation: await service.create(owner, body.messages) };
    if (method === 'PUT') json = { conversation: await service.update(owner, id, body) };
    if (method === 'DELETE') { await service.remove(owner, id, body.revision); json = { deleted: true }; }
+   if(draftDelay && method==='POST')draftSettled=true;
    return r.fulfill({ status: method === 'POST' ? 201 : 200, json });
   } catch (e) { return r.fulfill({ status: e.status || 400, json: { error: e.message } }); }
  });
  await context.route('**/api/ai/chat', r => {
+  if(draftDelay && !draftSettled)chatStartedBeforeDraft=true;
   if (modelFailure) return r.fulfill({ status: 503, json: { error: 'local model unavailable' } });
+  if (partialFailure) return r.fulfill({contentType:'text/event-stream',body:'data: {"type":"delta","content":"保留这段未完整回答"}\n\ndata: {"type":"error","error":"模型连接中断"}\n\n'});
   modelContext = r.request().postDataJSON().messages;
   return r.fulfill({ contentType: 'text/event-stream', body: 'data: {"type":"delta","content":"本地验收：轮胎策略需要结合赛道。"}\n\ndata: {"type":"sources","sources":[{"name":"测试来源","url":"https://example.invalid/source"}]}\n\ndata: {"type":"done"}\n\n' });
  });
@@ -52,7 +57,10 @@ async function fixtures(context, owner = 'test-owner') {
   const ask = async text => { const input = page.getByRole('textbox', { name: '向 APEX AI 提问' }); await input.fill(text); await input.press('Enter'); await page.getByText('本地验收：轮胎策略需要结合赛道。', { exact: true }).waitFor(); await saved(); };
   await page.goto(base + '/ai'); await page.locator('.history-footer button').waitFor({ state: 'visible' });
   await page.waitForFunction(() => !document.querySelector('.history-footer button').disabled);
+  draftDelay=800;
   await ask('如何理解轮胎策略？');
+  assert.equal(chatStartedBeforeDraft,true,'AI request must start before slow draft save completes');
+  draftDelay=0;
   assert.equal((await service.list('test-owner')).length, 1);
   await page.reload(); await page.getByRole('button', { name: /如何理解轮胎策略？.*条/ }).click();
   await page.getByText('本地验收：轮胎策略需要结合赛道。', { exact: true }).waitFor();
@@ -73,6 +81,18 @@ async function fixtures(context, owner = 'test-owner') {
   await page.getByRole('heading', { name: '今天想了解哪场比赛？', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: '重试', exact: true }).count(), 0, 'new conversation must clear previous model error');
   modelFailure = false;
+  partialFailure = true;
+  await page.getByRole('textbox', {name:'向 APEX AI 提问'}).fill('中途断流测试');
+  await page.getByRole('textbox', {name:'向 APEX AI 提问'}).press('Enter');
+  await page.getByRole('button',{name:'重试',exact:true}).waitFor();
+  await page.getByText('保留这段未完整回答',{exact:true}).waitFor();
+  await page.getByText('已保存到云端 · AI 参考最近的对话上下文').waitFor();
+  const partialSaved=(await service.list('test-owner')).find(c=>c.title==='中途断流测试');
+  assert.ok(partialSaved);
+  assert.ok((await service.read('test-owner',partialSaved.id)).messages.some(m=>m.role==='assistant'&&m.content==='保留这段未完整回答'&&m.status==='error'));
+  partialFailure = false;
+  await page.locator('.conversation-sidebar').getByRole('button', { name: /新建对话/ }).click();
+
   const history = Array.from({ length: 70 }, (_, i) => ({ id: 'old-' + i, role: i % 2 ? 'assistant' : 'user', content: 'x'.repeat(1100), status: 'completed' }));
   const long = await service.create('test-owner', history); await page.getByRole('button', { name: '刷新列表', exact: true }).click();
   await page.locator('.history-select').filter({ hasText: long.title }).click(); await ask('这是最新的问题');
