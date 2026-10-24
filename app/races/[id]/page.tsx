@@ -30,7 +30,7 @@ export default async function RaceDetailPage({
   }
 
   // 严格根据当前 season 获取赛道元数据，绝不跨年代套用
-  const circuitMeta = CircuitRegistry.getCircuit(race.circuitId, season);
+  const circuitMeta = CircuitRegistry.getCircuit(race.circuitId, season, {meetingName:race.name});
 
   // 并行获取该分站的历史官方正赛、排位、冲刺详细赛果
   const [raceResults, qualiResults, sprintResults] = await Promise.all([
@@ -50,7 +50,7 @@ export default async function RaceDetailPage({
       <div className="race-detail-cover"><div><PageHeading category={`第 ${race.round} 站 / 共 ${calendar.length} 站 · ${season} 赛季`} title={race.nameZh||race.name} description={`${circuitMeta?.nameZh||race.circuitName} · ${race.locality} / ${race.country}`}/>
        <div className="race-detail-tags">{race.isSprintWeekend&&<span className="badge-pill badge-red">冲刺周末</span>}{circuitMeta&&<><span className="badge-pill">{circuitMeta.lengthKm} 公里</span><span className="badge-pill">{circuitMeta.turns} 弯角</span>{circuitMeta.drsZones>0&&<span className="badge-pill">{circuitMeta.drsZones} 个 DRS 区</span>}</>}</div>
        <Link href={`/replay?season=${season}&round=${race.round}`} className="btn-primary">进入本分站回放 ↗</Link>
-      </div><figure className="race-detail-map"><CircuitTrace circuitId={race.circuitId} season={season}/><figcaption>{circuitMeta?.nameZh||race.circuitName} · {season} 构型</figcaption></figure></div>
+      </div><figure className="race-detail-map"><CircuitTrace circuitId={race.circuitId} season={season} meetingName={race.name}/><figcaption>{circuitMeta?.nameZh||race.circuitName} · {season} 构型</figcaption></figure></div>
         {/* 正赛官方赛果列表 */}
         {hasRaceResults && (
           <div style={{ marginBottom: '64px' }}>

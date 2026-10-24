@@ -7,6 +7,7 @@ import { createServerClient } from '@supabase/ssr';
 import { User, Session } from './types';
 import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isValidUuid } from './config';
 import { mockAuthManager } from './mock';
+import { AuthUnavailableError, checkAuthError, refreshVerifiedSession, verifySessionCredential } from './verified-session';
 
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
@@ -110,74 +111,31 @@ export async function getServerSession(req?: NextRequest): Promise<Session | nul
       const supabase = await createSupabaseServerClient();
       const token = extractTokenFromRequest(req);
 
-      let authUser = null;
+      // Never borrow identity or MFA from another credential.
       if (token) {
-        const { data: userRes, error: userErr } = await supabase.auth.getUser(token);
-        if (!userErr && userRes.user) {
-          authUser = userRes.user;
-        }
+        const verified = await verifySessionCredential(supabase, { access_token: token }, AUTH_CONFIG.sessionMaxAge);
+        if (verified) return verified;
+        if (req?.headers.get('authorization')) return null;
+        const payload = parseJwtPayload(token);
+        if (!payload?.exp || payload.exp > nowSec) return null;
+      } else {
+        const { data, error } = await supabase.auth.getSession();
+        checkAuthError(error);
+        if (error) return null;
+        if (data.session) return verifySessionCredential(supabase, data.session, AUTH_CONFIG.sessionMaxAge);
       }
-
-      if (!authUser) {
-        const { data: userRes, error } = await supabase.auth.getUser();
-        if (!error && userRes.user) {
-          authUser = userRes.user;
-        }
-      }
-
-      // 如果 access token 过期，尝试通过 refresh_token 恢复
-      let sessionData: any = null;
-      if (!authUser) {
-        const refreshToken = req?.cookies.get(AUTH_CONFIG.refreshCookieName)?.value;
-        if (refreshToken) {
-          const { data: refreshRes, error: refreshErr } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
-          if (!refreshErr && refreshRes.session && refreshRes.user) {
-            authUser = refreshRes.user;
-            sessionData = refreshRes.session;
-          }
-        }
-      }
-
-      if (!authUser) return null;
-
-      if (!sessionData) {
-        const { data: { session } } = await supabase.auth.getSession();
-        sessionData = session;
-      }
-
-      if (!sessionData) return null;
-
-      const rawTokenPayload = token ? parseJwtPayload(token) : null;
-      const jwtPayload = parseJwtPayload(sessionData.access_token) || rawTokenPayload;
-      const sessionIssuedAt = jwtPayload?.iat || (sessionData as any)?.created_at || nowSec;
-      if (nowSec - sessionIssuedAt > AUTH_CONFIG.sessionMaxAge) {
-        return null;
-      }
-
-      const aalLevel = jwtPayload?.aal || rawTokenPayload?.aal || (sessionData as any)?.aal || (authUser.app_metadata?.aal as any) || 'aal1';
-
-      return {
-        access_token: sessionData.access_token,
-        refresh_token: sessionData.refresh_token,
-        expires_at: sessionData.expires_at || (nowSec + 3600),
-        expires_in: sessionData.expires_in || 3600,
-        created_at: sessionIssuedAt,
-        user: {
-          id: authUser.id,
-          email: authUser.email || '',
-          email_confirmed_at: authUser.email_confirmed_at,
-          role: authUser.role,
-          user_metadata: authUser.user_metadata,
-          app_metadata: {
-            ...authUser.app_metadata,
-            aal: aalLevel
-          },
-          created_at: authUser.created_at
-        },
-        aal: aalLevel
-      };
+      const refreshToken = req?.cookies.get(AUTH_CONFIG.refreshCookieName)?.value;
+      if (!refreshToken) return null;
+      return await refreshVerifiedSession(supabase, refreshToken, AUTH_CONFIG.sessionMaxAge, async session=>{
+        const cookieStore=await cookies();
+        const options={httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax' as const,maxAge:AUTH_CONFIG.sessionMaxAge,path:'/'};
+        cookieStore.set(AUTH_CONFIG.cookieName,session.access_token,options);
+        if(session.refresh_token)cookieStore.set(AUTH_CONFIG.refreshCookieName,session.refresh_token,options);
+      });
     } catch (e) {
-      console.warn('[Auth Server] Supabase session retrieval error:', e);
+      if (e instanceof AuthUnavailableError) throw e;
+      checkAuthError(e);
+      console.warn('[Auth Server] Session verification failed');
       return null;
     }
   }
@@ -229,7 +187,7 @@ export async function verifyAdminAccess(
 
   const requireAal2 = options.requireAal2 !== false;
   if (requireAal2) {
-    const isAal2 = session.aal === 'aal2' || user.app_metadata?.aal === 'aal2';
+    const isAal2 = session.aal === 'aal2';
     if (!isAal2) {
       return { ok: false, status: 403, message: '敏感管理操作需要完成 TOTP 双重安全验证 (AAL2)' };
     }

@@ -107,14 +107,13 @@ export class AIOrchestrator {
       q = q.replace(/今天|今日|昨天|昨日/g, '');
     }
 
-    // 分站指代消除：将“上一站”解析为第16站巴林大奖赛
-    q = q.replace(/上一站|上一场/g, '2026 F1 第16站 巴林大奖赛');
+    // Relative meetings are resolved from the current snapshot in buildPrompt.
 
     // 若涉及 F1 实体但未带 F1 标签，前置 F1 2026 提高专业召回率，规避误匹配乒乓球(WTT)等非赛车体育
     const isF1Domain = /(汉密尔顿|维斯塔潘|勒克莱尔|诺里斯|安东内利|拉塞尔|皮亚斯特里|法拉利|梅赛德斯|迈凯伦|红牛|排位赛|冲刺赛|大奖赛|正赛|赛车|分站|积分榜)/i.test(q);
     const hasF1Tag = /(f1|一级方程式|formula 1)/i.test(q);
     if (isF1Domain && !hasF1Tag) {
-      q = `F1 2026 ${q}`;
+      q = `F1 ${q.match(/(?:19|20)\d{2}/)?.[0] || currYear} ${q}`;
     }
 
     return q.replace(/\s+/g, ' ').trim() || rawQuery.trim();
@@ -245,7 +244,12 @@ export class AIOrchestrator {
     // 通道三：普通联网查询（带年份、分站、官方限定的精准搜索过滤）
     const needSearch = this.isSearchNeeded(query, intent);
     if (needSearch) {
-      const searchKw = this.extractSearchKeyword(query, messages);
+      let searchKw = this.extractSearchKeyword(query, messages);
+      if (/上一站|上一场/.test(searchKw)) {
+        const season = query.match(/(?:19|20)\d{2}/)?.[0] || String(new Date().getUTCFullYear());
+        const previous = (await defaultF1Service.getOverview(season)).previousRace;
+        if (previous) searchKw = searchKw.replace(/上一站|上一场/g, `${season} F1 第${previous.round}站 ${previous.nameZh || previous.name}`);
+      }
       const isOfficialOnly = /(官方|官网|权威|fia|formula1\.com)/i.test(query);
       const yearMatch = query.match(/\b(19\d\d|20\d\d)\b/);
       const roundMatch = query.match(/第([0-9]{1,2})站/);
@@ -425,8 +429,7 @@ ${matchedMeeting.sessions.map((s: any) => `  * ${s.name}: ${formatBeijingDisplay
     }
 
     if (lastR) {
-      // 严谨规范：仅在用户明确询问上一站或巴林分站赛果时才将上一站成绩链接加入 sources，杜绝无关链接污染
-      const isAskingLastRace = /(上[一站场]|巴林|第16站|第十六站|雪邦|上一场比赛)/i.test(query);
+      const isAskingLastRace = /上一站|上一场|最近一站/i.test(query) || [lastR.nameZh,lastR.name].filter(Boolean).some(name=>query.includes(name!));
       if (isAskingLastRace) {
         if (lastR.sourceUrls?.raceResult) {
           sources.push({ name: 'Formula 1 正赛官方成绩', url: lastR.sourceUrls.raceResult });
@@ -560,7 +563,7 @@ ${contextText}
 
     const targetMeeting = matchedMeeting || (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛/i.test(query) ? curr : null);
 
-    if (targetMeeting && (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛/i.test(query) || matchedMeeting)) {
+    if (targetMeeting && !/上一站|上一场/.test(query) && !/冠军|杆位|最快圈|赛果|成绩|领奖台|winner|pole|fastest/i.test(query) && (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛/i.test(query) || matchedMeeting)) {
       const nextSessionDesc = nextS.status === 'IN_PROGRESS'
         ? `当前进行中：${nextS.session?.name || 'Session'} (预计剩余时间计算中)`
         : `${nextS.session?.name || '大奖赛正赛'} (${nextS.session?.startTimeUTC ? formatBeijingDisplay(nextS.session.startTimeUTC) : '待定'})`;
@@ -625,7 +628,7 @@ ${contextText}
       };
     }
 
-    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR) {
+    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR && (!matchedMeeting || matchedMeeting.round===lastR.round)) {
       const poleText = lastR.pole?.name
         ? `${lastR.pole.name} (${lastR.pole.team || lastR.winner.team})`
         : (lastR.startingGridP1?.name ? `${lastR.startingGridP1.name} (发车首位)` : '暂无数据');
@@ -719,7 +722,7 @@ ${standingsList}
 
     const targetMeeting = matchedMeeting || (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛/i.test(query) ? curr : null);
 
-    if (targetMeeting && (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛|时间表/i.test(query) || matchedMeeting)) {
+    if (targetMeeting && !/上一站|上一场/.test(query) && !/冠军|杆位|最快圈|赛果|成绩|领奖台|winner|pole|fastest/i.test(query) && (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛|时间表/i.test(query) || matchedMeeting)) {
       const isCurr = targetMeeting.round === curr.round;
       const nextStatusText = isCurr
         ? (nextS.status === 'IN_PROGRESS'
@@ -779,7 +782,7 @@ ${standingsList}
     }
 
     // 3. 上一站比赛赛果
-    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR) {
+    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR && (!matchedMeeting || matchedMeeting.round===lastR.round)) {
       const poleDesc = lastR.pole?.name
         ? `${lastR.pole.name} (${lastR.pole.team || lastR.winner.team}) [官方确认杆位得主]`
         : (lastR.startingGridP1?.name ? `${lastR.startingGridP1.name} (正赛发车首位，排位成绩待确认)` : '暂无官方记录（字段暂缺）');
@@ -800,7 +803,7 @@ ${standingsList}
 - **本场正赛最快圈速**：${flDesc}
 - **官方赛果验证地址**：[Formula 1 官方分站赛果](${officialLink})
 
-*注意：雪邦历史赛道纪录为 1:34.080 (蒙托亚，2004)，与本场正赛最快圈 (维斯塔潘 1:38.220，第 55 圈) 分属不同概念，官方数据严格独立。*`;
+*本场最快圈与赛道历史纪录分别统计，缺少官方记录的字段不作推测。*`;
 
       return { factText: text, isPureFactual: !isAnalysisAsked };
     }
@@ -831,11 +834,24 @@ ${standingsList}
   /**
    * 执行完整的生成
    */
+  private async pureFact(query: string, intent: UserIntent) {
+    if (intent !== 'F1_FACTUAL' || /https?:\/\//i.test(query)) return null;
+    const season = query.match(/\b(19\d\d|20\d\d)\b/)?.[1] || String(new Date().getUTCFullYear());
+    const overview = await defaultF1Service.getOverview(season);
+    const calendar = await defaultF1Service.getCalendar(season).catch(() => []);
+    const historical = season !== String(new Date().getUTCFullYear()) ? { season, standings: overview.driverStandings, constructorStandings: overview.constructorStandings, cutoff: overview.standingsCutoffDesc } : undefined;
+    const fact = this.getCanonicalFactBlock(intent, query, overview, calendar, historical);
+    if (!fact?.isPureFactual) return null;
+    return {fact, card: this.getFactCard(intent, query, overview, calendar, historical)};
+  }
+
   async answer(messages: AIMessage[], clientKey?: string, signal?: AbortSignal): Promise<{ reply: string; sources: AISource[] }> {
     const lastUserMsg = messages.filter(m => m.role === 'user').pop();
     const query = lastUserMsg?.content || '';
 
     const intent = this.classifyIntent(query);
+    const direct = await this.pureFact(query, intent).catch(() => null);
+    if (direct) return {reply: direct.fact.factText, sources: []};
     const { systemPrompt, sources, searchResults, evidenceUnavailable } = await this.buildPrompt(intent, query, messages, signal);
 
     // 1. 检查是否存在权威确定性事实 (若包含用户指定网址，优先执行网页直通解析)
@@ -917,6 +933,13 @@ ${standingsList}
     const query = lastUserMsg?.content || '';
 
     const intent = this.classifyIntent(query);
+    const direct = await this.pureFact(query, intent).catch(() => null);
+    if (direct) {
+      if (direct.card) yield {type: 'fact_card', factCard: direct.card};
+      yield {type: 'delta', content: direct.fact.factText};
+      yield {type: 'done'};
+      return;
+    }
     const { systemPrompt, sources, searchResults, evidenceUnavailable } = await this.buildPrompt(intent, query, messages, signal);
 
     if (sources.length > 0) {
@@ -995,16 +1018,8 @@ ${standingsList}
       if (err.name === 'AbortError' || signal?.aborted) {
         return;
       }
-      console.warn(`[AIOrchestrator] Stream fallback: ${err.message}`);
-      const [overview, calendar] = await Promise.all([
-        defaultF1Service.getOverview(),
-        defaultF1Service.getCalendar('2026').catch(() => [])
-      ]);
-      const text = this.getDeterministicResponse(intent, query, overview, calendar, searchResults);
-      if (!canonicalFact) {
-        yield { type: 'delta', content: text };
-      }
-      yield { type: 'done' };
+      console.warn('[AIOrchestrator] Provider stream failed');
+      yield {type:'error',error:'回答未完整生成，已保留部分内容，请重试'};
     }
   }
 }

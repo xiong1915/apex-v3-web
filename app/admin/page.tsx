@@ -50,6 +50,7 @@ function renderTotpQr(qr?: string) {
 export default function AdminPage() {
   const router = useRouter();
 
+  const [authError, setAuthError] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminUser, setAdminUser] = useState<any>(null);
@@ -115,8 +116,9 @@ export default function AdminPage() {
   // 1. 初始化鉴权
   useEffect(() => {
     let mounted = true;
-    fetchCurrentSession().then(async ({ user, session }) => {
+    fetchCurrentSession().then(async ({ user, session, error }) => {
       if (!mounted) return;
+      if (error) {setAuthError(error); return;}
       if (!user) {
         router.push('/login?returnUrl=/admin');
         return;
@@ -281,6 +283,8 @@ export default function AdminPage() {
     }, 1000);
     return () => clearInterval(t);
   }, [cooldownSeconds]);
+
+  if (authError) return <div className="page-shell container" role="alert"><p>{authError}</p><button className="btn-primary" onClick={() => window.location.reload()}>重试连接</button></div>;
 
   if (checkingAuth) {
     return (
