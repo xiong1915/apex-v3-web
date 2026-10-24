@@ -8,6 +8,7 @@ export interface CacheStore {
   set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
   delete(key: string): Promise<void>;
   clear?(): Promise<void>;
+  incrementCounters?(values: Record<string, number>, timestamp?: string): Promise<void>;
 }
 
 export interface SessionContext {

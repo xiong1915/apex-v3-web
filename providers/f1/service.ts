@@ -1,3 +1,4 @@
+import { postSessionWindow } from '../../lib/f1/post-session';
 // providers/f1/service.ts
 // F1 统一数据服务门面：提供带多级缓存、Last Known Good (LKG) 权威降级与数据清洗的聚合能力
 // 严格遵守数据真实性：严禁运行时硬编码编造假积分或假分站事实，网络与 LKG 皆不可用时显式标记 UNAVAILABLE
@@ -285,7 +286,18 @@ export class F1Service {
   private async loadDomainOnce<T>(season: string, domain: string, key: string, ttl: number, freshness: number,
     fetcher: () => Promise<T>, valid: (data: T) => boolean, force = false): Promise<DataFetchResult<T>> {
     if (!force) {
+      let postRace = false;
+      if (domain !== 'calendar' && domain !== 'seasons' && Number(season) === new Date().getUTCFullYear()) {
+        const calendar = await this.getCalendarResult(season);
+        const event = postSessionWindow(calendar.data);
+        if(event){
+          const overview=await this.cache.get<F1Overview>(`f1:v3:overview:${season}`);
+          const done=overview?.standingsCutoffVerified && (overview.scopeDetail?.driverStandingsRound || 0)>=event.round && (overview.scopeDetail?.constructorStandingsRound || 0)>=event.round && (event.type!=='race'||(overview.previousRace?.round || 0)>=event.round&&overview.hasLatestRaceResult===true);
+          postRace=!done;
+        }
+      }
       const cached = await this.cache.get<any>(key);
+      if(postRace && cached?.result?.fetchedAt && Date.now()-Date.parse(cached.result.fetchedAt)>90000) return this.loadDomainOnce(season,domain,key,90,freshness,fetcher,valid,true);
       if (cached?.dataCacheVersion === 1 && valid(cached.result?.data)) return {...cached.result, cacheHit: true, source: cached.result.source === 'lkg' ? 'lkg' : 'cache'};
       if (cached && valid(cached)) return {data: cached, source: 'cache', cacheHit: true, fetchedAt: undefined, isStale: false};
     }
@@ -384,6 +396,18 @@ export class F1Service {
     }
   }
 
+  async getRaceCover(season = String(new Date().getUTCFullYear())) {
+    const result = await this.getCalendarResult(season);
+    const calendar = result.data;
+    const now = new Date();
+    const historical = Number(season) < now.getUTCFullYear();
+    const currentMeeting = (!historical && calendar.find(m => Date.parse(m.raceStartUTC) + 4 * 3600000 > now.getTime())) || calendar.at(-1) || {
+      meetingId:'tbd',round:0,season,name:'赛程同步中',nameZh:'赛程同步中',country:'',locality:'',circuitId:'unknown',circuitName:'待定',raceStartUTC:'',sessions:[],isSprintWeekend:false
+    };
+    return {season, currentMeeting, nextSession: historical ? {session:null,status:'FINISHED' as const,targetUtcMs:null,targetIso:null} : getNextRelevantSession(currentMeeting.sessions || [], now),
+      dataSource:result.source, updatedAt:result.fetchedAt, isStale:result.isStale, totalRounds:calendar.length};
+  }
+
   async getOverview(season: string = '2026'): Promise<F1Overview> {
     const cacheKey = `f1:v3:overview:${season}`;
     const cached = await this.cache.get<F1Overview>(cacheKey);
@@ -465,7 +489,7 @@ export class F1Service {
       } catch { /* 无法取得完整官方证据时保留待核实 */ }
     }
     const isStandingsInSync = cutoffInfo.verified;
-    const sessionEvidenceAvailable = isHistorical || !isSprintWeekendMeeting || Boolean(driverSnapshotSession && constructorSnapshotSession && driverSnapshotSession === constructorSnapshotSession && cutoffInfo.verified);
+    const sessionEvidenceAvailable = cutoffInfo.verified;
 
     const standingsLagging = !isHistorical && Boolean(
       previousRace?.winner && previousRace.season === season &&

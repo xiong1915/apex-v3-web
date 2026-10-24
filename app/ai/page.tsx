@@ -42,6 +42,7 @@ export default function AIPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastFailedInput, setLastFailedInput] = useState<string | null>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(false);
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
@@ -68,8 +69,9 @@ export default function AIPage() {
   // 校验登录状态：未登录访问自动跳转登录页，并保留提问输入
   useEffect(() => {
     let mounted = true;
-    fetchCurrentSession().then(({ user }) => {
+    fetchCurrentSession().then(({ user, error }) => {
       if (!mounted) return;
+      if (error) {setAuthError(error); return;}
       if (!user) {
         if (typeof window !== 'undefined') {
           const urlParams = new URLSearchParams(window.location.search);
@@ -187,9 +189,14 @@ export default function AIPage() {
     setErrorMessage(null);
 
     const apiPayload: AIMessage[] = buildChatContext(nextHistory);
+    let collectedText = '';
+    let collectedSources: AISource[] = [];
+    let collectedFactCard: AIFactCard | null = null;
 
     try {
-      await history.save(nextHistory);
+      const draftSave = history.save(nextHistory);
+      // Draft errors remain visible in the history controller; do not delay first token.
+      void draftSave.catch(() => {});
       if (controller.signal.aborted) return;
       setStatus('streaming');
       const res = await fetch('/api/ai/chat', {
@@ -224,9 +231,6 @@ export default function AIPage() {
         throw new Error('无法建立数据流连接通道');
       }
 
-      let collectedText = '';
-      let collectedSources: AISource[] = [];
-      let collectedFactCard: AIFactCard | null = null;
       await consumeAIStream(res.body, parsed => {
         if (abortControllerRef.current !== controller || controller.signal.aborted) return;
         if (parsed.type === 'delta' && parsed.content) {
@@ -259,6 +263,13 @@ export default function AIPage() {
       setStatus('completed');
     } catch (err: any) {
       if (abortControllerRef.current !== controller) return;
+      if(collectedText || collectedFactCard){
+        setMessages(prev=>[...prev,{
+          id:`partial-${Date.now()}`, role:'assistant', content:collectedText, sources:collectedSources,
+          ...(collectedFactCard ? {factCard:collectedFactCard} : {}), status:'error'
+        }]);
+        setStreamingContent('');setStreamingSources([]);setStreamingFactCard(null);
+      }
       if (err.name === 'AbortError' || controller.signal.aborted) {
         setStatus('aborted');
       } else if (!navigator.onLine) {
@@ -327,6 +338,8 @@ export default function AIPage() {
     setErrorMessage(null);
     setStatus('idle');
   };
+
+  if (authError) return <div className="page-shell container" role="alert"><p>{authError}</p><button className="btn-primary" onClick={() => window.location.reload()}>重试连接</button></div>;
 
   if (authChecking) {
     return (

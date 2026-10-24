@@ -153,7 +153,7 @@ export function checkUrlSafety(rawUrl: string): UrlSafetyCheck {
       }
     }
     if (sourceType !== 'self_media') {
-      const isMainstream = MAINSTREAM_MEDIA_DOMAINS.some(m => hostname.includes(m));
+      const isMainstream = MAINSTREAM_MEDIA_DOMAINS.some(m => (hostname === m || hostname.endsWith(`.${m}`)));
       sourceType = isMainstream ? 'mainstream_media' : 'snippet_only';
     }
   }
@@ -201,7 +201,7 @@ function isPrivateOrLocalHost(hostname: string): boolean {
   }
 
   // IPv6 本地回环或私有
-  if (hostname === '::1' || hostname.startsWith('fc') || hostname.startsWith('fd') || hostname.startsWith('fe80')) {
+  if (hostname === '::1' || hostname.startsWith('fc') || hostname.startsWith('fd') || /^fe[89ab]/.test(hostname) || hostname.startsWith('ff')) {
     return true;
   }
 

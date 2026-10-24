@@ -113,6 +113,17 @@ export function MarkdownRenderer({ content, className, style }: MarkdownRenderer
       continue;
     }
 
+    // Tables stay inside a horizontally scrollable region on narrow screens.
+    if (line.includes('|') && /^\s*\|?\s*:?-{3,}/.test(lines[i+1] || '')) {
+      flushList();
+      const cells=(row:string)=>row.trim().replace(/^\||\|$/g,'').split('|').map(cell=>cell.trim());
+      const headers=cells(line); const rows:string[][]=[]; i+=2;
+      while(i<lines.length&&lines[i].includes('|')&&lines[i].trim()){rows.push(cells(lines[i]));i++;}
+      i--;
+      elements.push(<div key={`table-${elements.length}`} style={{overflowX:'auto',maxWidth:'100%',margin:'12px 0'}}><table style={{borderCollapse:'collapse',width:'100%',fontSize:'14px'}}><thead><tr>{headers.map((cell,index)=><th key={index} scope="col" style={{textAlign:'left',padding:'10px',borderBottom:'1px solid var(--line-dark)'}}>{renderInlineMarkdown(cell)}</th>)}</tr></thead><tbody>{rows.map((row,index)=><tr key={index}>{headers.map((_,col)=><td key={col} style={{padding:'10px',borderBottom:'1px solid var(--line-dark)'}}>{renderInlineMarkdown(row[col]||'')}</td>)}</tr>)}</tbody></table></div>);
+      continue;
+    }
+
     // 2. 空行
     if (!line.trim()) {
       flushList();
@@ -267,7 +278,7 @@ function renderInlineMarkdown(text: string): React.ReactNode {
   if (!text) return null;
 
   // 匹配 **bold** 或 `code`
-  const regex = /(\*\*.*?\*\*|`.*?`)/g;
+  const regex = /(\[[^\]\n]+\]\([^\s)]+\)|\*\*.*?\*\*|`.*?`)/g;
   const parts = text.split(regex);
 
   if (parts.length === 1) {
@@ -275,6 +286,12 @@ function renderInlineMarkdown(text: string): React.ReactNode {
   }
 
   return parts.map((part, index) => {
+    const link=part.match(/^\[([^\]]+)\]\(([^\s)]+)\)$/);
+    if(link){
+      try{const url=new URL(link[2]);if(['https:','http:'].includes(url.protocol)&&!url.username&&!url.password)return <a key={index} href={url.href} target="_blank" rel="noopener noreferrer" style={{textDecoration:'underline',textUnderlineOffset:'3px'}}>{link[1]}</a>;}catch{}
+      return link[1];
+    }
+
     if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
       return (
         <strong key={index} style={{ fontWeight: 700, color: 'var(--text-primary, #ffffff)' }}>

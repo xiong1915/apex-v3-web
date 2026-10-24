@@ -5,12 +5,10 @@ import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { PageHeading } from '@/components/page-heading';
 import { useSearchParams, useRouter } from 'next/navigation';
-import {
-  REAL_REPLAY_SESSIONS,
-  DEMO_REPLAY_SESSIONS,
-  ALL_REPLAY_SESSIONS,
-  interpolateVehiclesAtTimestamp
-} from '@/lib/f1/replay/real-sessions';
+import { interpolateVehiclesAtTimestamp } from '@/lib/f1/replay/interpolation';
+import { DEMO_IDS, loadDemo, PENDING_METADATA } from '@/lib/f1/replay/demo-loader';
+import type { ReplayDataset } from '@/lib/f1/replay/types';
+import { ReplayWindowLoader } from '@/lib/f1/replay/window-loader';
 import { ReplayCanvas } from '@/components/replay/ReplayCanvas';
 import { ReplayControls } from '@/components/replay/ReplayControls';
 import { Leaderboard } from '@/components/replay/Leaderboard';
@@ -27,18 +25,24 @@ function ReplayContent() {
   const roundParam = searchParams.get('round');
 
   const requestedYear = seasonParam || String(new Date().getUTCFullYear());
-  const [sessions, setSessions] = useState<(OpenSession & { round?: number; nameZh?: string })[]>([]);
+  const [sessions, setSessions] = useState<(OpenSession & { round?: number; nameZh?: string; availability?: string })[]>([]);
   const [manifest, setManifest] = useState<ReplayManifest | null>(null);
   const [windowFrames, setWindowFrames] = useState<ReplayFrame[]>([]);
   const [loadedOffset, setLoadedOffset] = useState<number | null>(null);
   const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(false);
-  const explicitDemo = !!sessionParam?.startsWith('demo-') && !!DEMO_REPLAY_SESSIONS[sessionParam];
+  const [demo, setDemo] = useState<ReplayDataset | null>(null);
+  const explicitDemo = DEMO_IDS.includes(sessionParam || '');
+  useEffect(() => {
+    let active = true; setDemo(null);
+    if (explicitDemo) loadDemo(sessionParam!).then(data => {if (active) setDemo(data);}).catch(() => {if (active) setLoadError('演示数据加载失败，请重试');});
+    return () => {active = false;};
+  }, [explicitDemo, sessionParam]);
   const selectedSession = sessionParam?.startsWith('openf1-') ? Number(sessionParam.slice(7))
     : sessionParam && !explicitDemo ? null : sessions.find(s => !roundParam || String(s.round) === roundParam)?.session_key;
   const activeSessionKey = explicitDemo ? sessionParam! : selectedSession ? `openf1-${selectedSession}` : '';
   const isRequestedSessionMissing = !explicitDemo && !loading && (!!loadError || !selectedSession);
-  const dataset = explicitDemo ? DEMO_REPLAY_SESSIONS[sessionParam!] : { metadata: manifest?.metadata || DEMO_REPLAY_SESSIONS['demo-singapore'].metadata, frames: windowFrames };
+  const dataset = explicitDemo && demo ? demo : { metadata: manifest?.metadata || PENDING_METADATA, frames: explicitDemo ? [] : windowFrames };
   const { metadata, frames } = dataset;
   const durationMs = metadata.durationSeconds * 1000;
   const isDemo = explicitDemo;
@@ -51,7 +55,17 @@ function ReplayContent() {
   const workbenchRef = useRef<HTMLDivElement | null>(null);
   const lastTimeRef = useRef<number | null>(null);
   const animFrameRef = useRef<number | null>(null);
-  const windowCache = useRef(new Map<string, ReplayFrame[]>());
+  const loader = useRef(new ReplayWindowLoader());
+  const preciseTime = useRef(0);
+  const vehiclesRef = useRef<TelemetryVehicleState[]>([]);
+  const paintRef = useRef<() => void>(()=>{});
+  useEffect(()=>()=>loader.current.dispose(),[]);
+  useEffect(()=>{preciseTime.current=currentMs;},[currentMs]);
+  useEffect(()=>{
+    const onVisibility=()=>{lastTimeRef.current=null;if(document.hidden)setIsPlaying(false);};
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>document.removeEventListener('visibilitychange',onVisibility);
+  },[]);
 
   useEffect(() => {
     if (explicitDemo) return;
@@ -77,43 +91,23 @@ function ReplayContent() {
     return () => controller.abort();
   }, [selectedSession, explicitDemo]);
 
-  const windowOffset = Math.floor(Math.min(currentMs, Math.max(0, durationMs - 1)) / 60000) * 60;
-  const buffering = !explicitDemo && (!manifest || loadedOffset !== windowOffset);
+  const desiredOffset = Math.floor(Math.min(currentMs, Math.max(0, durationMs - 1)) / 60000) * 60;
+  const [windowOffset,setWindowOffset]=useState(0);
+  useEffect(()=>{const timer=setTimeout(()=>setWindowOffset(desiredOffset),150);return()=>clearTimeout(timer);},[desiredOffset]);
+  const buffering = explicitDemo ? !demo : !manifest || loadedOffset !== windowOffset;
   useEffect(() => {
     if (explicitDemo || !manifest) return;
-    const cacheKey = `${manifest.session.session_key}:${windowOffset}`;
-    const cached = windowCache.current.get(cacheKey);
-    if (cached) { setWindowFrames(cached); setLoadedOffset(windowOffset); return; }
-    const controller = new AbortController();
+    let active=true;
     setLoadError('');
-    fetch(`/api/f1/replay?key=${manifest.session.session_key}&offset=${windowOffset}`, { signal: controller.signal })
-      .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error); return data; })
-      .then(data => {
-        if (windowCache.current.size >= 6) windowCache.current.delete(windowCache.current.keys().next().value!);
-        windowCache.current.set(cacheKey, data.frames);
-        setWindowFrames(data.frames); setLoadedOffset(windowOffset);
-      })
-      .catch(e => { if (!controller.signal.aborted) { setLoadError(e.message); setIsPlaying(false); } });
-    return () => controller.abort();
-  }, [manifest, windowOffset, explicitDemo]);
-
-  useEffect(() => {
-    if (explicitDemo || !manifest || loadedOffset === null) return;
-    const next = loadedOffset + 60;
-    if (next >= manifest.metadata.durationSeconds) return;
-    const cacheKey = `${manifest.session.session_key}:${next}`;
-    if (windowCache.current.has(cacheKey)) return;
-    const controller = new AbortController();
-    fetch(`/api/f1/replay?key=${manifest.session.session_key}&offset=${next}`, { signal: controller.signal })
-      .then(async r => { if (!r.ok) return null; return r.json(); })
-      .then(data => {
-        if (data) {
-          if (windowCache.current.size >= 6) windowCache.current.delete(windowCache.current.keys().next().value!);
-          windowCache.current.set(cacheKey, data.frames);
-        }
-      }).catch(() => {});
-    return () => controller.abort();
-  }, [manifest, loadedOffset, explicitDemo]);
+    loader.current.load(manifest.session.session_key,windowOffset)
+      .then(frames=>{if(active){setWindowFrames(frames);setLoadedOffset(windowOffset);}})
+      .catch(error=>{if(active){setLoadError(error.message);setIsPlaying(false);}});
+    return()=>{active=false;};
+  },[manifest,windowOffset,explicitDemo]);
+  useEffect(()=>{
+    if(explicitDemo||!manifest||loadedOffset===null||loadedOffset+60>=manifest.metadata.durationSeconds)return;
+    void loader.current.load(manifest.session.session_key,loadedOffset+60).catch(()=>{});
+  },[manifest,loadedOffset,explicitDemo]);
 
   // 场次切换
   const handleSelectSession = (key: string) => {
@@ -160,28 +154,25 @@ function ReplayContent() {
     };
   }, [isFullscreen]);
 
-  // 高帧率动画时间轴循环驱动
+  // Canvas uses precise ref time; React text and ranking update at most ten times/second.
   useEffect(() => {
-    const loop = (timestamp: number) => {
-      if (lastTimeRef.current != null && isPlaying && !buffering && !isRequestedSessionMissing) {
-        const delta = timestamp - lastTimeRef.current;
-        setCurrentMs(prev => {
-          const next = prev + delta * speed;
-          if (next >= durationMs) {
-            return durationMs; // 停留在比赛结束，不自动跳回开头
-          }
-          return next;
-        });
-      }
-      lastTimeRef.current = timestamp;
-      animFrameRef.current = requestAnimationFrame(loop);
+    lastTimeRef.current=null;
+    if(!isPlaying||buffering||isRequestedSessionMissing)return;
+    let lastUi=0;
+    const loop=(timestamp:number)=>{
+      if(document.hidden){lastTimeRef.current=null;setIsPlaying(false);return;}
+      const delta=lastTimeRef.current===null?0:Math.max(0,Math.min(100,timestamp-lastTimeRef.current));
+      lastTimeRef.current=timestamp;
+      preciseTime.current=Math.min(durationMs,preciseTime.current+delta*speed);
+      vehiclesRef.current=interpolateVehiclesAtTimestamp(frames,preciseTime.current,3000);
+      paintRef.current();
+      if(timestamp-lastUi>=100||preciseTime.current>=durationMs){lastUi=timestamp;setCurrentMs(preciseTime.current);}
+      if(preciseTime.current<durationMs)animFrameRef.current=requestAnimationFrame(loop);
+      else setIsPlaying(false);
     };
-
-    animFrameRef.current = requestAnimationFrame(loop);
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [isPlaying, speed, durationMs, buffering, isRequestedSessionMissing]);
+    animFrameRef.current=requestAnimationFrame(loop);
+    return()=>{if(animFrameRef.current!==null)cancelAnimationFrame(animFrameRef.current);lastTimeRef.current=null;};
+  },[isPlaying,speed,durationMs,buffering,isRequestedSessionMissing,frames]);
 
   // 根据当前精确时间戳进行非均匀真实插值 (严格执行 >3s 缺口不跨越插值规则)
   const currentVehicles = useMemo((): TelemetryVehicleState[] => {
@@ -194,8 +185,8 @@ function ReplayContent() {
     return currentVehicles.find(v => v.code === selectedDriverCode) || null;
   }, [selectedDriverCode, currentVehicles]);
 
-  const handleTogglePlay = () => setIsPlaying(!isPlaying);
-  const handleSeek = (ms: number) => setCurrentMs(ms);
+  const handleTogglePlay = () => {setCurrentMs(preciseTime.current);setIsPlaying(!isPlaying);};
+  const handleSeek = (ms: number) => {preciseTime.current=ms;setCurrentMs(ms);};
   const handleRestart = () => setCurrentMs(0);
   const handleChangeSpeed = (s: number) => setSpeed(s);
   useEffect(() => {
@@ -233,12 +224,12 @@ function ReplayContent() {
               <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>真实正赛</span>
               <select
                 aria-label="真实正赛场次选择"
-                value={activeSessionKey}
+                value={explicitDemo?'':activeSessionKey}
                 onChange={e => handleSelectSession(e.target.value)}
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '13px', fontWeight: 600, outline: 'none', cursor: 'pointer' }}
               >
                 <option value="" style={{ background: '#121214', color: '#fff' }}>选择已结束的比赛</option>
-                {sessions.map(s => <option key={s.session_key} value={`openf1-${s.session_key}`} style={{ background: '#121214', color: '#fff' }}>{s.nameZh}</option>)}
+                {sessions.map(s => <option key={s.session_key} value={`openf1-${s.session_key}`} style={{ background: '#121214', color: '#fff' }}>{s.nameZh} · {s.availability==='playable'?'可播放':'待验证'}</option>)}
               </select>
             </div>
 
@@ -349,10 +340,10 @@ function ReplayContent() {
             {/* 比赛场次选择下拉切换 */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted, #71717a)', letterSpacing: '0.05em' }}>
-                切换历史回放场次：
+                演示模式
               </div>
-              <select aria-label="历史回放场次"
-                value={activeSessionKey}
+              <select aria-label="演示回放场次"
+                value={explicitDemo ? activeSessionKey : ''}
                 onChange={e => handleSelectSession(e.target.value)}
                 style={{
                   background: 'var(--bg-secondary, #18181b)',
@@ -367,14 +358,13 @@ function ReplayContent() {
                   minWidth: '260px'
                 }}
               >
+                <option value="" disabled>选择算法演示（可选）</option>
                 <optgroup label="DEMO 算法仿真模式 (交互与渲染演示)">
                   <option value="demo-singapore">【DEMO】滨海湾市街赛道 60s 算法仿真</option>
                   <option value="demo-bahrain">【DEMO】萨基尔国际赛车场 180s 算法仿真</option>
                   <option value="demo-silverstone">【DEMO】银石赛道 180s 算法仿真</option>
                 </optgroup>
-                <optgroup label="OpenF1 真实历史正赛">
-                  {sessions.map(s => <option key={s.session_key} value={`openf1-${s.session_key}`}>{s.year} {s.nameZh}</option>)}
-                </optgroup>              </select>
+</select>
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                 <span className="badge-pill badge-dark" style={{ fontSize: '10px' }}>
@@ -413,11 +403,13 @@ function ReplayContent() {
             }}
           >
             {/* 左侧：赛道画布 + 播放控制 */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
-              <div style={{ flex: 1, minHeight: isFullscreen ? 'calc(100vh - 140px)' : '480px', width: '100%' }}>
+            <div className="replay-stage" style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+              <div className="replay-canvas-area" style={{ flex: 1, minHeight: isFullscreen ? 'calc(100vh - 140px)' : '480px', width: '100%' }}>
                 <ReplayCanvas
                   metadata={metadata}
                   vehicles={currentVehicles}
+                  vehiclesRef={vehiclesRef}
+                  paintRef={paintRef}
                   selectedDriverCode={selectedDriverCode}
                   onSelectDriver={setSelectedDriverCode}
                   style={{ height: '100%' }}

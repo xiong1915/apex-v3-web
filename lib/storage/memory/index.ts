@@ -33,6 +33,11 @@ export class MemoryCacheStore implements CacheStore {
     this.store.delete(key);
   }
 
+  async incrementCounters(values: Record<string, number>, timestamp?: string): Promise<void> {
+    for(const [key,amount] of Object.entries(values)) this.store.set(key,{value:Number(this.store.get(key)?.value || 0)+amount,expireAt:0});
+    if(timestamp)this.store.set('stats:ai:last_request_time',{value:timestamp,expireAt:0});
+  }
+
   async clear(): Promise<void> {
     this.store.clear();
   }

@@ -6,6 +6,9 @@ import { CircuitMetadata } from './types';
 import { CIRCUITS_METADATA } from './metadata';
 import { normalizeCircuitId } from './mapping';
 
+// Keep layout selection distinct from circuit identity; only registered licensed assets qualify.
+const CIRCUIT_LAYOUTS: Record<string, CircuitMetadata[]> = Object.fromEntries(Object.entries(CIRCUITS_METADATA).map(([id,meta])=>[id,[meta]]));
+
 export class CircuitRegistry {
   /**
    * 通过 season + circuitId + layoutId 解析真实赛道元数据
@@ -14,11 +17,17 @@ export class CircuitRegistry {
   public static getCircuit(
     circuitId: string,
     season?: string | number,
-    layoutId?: string
+    layout?: string | { layoutId?: string; meetingName?: string },
+    meetingName?: string
   ): CircuitMetadata | null {
     if (!circuitId) return null;
     const normalizedId = normalizeCircuitId(circuitId);
-    const meta = CIRCUITS_METADATA[normalizedId];
+    const layoutId = typeof layout==='string' ? layout : layout?.layoutId;
+    const eventName = typeof layout==='object' ? layout.meetingName : meetingName;
+    const requiredLayout = normalizedId==='bahrain' && Number(season)===2010 ? 'endurance'
+      : normalizedId==='bahrain' && Number(season)===2020 && /sakhir|萨基尔大奖赛/i.test(eventName || '') ? 'outer' : layoutId;
+    if(requiredLayout && layoutId && layoutId!==requiredLayout)return null;
+    const meta = CIRCUIT_LAYOUTS[normalizedId]?.find(candidate=>(!requiredLayout||candidate.layoutId===requiredLayout) && (season===undefined || Number(season)>=(candidate.validFrom??1950)&&Number(season)<=(candidate.validTo??2099)));
     if (!meta) {
       return null;
     }
@@ -55,7 +64,7 @@ export class CircuitRegistry {
     return list.filter(c => {
       const from = c.validFrom ?? 1950;
       const to = c.validTo ?? 2099;
-      return sNum >= from && sNum <= to;
+      return sNum >= from && sNum <= to && Boolean(this.getCircuit(c.circuitId, season));
     });
   }
 

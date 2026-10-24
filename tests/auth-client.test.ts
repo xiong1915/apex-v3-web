@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { apiLogout } from '../lib/auth/client';
+import { apiLogout, fetchCurrentSession } from '../lib/auth/client';
+
+test('temporary auth failures remain distinguishable from signed-out sessions', async t => {
+  t.mock.method(globalThis, 'fetch', async () => new Response('', {status:503}));
+  assert.ok((await fetchCurrentSession()).error);
+  t.mock.method(globalThis, 'fetch', async () => {throw new Error('Offline');});
+  assert.ok((await fetchCurrentSession()).error);
+  t.mock.method(globalThis, 'fetch', async () => Response.json({user:null,session:null}));
+  assert.equal((await fetchCurrentSession()).error, undefined);
+});
 
 test('logout reports server and network failures rather than pretending to log out', async t => {
   t.mock.method(globalThis, 'fetch', async () => new Response('', {status:503}));

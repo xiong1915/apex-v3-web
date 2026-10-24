@@ -1,0 +1,32 @@
+name: Website post-race refresh
+on:
+  schedule:
+    - cron: '*/15 * * * 5,6,0'
+    - cron: '*/15 0-5 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: website-post-race-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check scoring-session window and refresh public website data
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const base='https://f1.tike69.cc.cd';
+          const season=String(new Date().getUTCFullYear());
+          async function read(path){const res=await fetch(base+path,{signal:AbortSignal.timeout(45000)});if(!res.ok)throw new Error(`${path}: HTTP ${res.status}`);return res.json();}
+          const calendar=await read(`/api/f1/calendar?season=${season}`);
+          const now=Date.now();
+          const event=calendar.races.flatMap(r=>(r.sessions||[]).filter(s=>['sprint','race'].includes(s.type)).map(s=>({round:r.round,type:s.type,end:s.endTimeUTC?Date.parse(s.endTimeUTC):Date.parse(s.startTimeUTC)+(s.durationMinutes||120)*60000})))
+            .filter(s=>s.end<=now&&now-s.end<6*3600000).sort((a,b)=>b.end-a.end)[0];
+          if(!event){console.log('Outside bounded post-session window; no data refresh.');process.exit(0);}
+          const overview=await read(`/api/f1/overview?season=${season}`);
+          const reconciled=overview.standingsCutoffVerified&&overview.scopeDetail?.driverStandingsRound>=event.round&&overview.scopeDetail?.constructorStandingsRound>=event.round&&(event.type!=='race'||overview.previousRace?.round>=event.round&&overview.hasLatestRaceResult===true);
+          console.log(reconciled?'Results and standings reconciled; polling stopped for this session.':'Reconciliation pending; website refresh checked. Next bounded attempt in 15 minutes.');
+          NODE

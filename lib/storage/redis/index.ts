@@ -37,6 +37,13 @@ export class RedisCacheStore implements CacheStore {
     }
   }
 
+  async incrementCounters(values: Record<string, number>, timestamp?: string): Promise<void> {
+    const keys=Object.keys(values);
+    await this.redis.eval(`for i,key in ipairs(KEYS) do redis.call('INCRBY',key,ARGV[i]) end
+      if ARGV[#KEYS+1] ~= '' then redis.call('SET','stats:ai:last_request_time',cjson.encode(ARGV[#KEYS+1])) end
+      return 1`,keys,[...Object.values(values),timestamp || '']);
+  }
+
   async delete(key: string): Promise<void> {
     try {
       await this.redis.del(key);
@@ -131,11 +138,11 @@ export class RedisRateLimitStore implements RateLimitStore {
     const fullKey = key.startsWith('tike:ratelimit:') ? key : `tike:ratelimit:${key}`;
     const now = Date.now();
     try {
-      const current = await this.redis.incr(fullKey);
-      if (current === 1) {
-        await this.redis.expire(fullKey, windowSeconds);
-      }
-      const ttl = await this.redis.ttl(fullKey);
+      const [current, ttl] = await this.redis.eval(`
+        local count = redis.call('INCR', KEYS[1])
+        local ttl = redis.call('TTL', KEYS[1])
+        if ttl < 0 then redis.call('EXPIRE', KEYS[1], ARGV[1]); ttl = tonumber(ARGV[1]) end
+        return {count, ttl}`, [fullKey], [windowSeconds]) as [number, number];
       const resetAt = now + Math.max(ttl, 1) * 1000;
 
       if (current <= limit) {
@@ -145,6 +152,7 @@ export class RedisRateLimitStore implements RateLimitStore {
     } catch (err) {
       console.warn(`[RedisRateLimitStore] checkRateLimit(${key}) error, falling back to MemoryRateLimitStore:`, err);
       // 严禁无限放行：Redis 故障时自动转由实例内存限流器严格防御
+      if ((process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') && key.startsWith('ai:')) return {allowed:false,remaining:0,resetAt:now+60000};
       return this.fallbackStore.checkRateLimit(key, limit, windowSeconds);
     }
   }
