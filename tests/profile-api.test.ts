@@ -8,7 +8,8 @@ import { mockAuthManager } from '../lib/auth/mock';
 import { AUTH_CONFIG } from '../lib/auth/config';
 import { GET as getProfileRoute, PATCH as patchProfileRoute } from '../app/api/profile/route';
 import { POST as postAvatarRoute, DELETE as deleteAvatarRoute } from '../app/api/profile/avatar/route';
-import { resetMemoryProfileStore } from '../lib/profile/service';
+import { GET as getAvatarViewRoute } from '../app/api/profile/avatar/view/route';
+import { resetMemoryProfileStore, getUserProfile, updateUserProfile, uploadUserAvatar, deleteUserAvatar } from '../lib/profile/service';
 
 function createAuthedRequest(method: string, url: string, token: string, body?: any, contentType?: string): NextRequest {
   const headers: Record<string, string> = {
@@ -155,5 +156,87 @@ test('APEX ID 个人中心 API 鉴权、持久化与多用户数据隔离测试'
     assert.equal(prof1.display_name, '普通车迷');
     assert.deepEqual(prof1.favorite_team_ids, ['aston_martin', 'ferrari']);
     assert.notEqual(prof1.id, prof2.id);
+  });
+
+  await t.test('7. 头像读取端点 (/api/profile/avatar/view) 鉴权、防路径遍历与越权隔离', async () => {
+    // A. 未登录访问拦截 (401)
+    const unauthedReq = new NextRequest(new URL('/api/profile/avatar/view?path=any/avatar-123.jpg', 'https://f1.tike69.cc.cd'), { method: 'GET' });
+    const unauthedRes = await getAvatarViewRoute(unauthedReq);
+    assert.equal(unauthedRes.status, 401);
+    assert.equal(unauthedRes.headers.get('x-content-type-options'), 'nosniff');
+
+    // B. 缺少 path 参数 (400)
+    const emptyPathReq = createAuthedRequest('GET', '/api/profile/avatar/view', tokenUser1);
+    const emptyPathRes = await getAvatarViewRoute(emptyPathReq);
+    assert.equal(emptyPathRes.status, 400);
+
+    // C. 路径遍历攻击防御 (.. 攻击)
+    const traversalReq1 = createAuthedRequest('GET', `/api/profile/avatar/view?path=../${user1Id}/avatar-123.jpg`, tokenUser1);
+    const traversalRes1 = await getAvatarViewRoute(traversalReq1);
+    assert.equal(traversalRes1.status, 400);
+
+    const traversalReq2 = createAuthedRequest('GET', `/api/profile/avatar/view?path=${user1Id}/../../etc/passwd`, tokenUser1);
+    const traversalRes2 = await getAvatarViewRoute(traversalReq2);
+    assert.equal(traversalRes2.status, 400);
+
+    // D. 路径字符规范 (禁止反斜杠与非法扩展名)
+    const slashReq = createAuthedRequest('GET', `/api/profile/avatar/view?path=${user1Id}\\avatar-123.jpg`, tokenUser1);
+    const slashRes = await getAvatarViewRoute(slashReq);
+    assert.equal(slashRes.status, 400);
+
+    const badExtReq = createAuthedRequest('GET', `/api/profile/avatar/view?path=${user1Id}/malicious.svg`, tokenUser1);
+    const badExtRes = await getAvatarViewRoute(badExtReq);
+    assert.equal(badExtRes.status, 400);
+
+    // E. 越权访问防御 (IDOR): User1 尝试读取 User2 目录的头像文件 (403)
+    const idorReq = createAuthedRequest('GET', `/api/profile/avatar/view?path=${user2Id}/avatar-1730000000.png`, tokenUser1);
+    const idorRes = await getAvatarViewRoute(idorReq);
+    assert.equal(idorRes.status, 403);
+    const idorBody = await idorRes.text();
+    assert.match(idorBody, /越权访问/);
+
+    // F. 正常读取本人头像 (测试环境下从内存读取)
+    const validPng = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x01, 0x02]);
+    const upReq = createAuthedRequest('POST', '/api/profile/avatar', tokenUser1, validPng, 'image/png');
+    const upRes = await postAvatarRoute(upReq);
+    const { profile: p1 } = await upRes.json();
+    assert.ok(p1.avatar_path);
+
+    const viewOwnReq = createAuthedRequest('GET', `/api/profile/avatar/view?path=${p1.avatar_path}`, tokenUser1);
+    const viewOwnRes = await getAvatarViewRoute(viewOwnReq);
+    assert.equal(viewOwnRes.status, 200);
+    assert.equal(viewOwnRes.headers.get('content-type'), 'image/png');
+    assert.equal(viewOwnRes.headers.get('x-content-type-options'), 'nosniff');
+  });
+
+  await t.test('8. 生产环境持久化硬屏障 (严禁静默降级为内存假成功)', async () => {
+    const origEnv = process.env.VERCEL_ENV;
+    try {
+      process.env.VERCEL_ENV = 'production';
+
+      const dummyUser = {
+        id: 'prod-audit-user-uuid',
+        email: 'prod_audit@apex.f1'
+      } as any;
+
+      // 在生产模式下，当 Supabase 不可用时，严禁静默降级为假成功，必须明确返回错误
+      const updateResult = await updateUserProfile(dummyUser, { display_name: '生产车手' });
+      assert.ok(updateResult.error, '生产环境下持久化未连接时必须返回明确错误');
+
+      const avatarBuffer = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+      const uploadResult = await uploadUserAvatar(dummyUser, avatarBuffer);
+      assert.ok(uploadResult.error, '生产环境下头像上传失败必须返回明确错误');
+
+      const deleteResult = await deleteUserAvatar(dummyUser);
+      assert.ok(deleteResult.error, '生产环境下头像删除失败必须返回明确错误');
+    } finally {
+      process.env.VERCEL_ENV = origEnv;
+    }
+  });
+
+  await t.test('9. resetMemoryProfileStore 彻底重置状态', () => {
+    resetMemoryProfileStore();
+    // 再次调用确认不会抛出异常并且正常清空
+    resetMemoryProfileStore();
   });
 });
