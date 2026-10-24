@@ -1,7 +1,9 @@
+import { trustedClientBucket } from '@/lib/auth/client-ip';
+import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { defaultAIOrchestrator } from '@/lib/ai/orchestrator';
 import { AIMessage } from '@/lib/ai/types';
-import { getRateLimitStore } from '@/lib/storage';
+import { getStorageInfo, getRateLimitStore } from '@/lib/storage';
 import { MemoryRateLimitStore } from '@/lib/storage/memory';
 import { getServerUser } from '@/lib/auth/server';
 import { recordAIRateLimitHit, recordAIRequestStart, recordAITokenUsage } from '@/lib/admin/service';
@@ -11,28 +13,13 @@ export const dynamic = 'force-dynamic';
 
 const memoryFallbackLimiter = new MemoryRateLimitStore();
 
-function extractTrustedClientIp(req: NextRequest): string {
-  // 1. 优先采用 Cloudflare 边缘不可伪造的真实客户端 IP (cf-connecting-ip)
-  const cfIp = req.headers.get('cf-connecting-ip')?.trim();
-  if (cfIp) return cfIp;
 
-  // 2. 其次采用 Vercel 注入的真实客户端 IP (x-real-ip)
-  const realIp = req.headers.get('x-real-ip')?.trim();
-  if (realIp) return realIp;
-
-  // 3. 再次回退解析 x-forwarded-for 中的第一个 IP
-  const fwd = req.headers.get('x-forwarded-for');
-  if (fwd) {
-    const list = fwd.split(',').map(s => s.trim()).filter(Boolean);
-    if (list.length > 0) return list[0];
-  }
-
-  return '127.0.0.1';
-}
-
-async function checkRateLimit(clientIp: string): Promise<{ allowed: boolean; retryAfter: number; reason?: string }> {
+async function checkRateLimit(clientIp: string, userId: string): Promise<{ allowed: boolean; retryAfter: number; reason?: string }> {
   try {
+    if ((process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') && !getStorageInfo().persistent) return {allowed:false,retryAfter:60,reason:'全站额度服务暂不可用，请稍后重试'};
     const limiter = getRateLimitStore();
+    const account = await limiter.checkRateLimit(`ai:user:${userId}`, 60, 3600);
+    if (!account.allowed) return {allowed:false,retryAfter:Math.max(1,Math.ceil((account.resetAt-Date.now())/1000)),reason:'当前账号已达到小时使用额度，请稍后重试'};
 
     // 1. 全局小时总使用量保护 (600次/小时, 跨实例由 Redis INCR 原子保证)
     const globalRes = await limiter.checkRateLimit('ai:global:hourly', 600, 3600);
@@ -58,6 +45,7 @@ async function checkRateLimit(clientIp: string): Promise<{ allowed: boolean; ret
 
     return { allowed: true, retryAfter: 0 };
   } catch (storeErr) {
+    if (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') return {allowed:false,retryAfter:60,reason:'额度服务暂不可用，请稍后重试'};
     console.warn('[RateLimit] RateLimitStore check error, safe fail-open fallback with strict memory limiter:', storeErr);
     try {
       // Redis 异常时自动降级至内存限流器，彻底杜绝无限制放行风险
@@ -103,6 +91,7 @@ function sanitizeErrorMessage(err: any): string {
 }
 
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
   try {
     // 0. 服务端身份验证：未登录或未验证邮箱用户直接阻断，绝不调用 DeepSeek
     const user = await getServerUser(req);
@@ -120,7 +109,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const clientIp = extractTrustedClientIp(req);
+    const clientIp = trustedClientBucket(req.headers);
     const body = await req.json().catch(() => null);
 
     if (!body) {
@@ -164,7 +153,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. 服务端限流与使用量保护 (基于持久化设施与原子递增)
-    const rateCheck = await checkRateLimit(clientIp);
+    const rateCheck = await checkRateLimit(clientIp, user.id);
     if (!rateCheck.allowed) {
       await recordAIRateLimitHit().catch(() => {});
       return NextResponse.json(
@@ -180,8 +169,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. 记录有效 AI 提问请求 (APEX Control 真实监控统计)
-    await recordAIRequestStart().catch(() => {});
-    const startedAt = Date.now();
+    after(() => recordAIRequestStart().catch(() => {}));
 
     const wantStream = body.stream !== false; // 默认流式
 
@@ -220,7 +208,7 @@ export async function POST(req: NextRequest) {
               const inChars = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
               const outChars = collectedText.length;
               const estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
-              recordAITokenUsage(estTokens).catch(() => {});
+              after(() => recordAITokenUsage(estTokens).catch(() => {}));
             }
           } catch (err: any) {
             failed ||= !abortController.signal.aborted;
@@ -231,7 +219,8 @@ export async function POST(req: NextRequest) {
             }
           } finally {
             clearTimeout(timeoutTimer);
-            await recordAIOutcome(failed ? 'error' : completed ? 'success' : abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error', startedAt);
+            const outcome = failed ? 'error' : completed ? 'success' : abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error';
+            after(() => recordAIOutcome(outcome, startedAt));
             try {
               controller.close();
             } catch (_) {}
@@ -258,11 +247,11 @@ export async function POST(req: NextRequest) {
       const inChars = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
       const outChars = result.reply?.length || 0;
       const estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
-      recordAITokenUsage(estTokens).catch(() => {});
-      await recordAIOutcome('success', startedAt);
+      after(() => recordAITokenUsage(estTokens).catch(() => {}));
+      after(() => recordAIOutcome('success', startedAt));
       return NextResponse.json(result);
     } catch (error) {
-      await recordAIOutcome(abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error', startedAt);
+      after(() => recordAIOutcome(abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error', startedAt));
       throw error;
     } finally {
       clearTimeout(timeoutTimer);

@@ -2,7 +2,7 @@
 // 安全网页正文与结构化表格抓取器：集成 SSRF 防护、超时、响应体积限制、多编码兼容与表格解析
 
 import { checkUrlSafety, UrlSafetyCheck } from './url_safety';
-import { lookup } from 'node:dns/promises';
+import { pinnedRequest } from './pinned-request';
 
 export interface FetchedArticle {
   success: boolean;
@@ -142,16 +142,10 @@ export async function fetchArticleContent(
     const signal = options?.signal ? AbortSignal.any([controller.signal, options.signal]) : controller.signal;
     let res: Response | undefined;
     for (let hop = 0; hop < 5; hop++) {
-      const records = await lookup(new URL(safety.normalizedUrl).hostname, { all: true });
-      if (records.some(r => !checkUrlSafety(`http://${r.family === 6 ? `[${r.address}]` : r.address}/`).safe)) throw new Error('ssrf_blocked_dns_address');
-      res = await fetch(safety.normalizedUrl, {
-      signal,
-      redirect: 'manual',
-      headers: {
+      res = await pinnedRequest(safety.normalizedUrl, signal, {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
-      }
       });
       if (![301, 302, 303, 307, 308].includes(res.status)) break;
       const location = res.headers.get('location');

@@ -14,6 +14,8 @@ const BASE = 'https://api.openf1.org/v1/';
 let nextRequestAt = 0;
 const manifests = new Map<number, ReplayManifest>();
 
+export function replayAvailability(key:number){return manifests.has(key)?'playable':'metadata';}
+
 export async function openF1(endpoint: string, params: Record<string, string | number>, signal?: AbortSignal): Promise<any[]> {
   const url = new URL(endpoint, BASE);
   for (const [key, value] of Object.entries(params)) url.searchParams.set(key, String(value));
@@ -35,6 +37,18 @@ export async function openF1(endpoint: string, params: Record<string, string | n
   return rows;
 }
 
+const indexes = new Map<string, Promise<any[]>>();
+async function sessionIndex(endpoint: 'laps' | 'position', key: number) {
+  const id = `${key}:${endpoint}`;
+  let pending = indexes.get(id);
+  if (!pending) {
+    pending = openF1(endpoint, {session_key:key}).catch(error=>{indexes.delete(id);throw error;});
+    if(indexes.size>=16)indexes.delete(indexes.keys().next().value!);
+    indexes.set(id,pending);
+  }
+  return pending;
+}
+
 export async function getReplayManifest(sessionKey: number, signal?: AbortSignal): Promise<ReplayManifest> {
   signal?.throwIfAborted();
   const cached = manifests.get(sessionKey);
@@ -44,15 +58,21 @@ export async function getReplayManifest(sessionKey: number, signal?: AbortSignal
   if (!session || session.session_name !== 'Race' || Date.parse(session.date_end) >= Date.now()) throw new Error('Only completed historical races are supported');
   const drivers = await openF1('drivers', { session_key: sessionKey }, signal);
   if (!drivers.length) throw new Error('Driver data unavailable');
-  const laps = await openF1('laps', { session_key: sessionKey }, signal);
-  const lap = laps.find(l => l.driver_number === drivers[0].driver_number && l.lap_number >= 2 && l.lap_duration > 40 && l.lap_duration < 180 && l.date_start);
-  if (!lap) throw new Error('Track reference lap unavailable');
-  const points = await openF1('location', {
-    session_key: sessionKey, driver_number: drivers[0].driver_number,
-    'date>': lap.date_start, 'date<': new Date(Date.parse(lap.date_start) + lap.lap_duration * 1000).toISOString()
-  }, signal);
-  const valid = points.filter(p => Number.isFinite(p.x) && Number.isFinite(p.y) && (p.x !== 0 || p.y !== 0));
-  if (valid.length < 30) throw new Error('Track coordinates unavailable');
+  const laps = await sessionIndex('laps',sessionKey);
+  signal?.throwIfAborted();
+  let valid: any[] = [];
+  // Try actual complete laps from each driver, rather than trusting roster order.
+  for (const driver of drivers) {
+    const lap = laps.find(l=>l.driver_number===driver.driver_number && l.lap_number>=2 && !l.is_pit_out_lap && l.lap_duration>40 && l.lap_duration<240 && l.date_start);
+    if(!lap) continue;
+    try {
+      const points = await openF1('location', {session_key:sessionKey,driver_number:driver.driver_number,
+        'date>':lap.date_start,'date<':new Date(Date.parse(lap.date_start)+lap.lap_duration*1000).toISOString()},signal);
+      valid=points.filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&(p.x!==0||p.y!==0));
+      if(valid.length>=30)break;
+    } catch(error) {signal?.throwIfAborted();}
+  }
+  if(valid.length<30)throw new Error('No playable reference lap available');
   const minX = Math.min(...valid.map(p => p.x)); const minY = Math.min(...valid.map(p => p.y));
   const span = Math.max(Math.max(...valid.map(p => p.x)) - minX, Math.max(...valid.map(p => p.y)) - minY);
   if (!(span > 0)) throw new Error('Invalid track bounds');
@@ -124,7 +144,7 @@ export async function getReplayWindow(manifest: ReplayManifest, offset: number, 
     'date<': new Date(origin + Math.min(offset + 61, manifest.metadata.durationSeconds) * 1000).toISOString() };
   const [locations, telemetry, positions, laps] = await Promise.all([
     openF1('location', params, signal), openF1('car_data', params, signal),
-    openF1('position', { session_key: key }, signal), openF1('laps', { session_key: key }, signal)
+    sessionIndex('position',key), sessionIndex('laps',key)
   ]);
   return buildOpenFrames(manifest, offset, locations, telemetry, positions, laps);
 }

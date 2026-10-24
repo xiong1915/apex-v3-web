@@ -43,8 +43,8 @@ export function Navbar() {
 
   useEffect(() => {
     let mounted = true;
-    fetchCurrentSession().then(({ user }) => {
-      if (mounted) setUser(user);
+    fetchCurrentSession().then(({ user, error }) => {
+      if (mounted && !error) setUser(user);
     });
     return () => { mounted = false; };
   }, [pathname]);
@@ -120,7 +120,7 @@ export function Navbar() {
    <div className="container nav-inner">
     <Link href="/" className="nav-brand" aria-label="APEX 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19L11 4h6l4 15h-5l-1-4H9l-2 4zM11 11h3l-1-4z" fill="currentColor"/></svg><span>APEX</span></Link>
     <nav className="nav-links desktop-nav" aria-label="主导航" style={{'--nav-index':Math.max(0,currentIndex),'--nav-active':currentIndex<0?0:1} as React.CSSProperties}>
-     {NAV_ITEMS.map((item,i)=><Link key={item.href} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}</Link>)}
+     {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}</Link>)}
     </nav>
     <div className="nav-actions"><BeijingClock className="desktop-nav"/><Link href="/ai" className="nav-ai">APEX AI <span aria-hidden="true">↗</span></Link>
      {user?<div className="account-wrap desktop-nav" ref={accountRef}><button type="button" className="account-button" aria-expanded={userDropdownOpen} aria-controls="account-menu" onClick={()=>setUserDropdownOpen(!userDropdownOpen)}>{user.user_metadata?.name||user.email?.split('@')[0]||'我的账户'} ↓</button>{userDropdownOpen&&<div className="account-menu" id="account-menu"><span>{user.email}</span>{user.isAdmin&&<Link href="/admin" className="btn-secondary" onClick={()=>setUserDropdownOpen(false)}>管理工作台 ↗</Link>}<button type="button" className="glass-button glass-btn-ghost" onClick={handleLogout} disabled={loggingOut}>{loggingOut?'正在退出…':'退出登录'}</button></div>}</div>:<Link href="/login" className="nav-login desktop-nav">登录</Link>}
@@ -130,7 +130,7 @@ export function Navbar() {
    {logoutError&&<div className="nav-feedback" role="alert">{logoutError}</div>}
    {menuOpen&&<div id="mobile-menu" className="mobile-menu" role="dialog" aria-modal="true" aria-label="网站导航" ref={drawerRef}>
     <button type="button" className="mobile-menu-close" onClick={()=>{setMenuOpen(false);toggleRef.current?.focus()}}>网站导航 <span>关闭 ×</span></button>
-    {NAV_ITEMS.map(item=><Link key={item.href} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label} <span aria-hidden="true">↗</span></Link>)}
+    {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label} <span aria-hidden="true">↗</span></Link>)}
     <Link href="/ai" onClick={()=>setMenuOpen(false)}>APEX AI ↗</Link>
     <div className="mobile-account">{user?<><span className="data-note">{user.email}</span>{user.isAdmin&&<Link href="/admin" onClick={()=>setMenuOpen(false)}>管理工作台 ↗</Link>}<button type="button" className="btn-secondary" disabled={loggingOut} onClick={async()=>{await handleLogout();setMenuOpen(false)}}>{loggingOut?'正在退出…':'退出登录'}</button></>:<Link href="/login" className="btn-primary" onClick={()=>setMenuOpen(false)}>登录 / 注册</Link>}<BeijingClock/></div>
    </div>}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openF1, getReplayManifest, getReplayWindow } from '@/lib/f1/replay/openf1';
+import { openF1, replayAvailability, getReplayManifest, getReplayWindow } from '@/lib/f1/replay/openf1';
 import { fetchJolpicaCalendar } from '@/providers/f1/jolpica';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -15,13 +15,13 @@ export async function GET(request: NextRequest) {
       const calendar = await fetchJolpicaCalendar(String(year));
       const completed = sessions.filter(s => Date.parse(s.date_end) < Date.now()).map(s => {
         const race = calendar.find(r => Math.abs(Date.parse(r.raceStartUTC) - Date.parse(s.date_start)) < 12 * 3600000);
-        return race ? { ...s, round: race.round, nameZh: race.nameZh || s.circuit_short_name } : null;
+        return race ? { ...s, availability:replayAvailability(s.session_key), round: race.round, nameZh: race.nameZh || s.circuit_short_name } : null;
       }).filter(Boolean).sort((a, b) => Date.parse(b!.date_start) - Date.parse(a!.date_start));
       return NextResponse.json({ sessions: completed }, { headers: { 'Cache-Control': 'public, s-maxage=300' } });
     }
     if (!Number.isInteger(key) || key < 1) return NextResponse.json({ error: 'Invalid session key' }, { status: 400 });
     const manifest = await getReplayManifest(key, request.signal);
-    if (!q.has('offset')) return NextResponse.json(manifest);
+    if (!q.has('offset')) return NextResponse.json(manifest,{headers:{'Cache-Control':'public, s-maxage=86400'}});
     const offset = Number(q.get('offset'));
     if (!Number.isInteger(offset) || offset < 0 || offset % 60 !== 0 || offset >= manifest.metadata.durationSeconds) return NextResponse.json({ error: 'Invalid replay window' }, { status: 400 });
     const frames = await getReplayWindow(manifest, offset, request.signal);

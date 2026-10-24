@@ -7,6 +7,8 @@ import { ReplaySessionMetadata, TelemetryVehicleState } from '@/lib/f1/replay/ty
 interface ReplayCanvasProps {
   metadata: ReplaySessionMetadata;
   vehicles: TelemetryVehicleState[];
+  vehiclesRef?: React.RefObject<TelemetryVehicleState[]>;
+  paintRef?: React.RefObject<() => void>;
   selectedDriverCode: string | null;
   onSelectDriver: (code: string | null) => void;
   className?: string;
@@ -16,6 +18,8 @@ interface ReplayCanvasProps {
 export function ReplayCanvas({
   metadata,
   vehicles,
+  vehiclesRef,
+  paintRef,
   selectedDriverCode,
   onSelectDriver,
   className = '',
@@ -169,7 +173,7 @@ export function ReplayCanvas({
 
     // 绘制赛车 (Vehicles)
     // 先画普通赛车，选中的车最后画在最顶层
-    const sortedVehicles = [...vehicles].sort((a, b) => {
+    const sortedVehicles = [...(vehiclesRef?.current || vehicles)].sort((a, b) => {
       if (a.code === selectedDriverCode) return 1;
       if (b.code === selectedDriverCode) return -1;
       return a.position - b.position;
@@ -217,12 +221,14 @@ export function ReplayCanvas({
     });
     ctx.globalAlpha = 1;
     ctx.restore();
-  }, [metadata, vehicles, selectedDriverCode]);
+  }, [metadata, vehicles, selectedDriverCode, vehiclesRef]);
 
   useEffect(() => {
     drawRef.current = draw;
+    if(vehiclesRef)vehiclesRef.current=vehicles;
+    if(paintRef)paintRef.current=draw;
     draw();
-  }, [draw]);
+  }, [draw,vehicles,vehiclesRef,paintRef]);
 
   // 点击画布选择邻近车手
   const handleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -239,7 +245,7 @@ export function ReplayCanvas({
     let closestCode: string | null = null;
     let minDistance = 24; // 24px 命中容限
 
-    vehicles.forEach(v => {
+    (vehiclesRef?.current || vehicles).forEach(v => {
       const vx = v.normX * width;
       const vy = v.normY * height;
       const dist = Math.hypot(clickX - vx, clickY - vy);

@@ -132,6 +132,7 @@ export async function getAdminUsers(): Promise<{ total: number; users: AdminUser
 export async function recordAIRateLimitHit(): Promise<void> {
   try {
     const cache = getCacheStore();
+    if(cache.incrementCounters){await cache.incrementCounters({'stats:ai:rate_limit_hits':1});return;}
     const hits = (await cache.get<number>('stats:ai:rate_limit_hits')) || 0;
     await cache.set('stats:ai:rate_limit_hits', hits + 1);
   } catch (_) {}
@@ -140,6 +141,7 @@ export async function recordAIRateLimitHit(): Promise<void> {
 export async function recordAIRequestStart(): Promise<void> {
   try {
     const cache = getCacheStore();
+    if(cache.incrementCounters){await cache.incrementCounters({'stats:ai:total_requests':1},new Date().toISOString());return;}
     const total = (await cache.get<number>('stats:ai:total_requests')) || 0;
     await cache.set('stats:ai:total_requests', total + 1);
     await cache.set('stats:ai:last_request_time', new Date().toISOString());
@@ -150,6 +152,7 @@ export async function recordAITokenUsage(tokens: number): Promise<void> {
   try {
     if (tokens <= 0) return;
     const cache = getCacheStore();
+    if(cache.incrementCounters){await cache.incrementCounters({'stats:ai:tokens_estimated':Math.ceil(tokens)});return;}
     const current = (await cache.get<number>('stats:ai:tokens_estimated')) || 0;
     await cache.set('stats:ai:tokens_estimated', current + tokens);
   } catch (_) {}

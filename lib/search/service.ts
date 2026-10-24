@@ -67,6 +67,8 @@ export class SearchService {
               if (fetched.success && fetched.content && fetched.content.length > 40) {
                 return {
                   ...item,
+                  url: fetched.url, isOfficial: fetched.isOfficial, sourceType: fetched.sourceType,
+                  snippet: fetched.content.slice(0,400),
                   content: fetched.content,
                   hasFullText: true,
                   title: fetched.title || item.title
@@ -97,7 +99,7 @@ export class SearchService {
 
         // 若当前渠道未取得有效正文，暂存候选作为备胎，但继续尝试下一个渠道！
         if (fallbackEnrichedResults.length === 0) {
-          fallbackEnrichedResults = enrichedResults;
+          fallbackEnrichedResults = revalidated;
           fallbackProviderId = provider.id;
         }
       } catch (err: any) {

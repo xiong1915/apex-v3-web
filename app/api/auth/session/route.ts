@@ -1,6 +1,6 @@
 // app/api/auth/session/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession, createSupabaseServerClient } from '@/lib/auth/server';
+import { getServerSession } from '@/lib/auth/server';
 import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isProduction, isValidUuid } from '@/lib/auth/config';
 import { mockAuthManager } from '@/lib/auth/mock';
 
@@ -29,57 +29,10 @@ export async function GET(req: NextRequest) {
     let session = await getServerSession(req);
 
     // 如果 access token 过期，尝试使用 refresh token 自动刷新
-    if (!session) {
+    if (!session && !req.headers.has('authorization')) {
       const refreshToken = req.cookies.get(AUTH_CONFIG.refreshCookieName)?.value;
       if (refreshToken) {
-        if (isSupabaseConfigured()) {
-          try {
-            const supabase = await createSupabaseServerClient();
-            const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
-            if (!error && data.session && data.user) {
-              const isAdmin = Boolean(
-                AUTH_CONFIG.adminUserId &&
-                isValidUuid(AUTH_CONFIG.adminUserId) &&
-                data.user.id === AUTH_CONFIG.adminUserId
-              );
-
-              // 响应体中绝不返回 Refresh Token
-              const safeSession = {
-                expires_at: data.session.expires_at,
-                expires_in: data.session.expires_in,
-                aal: (data.session as any)?.aal || 'aal1'
-              };
-
-              const res = NextResponse.json({
-                user: {
-                  ...data.user,
-                  isAdmin
-                },
-                session: safeSession
-              });
-
-              res.cookies.set(AUTH_CONFIG.cookieName, data.session.access_token, {
-                httpOnly: true,
-                secure: isProduction(),
-                sameSite: 'lax',
-                maxAge: AUTH_CONFIG.sessionMaxAge,
-                path: '/'
-              });
-              if (data.session.refresh_token) {
-                res.cookies.set(AUTH_CONFIG.refreshCookieName, data.session.refresh_token, {
-                  httpOnly: true,
-                  secure: isProduction(),
-                  sameSite: 'lax',
-                  maxAge: AUTH_CONFIG.sessionMaxAge,
-                  path: '/'
-                });
-              }
-              return res;
-            }
-          } catch (supaErr) {
-            console.warn('[Auth Session] Supabase token refresh failed:', supaErr);
-          }
-        } else if (isMockAuthAllowed()) {
+        if (isMockAuthAllowed()) {
           session = mockAuthManager.refreshSession(refreshToken);
           if (session) {
             const isAdmin = Boolean(
@@ -146,6 +99,6 @@ export async function GET(req: NextRequest) {
       session: safeSession
     });
   } catch (err: any) {
-    return NextResponse.json({ user: null, session: null, error: err.message }, { status: 500 });
+    return NextResponse.json({ user: null, session: null, error: '身份服务暂不可用，请重试' }, { status: 503, headers:{'Cache-Control':'private, no-store'} });
   }
 }
