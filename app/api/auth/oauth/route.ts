@@ -1,13 +1,16 @@
 // app/api/auth/oauth/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { isSupabaseConfigured, isMockAuthAllowed } from '@/lib/auth/config';
 import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
+import { safeReturnPath } from '@/lib/auth/redirect';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const provider = req.nextUrl.searchParams.get('provider') as 'google' | 'github' | null;
-  const next = req.nextUrl.searchParams.get('next') || '/';
+  const rawNext = req.nextUrl.searchParams.get('next') || req.nextUrl.searchParams.get('returnUrl') || '/';
+  const next = safeReturnPath(rawNext);
   const origin = getTrustedPublicOrigin(req);
 
   if (!provider || (provider !== 'google' && provider !== 'github')) {
@@ -17,10 +20,14 @@ export async function GET(req: NextRequest) {
   // 1. Supabase 生产模式
   if (isSupabaseConfigured()) {
     const supabase = await createSupabaseServerClient();
+    // 最小必要权限：Google 仅 openid email profile；GitHub 仅 read:user user:email（绝不申请 repo 仓库权限）
+    const scopes = provider === 'google' ? 'openid email profile' : 'read:user user:email';
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`
+        redirectTo: `${origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        scopes,
+        queryParams: provider === 'google' ? { prompt: 'select_account' } : undefined
       }
     });
 
@@ -28,7 +35,24 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error?.message || '获取 OAuth 授权地址失败' }, { status: 400 });
     }
 
-    return NextResponse.redirect(data.url);
+    const response = NextResponse.redirect(data.url);
+
+    // 显式将 Supabase SSR 生成的 PKCE code_verifier 写入客户端重定向响应
+    try {
+      const cookieStore = await cookies();
+      cookieStore.getAll().forEach((c) => {
+        if (c.name.startsWith('sb-')) {
+          response.cookies.set(c.name, c.value, {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax'
+          });
+        }
+      });
+    } catch (_) {}
+
+    return response;
   }
 
   // 生产环境绝对禁止 Mock OAuth
