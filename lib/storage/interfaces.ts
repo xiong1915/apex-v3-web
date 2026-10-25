@@ -5,6 +5,8 @@ import { AIMessage } from '../ai/types';
 
 export interface CacheStore {
   get<T>(key: string): Promise<T | null>;
+  /** Administrative metrics must distinguish missing values from storage outages. */
+  getStrict?<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttlSeconds?: number): Promise<void>;
   delete(key: string): Promise<void>;
   clear?(): Promise<void>;

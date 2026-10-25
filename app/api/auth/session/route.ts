@@ -6,6 +6,12 @@ import { mockAuthManager } from '@/lib/auth/mock';
 
 export const dynamic = 'force-dynamic';
 
+function privateJson(body: unknown, init?: ResponseInit) {
+  const headers = new Headers(init?.headers);
+  headers.set('Cache-Control', 'private, no-store');
+  return NextResponse.json(body, { ...init, headers });
+}
+
 function clearSessionCookies(res: NextResponse): void {
   res.cookies.set(AUTH_CONFIG.cookieName, '', { maxAge: 0, path: '/' });
   res.cookies.set(AUTH_CONFIG.refreshCookieName, '', { maxAge: 0, path: '/' });
@@ -20,7 +26,7 @@ export async function GET(req: NextRequest) {
       const initSec = parseInt(sessionCreatedAtStr, 10);
       if (!isNaN(initSec) && nowSec - initSec > AUTH_CONFIG.sessionMaxAge) {
         // 超过 30 天硬性周期，坚决清理会话
-        const res = NextResponse.json({ user: null, session: null });
+        const res = privateJson({ user: null, session: null });
         clearSessionCookies(res);
         return res;
       }
@@ -47,7 +53,7 @@ export async function GET(req: NextRequest) {
               aal: session.aal
             };
 
-            const res = NextResponse.json({
+            const res = privateJson({
               user: {
                 ...session.user,
                 isAdmin
@@ -75,7 +81,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!session) {
-      return NextResponse.json({ user: null, session: null });
+      return privateJson({ user: null, session: null });
     }
 
     const isAdmin = Boolean(
@@ -91,7 +97,7 @@ export async function GET(req: NextRequest) {
       aal: session.aal
     };
 
-    return NextResponse.json({
+    return privateJson({
       user: {
         ...session.user,
         isAdmin
@@ -99,6 +105,6 @@ export async function GET(req: NextRequest) {
       session: safeSession
     });
   } catch (err: any) {
-    return NextResponse.json({ user: null, session: null, error: '身份服务暂不可用，请重试' }, { status: 503, headers:{'Cache-Control':'private, no-store'} });
+    return privateJson({ user: null, session: null, error: '身份服务暂不可用，请重试' }, { status: 503, headers:{'Cache-Control':'private, no-store'} });
   }
 }

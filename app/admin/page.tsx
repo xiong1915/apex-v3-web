@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
@@ -70,6 +70,13 @@ export default function AdminPage() {
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [dataErrors, setDataErrors] = useState<Partial<Record<AdminTab, string>>>({});
+  const permissionGeneration = useRef(0);
+  const clearPrivateData = useCallback(() => {
+    permissionGeneration.current++;
+    setOverviewData(null); setUsersData(null); setAiData(null); setF1Data(null);
+    setAutoRefreshAI(false);
+  }, []);
 
   // TOTP Modal & Enroll
   const [showTotpModal, setShowTotpModal] = useState(false);
@@ -88,14 +95,15 @@ export default function AdminPage() {
   } | null>(null);
   const [loadingEnroll, setLoadingEnroll] = useState(false);
 
-  const openTotpModal = useCallback(async (rebind = false) => {
+  const openTotpModal = useCallback(async () => {
     setShowTotpModal(true);
     setTotpError(null);
+    setEnrollData(null);
+    setTotpCode('');
     setLoadingEnroll(true);
     try {
-      const url = rebind ? '/api/admin/mfa/enroll?rebind=1' : '/api/admin/mfa/enroll';
-      const res = await fetch(url, { cache: 'no-store' });
-      const data = await res.json();
+      const res = await fetch('/api/admin/mfa/enroll', { method: 'POST', cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setEnrollData(data);
       } else {
@@ -118,7 +126,7 @@ export default function AdminPage() {
     let mounted = true;
     fetchCurrentSession().then(async ({ user, session, error }) => {
       if (!mounted) return;
-      if (error) {setAuthError(error); return;}
+      if (error) {setAuthError(error); setCheckingAuth(false); return;}
       if (!user) {
         router.push('/login?returnUrl=/admin');
         return;
@@ -137,19 +145,21 @@ export default function AdminPage() {
           return;
         }
 
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setAuthError(data.error || '身份服务暂不可用，请重试');
+          setCheckingAuth(false);
+          return;
+        }
+        if (!mounted) return;
         setIsAdmin(true);
         setAdminUser(user);
-        const resolvedAal = data.aal || 'aal1';
+        const resolvedAal = data.aal === 'aal2' ? 'aal2' : 'aal1';
         setAalLevel(resolvedAal);
         setCheckingAuth(false);
 
-        // 若尚未升级为 AAL2，主动弹出绑定 / 验证引导
-        if (resolvedAal !== 'aal2') {
-          openTotpModal();
-        }
       } catch (_) {
-        setIsAdmin(false);
+        setAuthError('身份服务连接失败，请重试');
         setCheckingAuth(false);
       }
     });
@@ -157,55 +167,73 @@ export default function AdminPage() {
     return () => {
       mounted = false;
     };
-  }, [router, openTotpModal]);
+  }, [router]);
 
   // 2. 加载数据
   const loadData = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isAdmin || aalLevel !== 'aal2') return;
+    const generation = permissionGeneration.current;
     setLoading(true);
     setErrorMsg(null);
 
     try {
-      const [ovRes, uRes, aiRes, f1Res] = await Promise.all([
-        fetch('/api/admin/overview', { cache: 'no-store' }),
-        fetch('/api/admin/users', { cache: 'no-store' }),
-        fetch('/api/admin/ai', { cache: 'no-store' }),
-        fetch('/api/admin/f1', { cache: 'no-store' })
-      ]);
-
-      if (ovRes.ok) setOverviewData(await ovRes.json());
-      if (uRes.ok) setUsersData(await uRes.json());
-      if (aiRes.ok) setAiData(await aiRes.json());
-      if (f1Res.ok) setF1Data(await f1Res.json());
+      const tabs = ['overview', 'users', 'ai', 'f1'] as const;
+      const results = await Promise.all(tabs.map(async tab => {
+        try {
+          const response = await fetch(`/api/admin/${tab}`, { cache: 'no-store' });
+          const data = await response.json().catch(() => ({}));
+          return { tab, response, data };
+        } catch { return { tab, response: null, data: { error: '网络连接失败，请重试' } }; }
+      }));
+      if (generation !== permissionGeneration.current) return;
+      if (results.some(result => result.response?.status === 401 || result.response?.status === 403)) {
+        clearPrivateData(); setAalLevel('aal1');
+        setErrorMsg('管理权限或双重验证已失效，请重新验证身份');
+        return;
+      }
+      const setters = { overview: setOverviewData, users: setUsersData, ai: setAiData, f1: setF1Data };
+      const errors: Partial<Record<AdminTab, string>> = {};
+      for (const result of results) {
+        setters[result.tab](result.response?.ok ? result.data : null);
+        if (!result.response?.ok) errors[result.tab] = result.data.error || '后台数据读取失败';
+      }
+      setDataErrors(errors);
     } catch (e: any) {
       setErrorMsg(e.message || '加载后台数据失败');
     } finally {
       setLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, aalLevel, clearPrivateData]);
 
   useEffect(() => {
-    if (isAdmin) {
+    if (isAdmin && aalLevel === 'aal2') {
       loadData();
     }
-  }, [isAdmin, loadData]);
+  }, [isAdmin, aalLevel, loadData]);
 
   const refreshAIMonitor = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isAdmin || aalLevel !== 'aal2') return;
+    const generation = permissionGeneration.current;
     setAiRefreshing(true);
     try {
       const response = await fetch('/api/admin/ai', { cache: 'no-store' });
-      if (!response.ok) throw new Error(response.status === 403 ? '请先完成双重验证后刷新' : 'AI 监控读取失败');
-      setAiData(await response.json());
+      const data = await response.json().catch(() => ({}));
+      if (generation !== permissionGeneration.current) return;
+      if (response.status === 401 || response.status === 403) {
+        clearPrivateData(); setAalLevel('aal1');
+        throw new Error('管理权限或双重验证已失效，请重新验证身份');
+      }
+      if (!response.ok) { setAiData(null); throw new Error(data.error || 'AI 监控读取失败'); }
+      setAiData(data);
       setAiMonitorError(null);
     } catch (error) { setAiMonitorError(error instanceof Error ? error.message : 'AI 监控读取失败'); }
     finally { setAiRefreshing(false); }
-  }, [isAdmin]);
+  }, [isAdmin, aalLevel, clearPrivateData]);
   useEffect(() => {
-    if (!autoRefreshAI || currentTab !== 'ai' || !isAdmin) return;
+    if (!autoRefreshAI || currentTab !== 'ai' || !isAdmin || aalLevel !== 'aal2') return;
     const timer = setInterval(() => { if (!document.hidden) void refreshAIMonitor(); }, 30000);
     return () => clearInterval(timer);
-  }, [autoRefreshAI, currentTab, isAdmin, refreshAIMonitor]);
+  }, [autoRefreshAI, currentTab, isAdmin, aalLevel, refreshAIMonitor]);
 
   // 3. 提交 TOTP 双重验证
   const handleVerifyTotp = async (e: React.FormEvent) => {
@@ -227,7 +255,7 @@ export default function AdminPage() {
           factorId: enrollData?.factorId
         })
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setTotpError(data.error || '验证失败');
         return;
@@ -237,7 +265,7 @@ export default function AdminPage() {
       setShowTotpModal(false);
       setTotpCode('');
       // 成功升级为 AAL2 后重新加载后台数据
-      loadData();
+      // The AAL2 state change starts the protected data read through the effect.
     } catch (err: any) {
       setTotpError(err.message || '网络连接异常');
     } finally {
@@ -257,8 +285,14 @@ export default function AdminPage() {
 
     try {
       const res = await fetch('/api/admin/f1', { method: 'POST' });
-      const data = await res.json();
+      if (res.status === 401 || res.status === 403) {
+        clearPrivateData(); setAalLevel('aal1');
+        setSyncResult({success:false,message:'管理权限或双重验证已失效，请重新验证身份'});
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) { clearPrivateData(); setAalLevel('aal1'); }
         setSyncResult({ success: false, message: data.error || data.message || '同步请求被拒绝' });
         if (data.cooldownRemaining) {
           setCooldownSeconds(data.cooldownRemaining);
@@ -461,27 +495,32 @@ export default function AdminPage() {
           </button>
         </div>
 
+        {errorMsg && <p role="alert">{errorMsg}</p>}
+        {aalLevel === 'aal2' && loading && <p role="status">正在读取后台数据…</p>}
+        {aalLevel === 'aal2' && dataErrors[currentTab] && <div role="alert"><p>{dataErrors[currentTab]}</p><GlassButton onClick={() => loadData()}>重试读取</GlassButton></div>}
         {/* Tab 1: 网站概览 */}
-        {currentTab === 'overview' && (
+        {aalLevel === 'aal2' && currentTab === 'overview' && overviewData && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
               <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>系统健康状态</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--status-good)' }}>
-                  ● {overviewData?.health?.status === 'healthy' ? '服务全部正常' : '降级运行中'}
+                <div style={{ fontSize: '20px', fontWeight: 800, color: overviewData?.health?.status === 'healthy' ? 'var(--status-good)' : 'var(--status-warning)' }}>
+                  ● {overviewData?.health?.status === 'healthy' ? '服务全部正常' : overviewData?.health?.status === 'offline' ? '赛事数据不可用' : '降级运行中'}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                  存储引擎：{overviewData?.health?.storageProvider || '已连接'}
+                  存储引擎：{overviewData?.health?.storageProvider || '未报告'}
+                  <br />存储连接：{overviewData?.health?.storageConnected ? '本次读取成功' : '本次读取失败'}
                 </div>
               </GlassCard>
 
               <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>当前生产版本 (Git SHA)</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>当前部署版本 (Git SHA)</div>
                 <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
                   {overviewData?.deployment?.buildId || '暂无数据'}
                 </div>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
                   部署环境：{overviewData?.deployment?.environment} ({overviewData?.deployment?.vercelEnv})
+                  <br />构建时间：{overviewData?.deployment?.deployedAt ? formatBeijingDisplay(overviewData.deployment.deployedAt) : '未报告'}
                 </div>
               </GlassCard>
 
@@ -491,7 +530,7 @@ export default function AdminPage() {
                   {overviewData?.f1?.lastSyncTime ? formatBeijingDisplay(overviewData.f1.lastSyncTime) : '暂无数据'}
                 </div>
                 <div style={{ fontSize: '11px', color: overviewData?.f1?.upstreamSyncSuccess === false ? 'var(--accent-red)' : 'var(--status-good)', marginTop: '6px' }}>
-                  {overviewData?.f1?.upstreamSyncSuccess === false ? '最近同步重试已降级' : '✓ 上游数据对齐正常'}
+                  {overviewData?.f1?.upstreamSyncSuccess === false ? '最近同步重试已降级' : overviewData?.f1?.upstreamSyncSuccess === true ? '✓ 上游数据对齐正常' : '上游状态未报告'}
                 </div>
               </GlassCard>
             </div>
@@ -505,11 +544,11 @@ export default function AdminPage() {
         )}
 
         {/* Tab 2: 用户管理 */}
-        {currentTab === 'users' && (
+        {aalLevel === 'aal2' && currentTab === 'users' && usersData && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ fontSize: '14px', fontWeight: 700 }}>
-                真实注册用户 (共 {usersData?.total || 0} 位)
+                真实注册用户 (共 {usersData.total} 位)
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
                 私人后台 · 权限固定单人管理
@@ -561,7 +600,7 @@ export default function AdminPage() {
                   {(!usersData?.users || usersData.users.length === 0) && (
                     <tr>
                       <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                        暂无数据
+                        暂无注册用户
                       </td>
                     </tr>
                   )}
@@ -572,10 +611,10 @@ export default function AdminPage() {
         )}
 
         {/* Tab 3: AI 运行监控 */}
-        {currentTab === 'ai' && <AdminAIMonitor data={aiData} loading={aiRefreshing || loading} error={aiMonitorError} refresh={refreshAIMonitor} automatic={autoRefreshAI} setAutomatic={setAutoRefreshAI}/>}
+        {aalLevel === 'aal2' && currentTab === 'ai' && <AdminAIMonitor data={aiData} loading={aiRefreshing || loading} error={aiMonitorError || dataErrors.ai || null} refresh={refreshAIMonitor} automatic={autoRefreshAI} setAutomatic={setAutoRefreshAI}/>}
 
         {/* Tab 4: F1 数据调度 */}
-        {currentTab === 'f1' && (
+        {aalLevel === 'aal2' && currentTab === 'f1' && f1Data && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <GlassCard style={{ padding: '24px', borderRadius: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
@@ -906,24 +945,7 @@ export default function AdminPage() {
                     </GlassButton>
                   </div>
 
-                  {enrollData?.verified && (
-                    <div style={{ textAlign: 'center', marginTop: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={() => openTotpModal(true)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-muted)',
-                          fontSize: '11px',
-                          cursor: 'pointer',
-                          textDecoration: 'underline'
-                        }}
-                      >
-                        更换 / 重新绑定手机验证器
-                      </button>
-                    </div>
-                  )}
+                  {enrollData?.verified && <p style={{ textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)' }}>暂不支持安全更换验证器，请保留并使用现有验证器。</p>}
                 </form>
               </>
             )}

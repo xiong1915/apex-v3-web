@@ -49,7 +49,7 @@ export interface AIResponse {
   sources?: AISource[];
 }
 
-export type AIStreamEventType = 'delta' | 'done' | 'error' | 'sources' | 'tool_call' | 'fact_card';
+export type AIStreamEventType = 'delta' | 'done' | 'error' | 'sources' | 'tool_call' | 'fact_card' | 'meta' | 'timing';
 
 export interface AIFactCardField {
   label: string;
@@ -69,6 +69,10 @@ export interface AIStreamEvent {
   sources?: AISource[];
   factCard?: AIFactCard;
   error?: string;
+  mode?: 'fast' | 'deep' | 'fallback';
+  label?: string;
+  stage?: 'routing' | 'retrieval' | 'first_text' | 'total';
+  elapsedMs?: number;
 }
 
 export type HealthStatus = 'healthy' | 'degraded' | 'unavailable';

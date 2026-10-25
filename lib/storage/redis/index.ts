@@ -15,6 +15,10 @@ import {
 export class RedisCacheStore implements CacheStore {
   constructor(private redis: Redis) {}
 
+  async getStrict<T>(key: string): Promise<T | null> {
+    return (await this.redis.get<T>(key)) ?? null;
+  }
+
   async get<T>(key: string): Promise<T | null> {
     try {
       const res = await this.redis.get<T>(key);
@@ -152,7 +156,7 @@ export class RedisRateLimitStore implements RateLimitStore {
     } catch (err) {
       console.warn(`[RedisRateLimitStore] checkRateLimit(${key}) error, falling back to MemoryRateLimitStore:`, err);
       // 严禁无限放行：Redis 故障时自动转由实例内存限流器严格防御
-      if ((process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') && key.startsWith('ai:')) return {allowed:false,remaining:0,resetAt:now+60000};
+      if ((process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production') && (key.startsWith('ai:') || key.startsWith('admin:mfa:'))) return {allowed:false,remaining:0,resetAt:now+60000};
       return this.fallbackStore.checkRateLimit(key, limit, windowSeconds);
     }
   }

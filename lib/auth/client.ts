@@ -8,6 +8,43 @@ import { User, Session, AuthResponse } from './types';
 import { AUTH_CONFIG, isSupabaseConfigured } from './config';
 
 let browserClient: any = null;
+let identityRevision = 0;
+const pendingIdentityReads = new Map<string, Promise<any>>();
+const identitySignalKey = 'apex:identity-revision';
+let identitySyncStarted = false;
+
+function startIdentitySync() {
+  if (typeof window === 'undefined' || identitySyncStarted) return;
+  identitySyncStarted = true;
+  window.addEventListener('storage', event => {
+    if (event.key === identitySignalKey) invalidateIdentityReads(false);
+  });
+  window.addEventListener('focus', () => invalidateIdentityReads(false));
+}
+
+export function invalidateIdentityReads(broadcast = true) {
+  identityRevision++;
+  pendingIdentityReads.clear();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('apex:identity-changed'));
+    if (broadcast) {
+      try { window.localStorage.setItem(identitySignalKey, `${Date.now()}:${Math.random()}`); } catch { /* Focus revalidation still works when storage is blocked. */ }
+    }
+  }
+}
+
+// Only pending work is shared. Completed private data is never retained here.
+export function readIdentityOnce<T>(key: string, read: () => Promise<T>, stale: () => T): Promise<T> {
+  startIdentitySync();
+  const existing = pendingIdentityReads.get(key);
+  if (existing) return existing;
+  const revision = identityRevision;
+  const request = read().then(result => revision === identityRevision ? result : stale()).finally(() => {
+    if (pendingIdentityReads.get(key) === request) pendingIdentityReads.delete(key);
+  });
+  pendingIdentityReads.set(key, request);
+  return request;
+}
 
 export function getSupabaseBrowserClient() {
   if (!isSupabaseConfigured()) return null;
@@ -21,6 +58,10 @@ export function getSupabaseBrowserClient() {
 }
 
 export async function fetchCurrentSession(): Promise<{ user: User | null; session: Session | null; error?: string }> {
+  return readIdentityOnce('session', readCurrentSession, () => ({user:null,session:null,error:'登录状态已变化，请重试'}));
+}
+
+async function readCurrentSession(): Promise<{ user: User | null; session: Session | null; error?: string }> {
   try {
     const res = await fetch('/api/auth/session', { cache: 'no-store' });
     if (res.status === 401) return {user:null,session:null};
@@ -43,6 +84,7 @@ export async function apiLogin(email: string, password: string): Promise<AuthRes
     if (!res.ok) {
       return { data: null, error: { message: json.error || '登录失败', status: res.status } };
     }
+    invalidateIdentityReads();
     return { data: json, error: null };
   } catch (e: any) {
     return { data: null, error: { message: e.message || '网络连接异常' } };
@@ -60,6 +102,7 @@ export async function apiRegister(email: string, password: string): Promise<Auth
     if (!res.ok) {
       return { data: null, error: { message: json.error || '注册失败', status: res.status } };
     }
+    invalidateIdentityReads();
     return { data: json, error: null };
   } catch (e: any) {
     return { data: null, error: { message: e.message || '网络连接异常' } };
@@ -69,6 +112,7 @@ export async function apiRegister(email: string, password: string): Promise<Auth
 export async function apiLogout(): Promise<void> {
   const response = await fetch('/api/auth/logout', { method: 'POST' });
   if (!response.ok) throw new Error('退出登录失败，请稍后重试');
+  invalidateIdentityReads();
 }
 
 export async function apiForgotPassword(email: string): Promise<AuthResponse<{ message: string }>> {
@@ -82,6 +126,7 @@ export async function apiForgotPassword(email: string): Promise<AuthResponse<{ m
     if (!res.ok) {
       return { data: null, error: { message: json.error || '发送失败', status: res.status } };
     }
+    invalidateIdentityReads();
     return { data: json, error: null };
   } catch (e: any) {
     return { data: null, error: { message: e.message || '网络连接异常' } };
@@ -99,6 +144,7 @@ export async function apiResetPassword(password: string, token?: string): Promis
     if (!res.ok) {
       return { data: null, error: { message: json.error || '重置失败', status: res.status } };
     }
+    invalidateIdentityReads();
     return { data: json, error: null };
   } catch (e: any) {
     return { data: null, error: { message: e.message || '网络连接异常' } };

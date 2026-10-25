@@ -67,9 +67,14 @@ export class DeepSeekProvider implements AIProvider {
     }
 
     const data = await res.json();
-    this.lastSuccessIso = new Date().toISOString();
+    const finish = data.choices?.[0]?.finish_reason;
+    if (data.error || (finish !== 'stop' && data.status !== 'completed')) throw new Error('模型输出未完整结束，可能已截断，请重试');
 
-    const content = data.choices?.[0]?.message?.content || data.response || data.content || '';
+    const outputText = Array.isArray(data.output) ? data.output.flatMap((item: any) => Array.isArray(item.content) ? item.content : [])
+      .filter((item: any) => item.type === 'output_text' && typeof item.text === 'string').map((item: any) => item.text).join('') : '';
+    const content = data.choices?.[0]?.message?.content || data.output_text || outputText || data.response || data.content || '';
+    if (typeof content !== 'string' || !content.trim()) throw new Error('模型未返回有效文本');
+    this.lastSuccessIso = new Date().toISOString();
     return {
       content,
       model,
@@ -130,6 +135,7 @@ export class DeepSeekProvider implements AIProvider {
     const decoder = new TextDecoder('utf-8');
     let buffer = '';
     let completed = false;
+    let hasText = false;
 
     try {
       while (true) {
@@ -143,6 +149,10 @@ export class DeepSeekProvider implements AIProvider {
           if (!trimmed || !trimmed.startsWith('data:')) continue;
           const dataStr = trimmed.slice(5).trim();
           if (dataStr === '[DONE]') {
+            if (!completed || !hasText) {
+              yield {type: 'error', error: '模型连接提前结束，已保留部分回答，请重试'};
+              return;
+            }
             this.lastSuccessIso = new Date().toISOString();
             yield { type: 'done' };
             return;
@@ -162,6 +172,7 @@ export class DeepSeekProvider implements AIProvider {
             }
             const delta = parsed.choices?.[0]?.delta?.content || parsed.delta?.content || (parsed.type === 'response.output_text.delta' ? parsed.delta : '') || '';
             if (delta) {
+              if (String(delta).trim()) hasText = true;
               yield { type: 'delta', content: delta };
             }
           } catch (_) {
@@ -171,7 +182,7 @@ export class DeepSeekProvider implements AIProvider {
         if (done) break;
       }
 
-      if (!completed) {
+      if (!completed || !hasText) {
         yield { type: 'error', error: '模型连接提前结束，已保留部分回答，请重试' };
         return;
       }

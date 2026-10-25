@@ -19,6 +19,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const expectedOwner = req.headers.get('x-apex-profile-owner');
+    if (expectedOwner !== null && expectedOwner !== session.user.id) {
+      return NextResponse.json({error:'登录账号已变化，请重新加载个人资料'}, {status:409,headers:{'Cache-Control':'private, no-store'}});
+    }
     // 频率限制防恶意上传 (每用户每分钟最多允许 10 次上传)
     const rateKey = `rate:avatar:${session.user.id}`;
     const rateCheck = await defaultRateLimitStore.checkRateLimit(rateKey, 10, 60);
@@ -97,6 +101,10 @@ export async function DELETE(req: NextRequest) {
       });
     }
 
+    const expectedOwner = req.headers.get('x-apex-profile-owner');
+    if (expectedOwner !== null && expectedOwner !== session.user.id) {
+      return NextResponse.json({error:'登录账号已变化，请重新加载个人资料'}, {status:409,headers:{'Cache-Control':'private, no-store'}});
+    }
     const result = await deleteUserAvatar(session.user);
     if (result.error) {
       return NextResponse.json({ error: result.error, profile: result.profile }, {
