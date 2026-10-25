@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { determineStandingsCutoff } from '../providers/f1/service.ts';
 import { fetchJolpicaDriverStandings } from '../providers/f1/jolpica.ts';
-import { buildOpenFrames } from '../lib/f1/replay/openf1.ts';
 import { checkUrlSafety } from '../lib/search/url_safety.ts';
 import { filterAndRankCandidates } from '../lib/search/filter.ts';
 import { defaultAIOrchestrator } from '../lib/ai/orchestrator.ts';
@@ -49,14 +48,6 @@ test('pagination rejects malformed later pages and changing round, instead of pu
       assert.equal(calls, 2);
     }
   } finally { globalThis.fetch = original; }
-});
-test('real replay joins source timestamps without inventing missing telemetry or ranks', () => {
-  const manifest = { session: { date_start: '2023-01-01T00:00:00Z' }, metadata: { durationSeconds: 7200 },
-    drivers: [{ driver_number: 1, name_acronym: 'VER', full_name: 'Max', team_name: 'Red Bull', team_colour: '0000ff' }], bounds: { minX: 0, minY: 0, span: 100 } };
-  const frames = buildOpenFrames(manifest, 600, [{ date: '2023-01-01T00:10:00Z', driver_number: 1, x: 50, y: 50 }], [], [], []);
-  assert.equal(frames[0].timestampMs, 600000); assert.equal(frames.at(-1).timestampMs, 660000);
-  assert.equal(frames[0].vehicles[0].telemetryStale, true); assert.equal(frames[0].vehicles[0].position, 0);
-  assert.equal(frames[10].vehicles[0].stale, true); assert.equal(frames[0].vehicles[0].sampleTimestampMs, 600000);
 });
 test('IPv6 loopback and mapped private IPv4 cannot bypass URL checks', () => {
   for (const url of ['http://[::1]/', 'http://[::ffff:127.0.0.1]/', 'http://[::ffff:192.168.1.1]/', 'http://[fe80::1]/']) assert.equal(checkUrlSafety(url).safe, false);

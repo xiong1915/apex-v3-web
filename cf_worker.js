@@ -41,6 +41,10 @@ export default {
     try {
       const upstreamRes = await fetch(upstreamReq);
 
+      // Cloudflare owns the upgraded socket on this response. Reconstructing a
+      // normal HTTP Response loses that socket and breaks the 101 handshake.
+      if (upstreamRes.status === 101 && upstreamRes.webSocket) return upstreamRes;
+
       const resHeaders = new Headers(upstreamRes.headers);
       resHeaders.set('X-Tike-Gateway', 'Cloudflare-Edge-Native-V3');
 

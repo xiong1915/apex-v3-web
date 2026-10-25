@@ -30,13 +30,11 @@ async function main() {
   const st2008 = await (await fetch(`${PREVIEW_URL}/api/f1/standings?season=2008`)).json();
   console.log(`- 2008 榜首车手: ${st2008.driverStandings?.[0]?.name} (${st2008.driverStandings?.[0]?.points}分)`);
 
-  // 4. APEX REPLAY 回放检查
-  console.log('\n4. 验证 APEX REPLAY (/replay & /api/f1/replay):');
-  const replayPage = await fetch(`${PREVIEW_URL}/replay`);
-  console.log(`- /replay 页面状态: HTTP ${replayPage.status}`);
-  const replayApi = await (await fetch(`${PREVIEW_URL}/api/f1/replay?season=2023`)).json();
-  console.log(`- 2023 真实正赛场次数: ${replayApi.sessions?.length || 0}`);
-
+  // 4. 实时中心公开能力（只读，不启动采集）
+  const livePage = await fetch(`${PREVIEW_URL}/live`);
+  const liveResponse = await fetch(`${PREVIEW_URL}/api/f1/live/snapshot?season=2023`);
+  const live = await liveResponse.json();
+  console.log('LIVE TIMING', {pageStatus:livePage.status, apiStatus:liveResponse.status, timingPublic:live.availability?.timingPublic});
   // 5. 数据同步 API 检查
   console.log('\n5. 验证数据同步 API (/api/cron/sync):');
   const syncUnauth = await fetch(`${PREVIEW_URL}/api/cron/sync`);

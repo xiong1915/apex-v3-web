@@ -338,20 +338,20 @@
 .tool-ai .glass-composer {
   padding:8px 8px 8px 16px
 }
-.tool-replay {
+.tool-live {
   border-left:1px solid var(--line-dark);
   padding-left:48px
 }
-.tool-replay h2 {
+.tool-live h2 {
   font-size:32px;
   margin-top:16px
 }
-.tool-replay>p {
+.tool-live>p {
   font-size:13px;
   color:var(--text-secondary);
   margin:16px 0 24px
 }
-.mini-replay-map {
+.live-circuit-preview {
   height:120px;
   opacity:.7;
   margin-top:24px
@@ -417,7 +417,7 @@
   .tools-spread {
     gap:32px
   }
-  .tool-replay {
+  .tool-live {
     padding-left:32px
   }
 }
@@ -565,12 +565,12 @@
     gap:40px;
     padding-top:32px
   }
-  .tool-replay {
+  .tool-live {
     border-left:0;
     border-top:1px solid var(--line-dark);
     padding:32px 0 0
   }
-  .tool-ai h2,.tool-replay h2 {
+  .tool-ai h2,.tool-live h2 {
     font-size:28px
   }
   .home-history {
