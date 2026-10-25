@@ -102,6 +102,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const expectedOwner = req.headers.get('x-apex-history-owner');
+    if (expectedOwner && expectedOwner !== user.id) return NextResponse.json({error:'账号已变化，请刷新后重试'}, {status:409,headers:{'Cache-Control':'private, no-store'}});
     if (!user.email_confirmed_at) {
       return NextResponse.json(
         { error: '未经验证邮箱的用户无法调用 AI 服务，请先完成邮箱验证' },

@@ -9,8 +9,17 @@ import { SearchResultItem } from '../search/types';
 import { getBeijingTime, formatBeijingDisplay } from '../f1/time';
 import { fetchArticleContent } from '../search/content_fetcher';
 import { FilterContext } from '../search/filter';
+import { RACE_POINTS, SPRINT_POINTS, getMaxWeekendPoints } from '../f1/scoring';
 
 export type UserIntent = 'F1_FACTUAL' | 'F1_ANALYSIS' | 'F1_NEWS' | 'GENERAL';
+
+// Canonical names include given names; accept the surname used in ordinary questions.
+function findDriver(query: string, rows: any[] = []) {
+  const q = query.toLowerCase();
+  return rows.find(d => [d.name, d.nameEn, d.driverId].filter(Boolean).some((name: string) =>
+    [name, name.split(/[·\s]+/).at(-1) || ''].some(part => part.length >= 2 && q.includes(part.toLowerCase())))
+    || (d.code && new RegExp(`\\b${d.code}\\b`, 'i').test(query)));
+}
 
 export class AIOrchestrator {
   /**
@@ -141,6 +150,11 @@ export class AIOrchestrator {
         return 'F1_NEWS';
       }
     }
+
+    // Scoring rules must not be confused with the last race's fastest-lap driver.
+    if (/最快圈.*(加分|积分)|积分规则|计分规则|周末.*最多.*分/i.test(q)) return 'F1_ANALYSIS';
+    // Explicit analysis takes precedence over fact words in mixed questions.
+    if (/(为什么|策略|战术|分析|概率|前景|争冠|推演|预测|undercut|overcut)/i.test(q) && /(f1|车手|车队|冠军|夺冠|积分|进站|轮胎|诺里斯|汉密尔顿|维斯塔潘|勒克莱尔|安东内利|拉塞尔|皮亚斯特里|undercut|overcut)/i.test(q)) return 'F1_ANALYSIS';
 
     // 2. F1 事实类意图 (下一站、赛历、几点开赛、当前榜首、上一站赛果、积分情况)
     if (/(下一[场站]|什么时候开赛|开赛|赛程|赛历|几号|几点|积分榜|排名|排第几|谁是第一|谁领跑|榜首|多少分|领跑|上[一站场]|谁夺冠|夺冠|谁赢了|冠军|杆位|最快圈|领奖台)/i.test(q)) {
@@ -392,24 +406,24 @@ ${histContext}
 
     const cutOffDesc = overview.standingsCutoffDesc || '截止场次待核实';
     const leaderP = overview.driverStandings[0];
-    const leaderDesc = leaderP ? `${leaderP.name} ${leaderP.points}分` : '基米·安东内利 325分';
+    const leaderDesc = leaderP ? `${leaderP.name} ${leaderP.points}分` : '暂无可核实的榜首数据';
 
     let contextText = `【TIKE F1 权威 2026 赛季事实基准 (数据层权威锁定，模型严禁篡改或推测)】
 - 当前北京时间：${bjTime} (UTC+8)
 - 当前赛季：2026 赛季
 - 积分统计截止场次：${cutOffDesc}
-- 当前进行/下一站：第 ${curr.round} 站 ${curr.nameZh || curr.name} (${curr.locality} · ${curr.circuitName})
-  周末性质：${curr.isSprintWeekend ? '包含冲刺赛 (Sprint Weekend)' : '常规大奖赛周末 (无冲刺赛)'}
-  正赛时间：${formatBeijingDisplay(curr.raceStartUTC)} (北京时间)
+- 当前进行/下一站：第 ${curr?.round ?? '待核实'} 站 ${curr?.nameZh || curr?.name || '暂无可核实的分站'} (${curr?.locality || '待核实'} · ${curr?.circuitName || '待核实'})
+  周末性质：${curr ? (curr.isSprintWeekend ? '包含冲刺赛 (Sprint Weekend)' : '常规大奖赛周末 (无冲刺赛)') : '周末性质待核实'}
+  正赛时间：${curr?.raceStartUTC ? formatBeijingDisplay(curr.raceStartUTC) : '待核实'} (北京时间)
   下一节动态：${nextS.session?.name || 'Grand Prix'} (${nextS.status === 'IN_PROGRESS' ? '当前进行中 (预计剩余时间计算中)' : (nextS.session?.startTimeUTC ? formatBeijingDisplay(nextS.session.startTimeUTC) : '待定')})
   本站完整赛程时间表：
-${curr.sessions?.map((s: any) => `  * ${s.name}: ${formatBeijingDisplay(s.startTimeUTC)} (北京时间)`).join('\n') || '  * 详见赛程中心'}
+${curr?.sessions?.map((s: any) => `  * ${s.name}: ${formatBeijingDisplay(s.startTimeUTC)} (北京时间)`).join('\n') || '  * 详见赛程中心'}
 - 当前车手世界锦标赛积分榜前 10 名 (2026 官方核定，当前第 1 名为${leaderDesc})：
 ${overview.driverStandings.slice(0, 10).map((d: any) => `  ${d.rank}. ${d.name} (${d.team}) - ${d.points} 分 (${d.gap === 0 ? '领跑积分榜' : `落后 ${Math.abs(d.gap)} 分`}, ${d.wins || 0} 胜)`).join('\n')}
 - 当前车队世界锦标赛积分榜前 5 名：
 ${overview.constructorStandings.slice(0, 5).map((t: any) => `  ${t.rank}. ${t.name} - ${t.points} 分 (${t.gap === 0 ? '领跑积分榜' : `落后 ${Math.abs(t.gap)} 分`}, ${t.wins || 0} 胜)`).join('\n')}`;
 
-    if (matchedMeeting && matchedMeeting.round !== curr.round) {
+    if (matchedMeeting && matchedMeeting.round !== curr?.round) {
       contextText += `\n\n【用户询问的目标分站权威赛程】
 - 第 ${matchedMeeting.round} 站 ${matchedMeeting.nameZh || matchedMeeting.name} (${matchedMeeting.locality} · ${matchedMeeting.circuitName})
   正赛时间：${formatBeijingDisplay(matchedMeeting.raceStartUTC)} (北京时间)
@@ -495,7 +509,9 @@ ${contextText}
 1. 深入分析，逻辑严密：回答应富有洞察力、逻辑条理分明。不仅告知结论，更应解释其工程逻辑、战术背景或长远影响。拒绝机械刻板、答非所问或敷衍回复。
 2. 拥抱实时联网检索：若上方提供了【实时互联网联网检索最新动态】，必须充分结合检索到的最新报道与动态进行综合解答，严禁声称“无法联网”或“无需搜索”。严禁编造未在检索结果中出现的媒体来源！
 3. 事实严谨性：当提问涉及当前 2026 赛季赛历、具体场次时间、官方车手/车队积分与上一站赛果时，严格遵循上方给出的【TIKE F1 权威 2026 赛季事实基准】，禁止篡改、覆盖或臆造排名。
-4. 排版与呈现：使用规范的 Markdown 格式，适当运用清晰小标题、加粗要点与列表，让内容清晰美观、专业可信。`;
+4. 积分规则：正赛前十积分为 ${RACE_POINTS.join('、')}；冲刺赛前八为 ${SPRINT_POINTS.join('、')}。常规周末最多 ${getMaxWeekendPoints(false)} 分，冲刺周末最多 ${getMaxWeekendPoints(true)} 分。2025 年起最快圈不再额外加分。仅在完整赛程和已结算积分可核实时计算剩余理论积分；数学上仍可能夺冠不等于夺冠概率。没有明确统计模型、输入和假设，不得编造精确夺冠百分比，改为有条件的定性分析。
+5. 回答长度：先给简短结论，再解释关键条件；通常控制在 600 字内，避免在输出上限前留下未完成的段落。
+6. 排版与呈现：使用规范的 Markdown 格式，适当运用清晰小标题、加粗要点与列表，让内容清晰美观、专业可信。`;
 
     return { systemPrompt, sources, searchResults, evidenceUnavailable: needSearch && searchResults.length === 0 };
   }
@@ -583,11 +599,7 @@ ${contextText}
 
     // 匹配具体提及的车手
     if (overview.driverStandings && overview.driverStandings.length > 0) {
-      const matchedDriver = overview.driverStandings.find((d: any) =>
-        (d.name && qLower.includes(d.name.toLowerCase())) ||
-        (d.nameEn && qLower.includes(d.nameEn.toLowerCase())) ||
-        (d.code && query.toUpperCase().includes(d.code))
-      );
+      const matchedDriver = findDriver(query, overview.driverStandings);
       if (matchedDriver && /积分|排名|第几|成绩|多少分/i.test(query)) {
         return {
           type: 'standings',
@@ -603,7 +615,7 @@ ${contextText}
       }
     }
 
-    if (/积分|榜首|排名|车手榜|谁领跑|第一/i.test(query) && !/车队/i.test(query)) {
+    if (/积分|榜首|排名|车手榜|谁领跑|第一|多少分|第几/i.test(query) && !/车队/i.test(query)) {
       const isTop3 = /前三|前3|3名/i.test(query);
       const isTop5 = /前五|前5|5名/i.test(query);
       const isTop10 = /前十|前10|10名/i.test(query);
@@ -628,7 +640,7 @@ ${contextText}
       };
     }
 
-    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR && (!matchedMeeting || matchedMeeting.round===lastR.round)) {
+    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR && (matchedMeeting ? matchedMeeting.round===lastR.round : /上一站|上一场|最近一站/.test(query) || [lastR.nameZh,lastR.name].filter(Boolean).some(name => query.toLowerCase().includes(String(name).toLowerCase())))) {
       const poleText = lastR.pole?.name
         ? `${lastR.pole.name} (${lastR.pole.team || lastR.winner.team})`
         : (lastR.startingGridP1?.name ? `${lastR.startingGridP1.name} (发车首位)` : '暂无数据');
@@ -709,7 +721,6 @@ ${standingsList}
     const nextS = overview?.nextSession;
     const lastR = overview?.previousRace;
     const qLower = (query || '').toLowerCase();
-    if (!curr) return null;
 
     // 1. 下一站 / 具体分站赛程
     const matchedMeeting = (calendar && calendar.length > 0)
@@ -723,7 +734,7 @@ ${standingsList}
     const targetMeeting = matchedMeeting || (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛/i.test(query) ? curr : null);
 
     if (targetMeeting && !/上一站|上一场/.test(query) && !/冠军|杆位|最快圈|赛果|成绩|领奖台|winner|pole|fastest/i.test(query) && (/下一[场站]|几点|什么时候|赛程|开赛|正赛|冲刺赛|时间表/i.test(query) || matchedMeeting)) {
-      const isCurr = targetMeeting.round === curr.round;
+      const isCurr = targetMeeting.round === curr?.round;
       const nextStatusText = isCurr
         ? (nextS.status === 'IN_PROGRESS'
             ? `当前进行中：${nextS.session?.name || 'Session'} (预计剩余时间计算中)`
@@ -745,6 +756,12 @@ ${standingsList}
 ${sessionsList}`;
 
       return { factText: text, isPureFactual: !isAnalysisAsked };
+    }
+
+    // A named driver uses the same row in prose and in the fact card.
+    const matchedDriver = findDriver(query, overview?.driverStandings);
+    if (matchedDriver && /积分|排名|第几|成绩|多少分/i.test(query) && !/车队/i.test(query)) {
+      return { factText: `【车手战况：${matchedDriver.name}】\n积分统计截止场次：${overview.standingsCutoffDesc || '截止场次待核实'}\nP${matchedDriver.rank} · ${matchedDriver.team} · ${matchedDriver.points} 分\n分站胜场：${matchedDriver.wins || 0} 胜；${matchedDriver.gap === 0 ? '领跑积分榜' : `落后 ${Math.abs(matchedDriver.gap)} 分`}`, isPureFactual: !isAnalysisAsked };
     }
 
     // 2. 车手积分榜 / 榜首
@@ -782,7 +799,7 @@ ${standingsList}
     }
 
     // 3. 上一站比赛赛果
-    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR && (!matchedMeeting || matchedMeeting.round===lastR.round)) {
+    if (/上[一站场]|冠军|杆位|最快圈/i.test(query) && lastR && (matchedMeeting ? matchedMeeting.round===lastR.round : /上一站|上一场|最近一站/.test(query) || [lastR.nameZh,lastR.name].filter(Boolean).some(name => query.toLowerCase().includes(String(name).toLowerCase())))) {
       const poleDesc = lastR.pole?.name
         ? `${lastR.pole.name} (${lastR.pole.team || lastR.winner.team}) [官方确认杆位得主]`
         : (lastR.startingGridP1?.name ? `${lastR.startingGridP1.name} (正赛发车首位，排位成绩待确认)` : '暂无官方记录（字段暂缺）');
@@ -834,24 +851,33 @@ ${standingsList}
   /**
    * 执行完整的生成
    */
-  private async pureFact(query: string, intent: UserIntent) {
-    if (intent !== 'F1_FACTUAL' || /https?:\/\//i.test(query)) return null;
+  private async pureFact(query: string, intent: UserIntent, signal?: AbortSignal) {
+    if (intent !== 'F1_FACTUAL' || /https?:\/\//i.test(query) || signal?.aborted) return null;
     const season = query.match(/\b(19\d\d|20\d\d)\b/)?.[1] || String(new Date().getUTCFullYear());
-    const overview = await defaultF1Service.getOverview(season);
-    const calendar = await defaultF1Service.getCalendar(season).catch(() => []);
+    const needsCalendar = !/积分|排名|多少分|第几|榜|领跑/.test(query) || /大奖赛|分站|站.*冠军/.test(query);
+    const [overview, calendar] = await Promise.all([
+      defaultF1Service.getOverview(season),
+      needsCalendar ? defaultF1Service.getCalendar(season).catch(() => []) : Promise.resolve([])
+    ]);
+    if (signal?.aborted) return null;
     const historical = season !== String(new Date().getUTCFullYear()) ? { season, standings: overview.driverStandings, constructorStandings: overview.constructorStandings, cutoff: overview.standingsCutoffDesc } : undefined;
     const fact = this.getCanonicalFactBlock(intent, query, overview, calendar, historical);
     if (!fact?.isPureFactual) return null;
-    return {fact, card: this.getFactCard(intent, query, overview, calendar, historical)};
+    const resultUrl = overview.previousRace?.sourceUrls?.raceResult || overview.previousRace?.officialUrl;
+    const path = /积分|排名|多少分|第几|榜|领跑|第一/.test(query) ? (/车队/.test(query) ? 'constructorStandings.json' : 'driverStandings.json') : 'races.json';
+    const sources: AISource[] = [{ name: `统一赛事数据 · ${overview.dataSource || '来源状态待核实'} · ${overview.standingsCutoffDesc || '截止范围待核实'}`, url: /上一站|上一场|冠军|杆位|最快圈/.test(query) && resultUrl ? resultUrl : `https://api.jolpi.ca/ergast/f1/${season}/${path}` }];
+    return {fact, card: this.getFactCard(intent, query, overview, calendar, historical), sources};
   }
 
-  async answer(messages: AIMessage[], clientKey?: string, signal?: AbortSignal): Promise<{ reply: string; sources: AISource[] }> {
+  async answer(messages: AIMessage[], clientKey?: string, signal?: AbortSignal): Promise<{ reply: string; sources: AISource[]; mode?: 'fast' | 'deep' | 'fallback' }> {
+    if (signal?.aborted) return {reply: '', sources: []};
     const lastUserMsg = messages.filter(m => m.role === 'user').pop();
     const query = lastUserMsg?.content || '';
 
     const intent = this.classifyIntent(query);
-    const direct = await this.pureFact(query, intent).catch(() => null);
-    if (direct) return {reply: direct.fact.factText, sources: []};
+    const direct = await this.pureFact(query, intent, signal).catch(() => null);
+    if (direct) return {reply: direct.fact.factText, sources: direct.sources, mode: 'fast'};
+    if (signal?.aborted) return {reply: '', sources: []};
     const { systemPrompt, sources, searchResults, evidenceUnavailable } = await this.buildPrompt(intent, query, messages, signal);
 
     // 1. 检查是否存在权威确定性事实 (若包含用户指定网址，优先执行网页直通解析)
@@ -881,11 +907,12 @@ ${standingsList}
     if (canonicalFact && canonicalFact.isPureFactual) {
       return {
         reply: canonicalFact.factText,
+        mode: 'fast',
         sources
       };
     }
 
-    if (evidenceUnavailable && !canonicalFact) return { reply: '本次联网检索未取得符合问题要求的可核实来源，无法确认最新信息。请提供原文网址或稍后重试。', sources: [] };
+    if (evidenceUnavailable && !canonicalFact) return { reply: '本次联网检索未取得符合问题要求的可核实来源，无法确认最新信息。请提供原文网址或稍后重试。', sources: [], mode: 'fallback' };
 
     const fullMessages: AIMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -907,6 +934,7 @@ ${standingsList}
 
       return {
         reply: finalReply,
+        mode: 'deep',
         sources
       };
     } catch (err: any) {
@@ -920,6 +948,7 @@ ${standingsList}
       ]);
       return {
         reply: this.getDeterministicResponse(intent, query, overview, calendar, searchResults),
+        mode: 'fallback',
         sources
       };
     }
@@ -929,19 +958,49 @@ ${standingsList}
    * 执行流式生成
    */
   async *streamAnswer(messages: AIMessage[], clientKey?: string, signal?: AbortSignal): AsyncIterable<AIStreamEvent> {
+    if (signal?.aborted) return;
+    const started = performance.now();
+    let firstText = false;
+    let totalReported = false;
+    try {
+      for await (const event of this.streamAnswerCore(messages, clientKey, signal)) {
+        if (signal?.aborted) return;
+        if (!firstText && event.type === 'delta' && event.content) {
+          firstText = true;
+          yield {type: 'timing', stage: 'first_text', elapsedMs: Math.round(performance.now() - started)};
+        }
+        if (event.type === 'done') {
+          totalReported = true;
+          yield {type: 'timing', stage: 'total', elapsedMs: Math.round(performance.now() - started)};
+        }
+        yield event;
+      }
+    } finally {
+      if (!signal?.aborted && !totalReported) yield {type: 'timing', stage: 'total', elapsedMs: Math.round(performance.now() - started)};
+    }
+  }
+
+  private async *streamAnswerCore(messages: AIMessage[], clientKey?: string, signal?: AbortSignal): AsyncIterable<AIStreamEvent> {
     const lastUserMsg = messages.filter(m => m.role === 'user').pop();
     const query = lastUserMsg?.content || '';
 
+    const started = performance.now();
     const intent = this.classifyIntent(query);
-    const direct = await this.pureFact(query, intent).catch(() => null);
+    yield {type: 'timing', stage: 'routing', elapsedMs: Math.round(performance.now() - started)};
+    const direct = await this.pureFact(query, intent, signal).catch(() => null);
     if (direct) {
+      yield {type: 'meta', mode: 'fast', label: '事实快答 · 统一赛事数据'};
+      yield {type: 'timing', stage: 'retrieval', elapsedMs: Math.round(performance.now() - started)};
+      yield {type: 'sources', sources: direct.sources};
       if (direct.card) yield {type: 'fact_card', factCard: direct.card};
       yield {type: 'delta', content: direct.fact.factText};
       yield {type: 'done'};
       return;
     }
+    yield {type: 'meta', mode: 'deep', label: '深度分析 · 当前配置模型'};
     const { systemPrompt, sources, searchResults, evidenceUnavailable } = await this.buildPrompt(intent, query, messages, signal);
 
+    yield {type: 'timing', stage: 'retrieval', elapsedMs: Math.round(performance.now() - started)};
     if (sources.length > 0) {
       yield { type: 'sources', sources };
     }
@@ -986,6 +1045,7 @@ ${standingsList}
 
     // 混合问题：先输出确定性事实卡片与基准正文，再流式输出模型剖析
     if (evidenceUnavailable && !canonicalFact) {
+      yield {type:'meta', mode:'fallback', label:'证据不足 · 暂无法完成分析'};
       yield { type: 'delta', content: '本次联网检索未取得符合问题要求的可核实来源，无法确认最新信息。请提供原文网址或稍后重试。' };
       yield { type: 'done' };
       return;
@@ -1019,6 +1079,7 @@ ${standingsList}
         return;
       }
       console.warn('[AIOrchestrator] Provider stream failed');
+      yield {type:'meta', mode:'fallback', label:'分析中断 · 已保留部分内容'};
       yield {type:'error',error:'回答未完整生成，已保留部分内容，请重试'};
     }
   }

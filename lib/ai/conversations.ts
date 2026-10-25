@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
+import { chatFingerprint } from './chat-context';
 import type { ChatTurn, Conversation, ConversationSummary } from './conversation-types';
 
 const sourceSchema = z.object({ name: z.string().max(160), url: z.string().url().max(2048).refine(v => /^https?:\/\//i.test(v)).optional(), snippet: z.string().max(600).optional() }).strict();
@@ -46,12 +47,21 @@ export class ConversationService {
   }
   throw new HistoryError('另一个窗口正在更新历史，请刷新列表后重试', 409);
  }
- async create(user: string, input: ChatTurn[] = []) {
+ async create(user: string, input: ChatTurn[] = [], requestedId?: string) {
   const messages = messagesSchema.parse(input);
+  const id = requestedId ? z.uuid().parse(requestedId) : randomUUID();
   return this.mutate(user, doc => {
+   const existing = doc.conversations.find(c => c.id === id);
+   if (existing) {
+    if (chatFingerprint(existing.messages) !== chatFingerprint(messages)) throw new HistoryError('这段草稿已保存且内容发生变化，请重新打开或另存为新对话', 409);
+    return existing;
+   }
    if (doc.conversations.length >= 30) throw new HistoryError('最多保存 30 段对话，请先删除不需要的记录', 409);
    const now = new Date().toISOString();
-   const c: Conversation = { id: randomUUID(), title: messages.find(m => m.role === 'user')?.content.slice(0, 40) || '新对话', revision: 1, createdAt: now, updatedAt: now, messages };
+   const baseTitle = messages.find(m => m.role === 'user')?.content.slice(0, 40) || '新对话';
+   let title = baseTitle;
+   for (let suffix = 2; doc.conversations.some(c => c.title === title); suffix++) title = `${baseTitle} (${suffix})`;
+   const c: Conversation = { id, title, revision: 1, createdAt: now, updatedAt: now, messages };
    doc.conversations.push(c); return c;
   });
  }

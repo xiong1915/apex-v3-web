@@ -3,7 +3,8 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchCurrentSession } from '@/lib/auth/client';
 import { useRouter } from 'next/navigation';
 import { GlassComposer } from '@/components/glass/GlassComposer';
 import { GlassButton } from '@/components/glass/GlassButton';
@@ -14,6 +15,23 @@ const SUGGESTIONS = [
   '解释一下什么是 Undercut 战术以及它的成功前提',
   '谁是上一场大奖赛的分站冠军？'
 ];
+
+export function AIAccountHint() {
+  const [text, setText] = useState('正在确认登录状态…');
+  useEffect(() => {
+    let revision = 0;
+    const load = async () => {
+      const current = ++revision;
+      setText('正在确认登录状态…');
+      const { user, error } = await fetchCurrentSession();
+      if (current === revision) setText(error ? '身份服务暂不可用，可进入对话页重试' : user ? '已登录，可直接开启对话' : '登录后开启对话');
+    };
+    void load();
+    window.addEventListener('apex:identity-changed', load);
+    return () => { revision++; window.removeEventListener('apex:identity-changed', load); };
+  }, []);
+  return <p className="data-note" style={{marginTop:16}}>{text}</p>;
+}
 
 export function AISearchBox({ defaultLight = false }: { defaultLight?: boolean }) {
   const [query, setQuery] = useState('');

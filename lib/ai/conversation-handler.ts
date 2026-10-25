@@ -8,6 +8,8 @@ export async function handleConversationRequest(req: NextRequest, method: string
  try {
   const user = await dependencies.getUser(req);
   if (!user) return NextResponse.json({ error: '请先登录' }, { status: 401, headers });
+  const expectedOwner = req.headers.get('x-apex-history-owner');
+  if (expectedOwner && expectedOwner !== user.id) return NextResponse.json({error:'账号已变化，请刷新后重试'}, {status:409,headers});
   // Mutations only accept the same origin. No client-supplied owner ID is used.
   const origin = req.headers.get('origin');
   if (method !== 'GET' && origin && ![req.nextUrl.origin, 'https://f1.tike69.cc.cd'].includes(origin)) return NextResponse.json({ error: '请求来源不匹配' }, { status: 403, headers });
@@ -29,8 +31,8 @@ export async function handleConversationRequest(req: NextRequest, method: string
   const raw = Buffer.concat(chunks).toString('utf8');
   const body = JSON.parse(raw);
   if (method === 'POST') {
-   const { messages } = z.object({ messages: messagesSchema.default([]) }).strict().parse(body);
-   return NextResponse.json({ conversation: await service.create(user.id, messages) }, { status: 201, headers });
+   const { messages, id } = z.object({ messages: messagesSchema.default([]), id: z.uuid().optional() }).strict().parse(body);
+   return NextResponse.json({ conversation: await service.create(user.id, messages, id) }, { status: 201, headers });
   }
   if (!id) throw new HistoryError('缺少对话标识');
   if (method === 'PUT') return NextResponse.json({ conversation: await service.update(user.id, id, updateConversationSchema.parse(body)) }, { headers });

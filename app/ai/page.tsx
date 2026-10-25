@@ -44,7 +44,13 @@ export default function AIPage() {
   const [isFocused, setIsFocused] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
+  const [accountId, setAccountId] = useState('');
+  const accountRef = useRef('');
+  const recoveryRef = useRef({messages: [] as ChatTurn[], input: ''});
+  recoveryRef.current = {messages, input};
+  const accountDrafts = useRef(new Map<string, {messages: ChatTurn[]; input: string}>());
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [responseMode, setResponseMode] = useState('自动选择事实快答或深度分析');
   const closeHistory = useCallback(() => setHistoryOpen(false), []);
   const isGenerating = status === 'submitting' || status === 'streaming';
 
@@ -52,6 +58,8 @@ export default function AIPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const submissionLockRef = useRef(false);
+  const initialPromptHandledRef = useRef(false);
   const isComposingRef = useRef(false); // 中文输入法组合保护
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const replaceConversationMessages = useCallback((turns: ChatTurn[]) => {
@@ -62,32 +70,44 @@ export default function AIPage() {
     setStreamingSources([]);
     setStreamingFactCard(null);
     setStatus('idle');
+    setResponseMode('自动选择事实快答或深度分析');
     userScrolledUpRef.current = false;
   }, []);
-  const history = useConversationHistory(!authChecking, messages, replaceConversationMessages, isGenerating);
+  const history = useConversationHistory(!authChecking, messages, replaceConversationMessages, isGenerating, submissionLockRef, accountId);
 
   // 校验登录状态：未登录访问自动跳转登录页，并保留提问输入
   useEffect(() => {
     let mounted = true;
-    fetchCurrentSession().then(({ user, error }) => {
-      if (!mounted) return;
-      if (error) {setAuthError(error); return;}
-      if (!user) {
-        if (typeof window !== 'undefined') {
-          const urlParams = new URLSearchParams(window.location.search);
-          const queryPrompt = urlParams.get('q') || urlParams.get('prompt');
-          if (queryPrompt) {
-            sessionStorage.setItem('apex_ai_prompt', queryPrompt);
+    let revision = 0;
+    const verify = () => {
+      const current = ++revision;
+      setAuthChecking(true);
+      fetchCurrentSession().then(({ user, error }) => {
+        if (!mounted || current !== revision) return;
+        if (error) { const pending = abortControllerRef.current; abortControllerRef.current = null; pending?.abort(); submissionLockRef.current = false; setAuthError(error); return; }
+        setAuthError(null);
+        if (accountRef.current !== (user?.id || '')) {
+          const pending = abortControllerRef.current;
+          abortControllerRef.current = null;
+          pending?.abort();
+          submissionLockRef.current = false;
+          const oldOwner = accountRef.current;
+          if (oldOwner && (recoveryRef.current.messages.length || recoveryRef.current.input)) {
+            accountDrafts.current.set(oldOwner, recoveryRef.current);
           }
+          const recovered = user?.id ? accountDrafts.current.get(user.id) : undefined;
+          replaceConversationMessages(recovered?.messages || []);
+          setInput(recovered?.input || '');
+          accountRef.current = user?.id || '';
         }
-        router.push('/login?returnUrl=/ai');
-      } else {
-        setAuthChecking(false);
-      }
-    });
-    return () => {
-      mounted = false;
+        setAccountId(user?.id || '');
+        if (!user) router.push('/login?returnUrl=/ai');
+        else setAuthChecking(false);
+      });
     };
+    verify();
+    window.addEventListener('apex:identity-changed', verify);
+    return () => { mounted = false; window.removeEventListener('apex:identity-changed', verify); };
   }, [router]);
 
   useEffect(() => () => {
@@ -158,12 +178,13 @@ export default function AIPage() {
   }, [streamingContent, streamingSources, streamingFactCard]);
 
   // 发送消息
-  const sendMessage = useCallback(async (textToSend?: string) => {
+  const sendMessage = useCallback(async (textToSend?: string, retry = false) => {
     const q = (textToSend !== undefined ? textToSend : input).trim();
-    if (!q || status === 'submitting' || status === 'streaming' || history.saving || history.loading) return;
+    if (!q || submissionLockRef.current || history.isBusy() || status === 'submitting' || status === 'streaming' || history.saving || history.loading) return;
     if (q.length > 1000) { setErrorMessage('每次提问最多 1000 字，请缩短后发送'); return; }
     if (messages.length >= 98) { setErrorMessage('这段对话已达到 100 条消息上限，请新建对话继续'); return; }
 
+    submissionLockRef.current = true;
     // 清除上一次中断
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -178,17 +199,19 @@ export default function AIPage() {
       status: 'completed'
     };
 
-    const nextHistory = [...messages, userMsg];
+    const retryIndex = retry ? messages.findLastIndex(m => m.role === 'user' && m.content === q) : -1;
+    const nextHistory = retryIndex >= 0 ? messages : [...messages, userMsg];
     setMessages(nextHistory);
     userScrolledUpRef.current = false;
     setInput('');
     setStatus('submitting');
+    setResponseMode('正在判断问题类型…');
     setStreamingContent('');
     setStreamingSources([]);
     setStreamingFactCard(null);
     setErrorMessage(null);
 
-    const apiPayload: AIMessage[] = buildChatContext(nextHistory);
+    const apiPayload: AIMessage[] = buildChatContext(retryIndex >= 0 ? messages.slice(0, retryIndex + 1) : nextHistory);
     let collectedText = '';
     let collectedSources: AISource[] = [];
     let collectedFactCard: AIFactCard | null = null;
@@ -201,7 +224,7 @@ export default function AIPage() {
       setStatus('streaming');
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-apex-history-owner': accountId },
         body: JSON.stringify({ messages: apiPayload, stream: true }),
         signal: controller.signal
       });
@@ -233,7 +256,9 @@ export default function AIPage() {
 
       await consumeAIStream(res.body, parsed => {
         if (abortControllerRef.current !== controller || controller.signal.aborted) return;
-        if (parsed.type === 'delta' && parsed.content) {
+        if (parsed.type === 'meta' && parsed.label) {
+          setResponseMode(parsed.label);
+        } else if (parsed.type === 'delta' && parsed.content) {
           collectedText += parsed.content;
           setStreamingContent(collectedText);
         } else if (parsed.type === 'fact_card' && parsed.factCard) {
@@ -282,22 +307,24 @@ export default function AIPage() {
         setLastFailedInput(q);
       }
     } finally {
+      submissionLockRef.current = false;
       if (abortControllerRef.current === controller) abortControllerRef.current = null;
     }
-  }, [input, messages, status, history.save, history.saving, history.loading]);
+  }, [input, messages, status, accountId, history.save, history.saving, history.loading, history.isBusy]);
 
-  // 从首页搜索框等携带的 prompt 初始化自动发送并恢复输入
+  // Consume the URL/storage handoff once, only after auth and history initialize.
   useEffect(() => {
-    if (authChecking) return;
-    if (typeof window !== 'undefined') {
-      const savedPrompt = sessionStorage.getItem('apex_ai_prompt');
-      if (savedPrompt) {
-        sessionStorage.removeItem('apex_ai_prompt');
-        setInput(savedPrompt);
-        sendMessage(savedPrompt);
-      }
-    }
-  }, [sendMessage, authChecking]);
+    if (authChecking || !history.ready || history.loading || history.saving || initialPromptHandledRef.current || submissionLockRef.current) return;
+    const url = new URL(window.location.href);
+    const prompt = url.searchParams.get('q') || url.searchParams.get('prompt') || sessionStorage.getItem('apex_ai_prompt');
+    if (!prompt) { initialPromptHandledRef.current = true; return; }
+    initialPromptHandledRef.current = true;
+    sessionStorage.removeItem('apex_ai_prompt');
+    url.searchParams.delete('q'); url.searchParams.delete('prompt');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    setInput(prompt);
+    void sendMessage(prompt);
+  }, [sendMessage, authChecking, history.ready, history.loading, history.saving]);
 
   // 恢复失败前提问内容至输入框
   const handleRestoreInput = () => {
@@ -314,7 +341,7 @@ export default function AIPage() {
   const handleRetry = () => {
     const lastUserTurn = [...messages].reverse().find(m => m.role === 'user');
     if (lastUserTurn) {
-      sendMessage(lastUserTurn.content);
+      sendMessage(lastUserTurn.content, true);
     }
   };
 
@@ -331,7 +358,7 @@ export default function AIPage() {
   };
 
   const handleClear = () => {
-    if (isGenerating) return;
+    if (isGenerating || submissionLockRef.current) return;
     void history.startNew();
     setStreamingContent('');
     setStreamingSources([]);
@@ -397,6 +424,7 @@ export default function AIPage() {
         </div>
       </div>
 
+      <div role="status" style={{fontSize:'12px',color:'var(--text-muted)',padding:'6px 16px'}}>{responseMode}</div>
       <div className="history-save-status" role="status">{history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</div>
 
       {/* 消息滚动区 (Scrollable Messages Stream) */}
@@ -574,7 +602,7 @@ export default function AIPage() {
                   <MarkdownRenderer content={streamingContent} />
                 ) : (
                   <span style={{ color: 'var(--text-muted)' }}>
-                    正在检索 2026 赛季事实基准并组织推演分析...
+                    正在核对资料并准备回答…
                   </span>
                 )}
               </div>

@@ -65,7 +65,7 @@ function resolveInitialProfileData(user: User): {
 /**
  * 获取或自动补全用户的 APEX ID 个人资料
  */
-export async function getUserProfile(user: User): Promise<UserProfile> {
+export async function getUserProfile(user: User, retryProvision = true): Promise<UserProfile> {
   const { displayName: defaultName, thirdPartyAvatar, provider } = resolveInitialProfileData(user);
   const nowIso = new Date().toISOString();
 
@@ -88,18 +88,7 @@ export async function getUserProfile(user: User): Promise<UserProfile> {
     if (data) {
       let finalAvatarUrl: string | null = thirdPartyAvatar;
       if (data.avatar_path) {
-        try {
-          const { data: signedData } = await supabase.storage
-            .from('avatars')
-            .createSignedUrl(data.avatar_path, 86400); // 24小时有效签名
-          if (signedData?.signedUrl) {
-            finalAvatarUrl = signedData.signedUrl;
-          } else {
-            finalAvatarUrl = `/api/profile/avatar/view?path=${encodeURIComponent(data.avatar_path)}`;
-          }
-        } catch {
-          finalAvatarUrl = `/api/profile/avatar/view?path=${encodeURIComponent(data.avatar_path)}`;
-        }
+        finalAvatarUrl = `/api/profile/avatar/view?path=${encodeURIComponent(data.avatar_path)}`;
       }
 
       return {
@@ -146,6 +135,8 @@ export async function getUserProfile(user: User): Promise<UserProfile> {
         };
       }
 
+      // Concurrent first reads may both provision; reread the winner once.
+      if (insertError?.code === '23505' && retryProvision) return getUserProfile(user, false);
       if (insertError && isProduction()) {
         console.error('[Profile Service] Profile auto-provisioning failed:', insertError.message);
         throw new Error('个人资料初始化失败，请稍后重试');

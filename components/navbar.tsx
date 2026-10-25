@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { fetchCurrentSession, apiLogout } from '@/lib/auth/client';
-import { fetchUserProfile, UserProfile } from '@/lib/profile/client';
+import { apiLogout } from '@/lib/auth/client';
+import { fetchAccountProfile, UserProfile } from '@/lib/profile/client';
 import { User } from '@/lib/auth/types';
 
 const NAV_ITEMS = [
@@ -103,24 +103,26 @@ export function Navbar() {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [identityStatus, setIdentityStatus] = useState<'loading'|'ready'|'error'>('loading');
+  const identityRequest = useRef(0);
+  const activeUserId = useRef<string|null>(null);
 
   useEffect(() => {
     let mounted = true;
-    fetchCurrentSession().then(({ user, error }) => {
-      if (mounted && !error) {
-        setUser(user);
-        if (user) {
-          fetchUserProfile().then(({ profile }) => {
-            if (mounted && profile) setProfile(profile);
-          });
-        } else {
-          setProfile(null);
-        }
-      }
-    });
-
+    const load = () => {
+      const request = ++identityRequest.current;
+      setIdentityStatus('loading');
+      fetchAccountProfile().then(({user, profile, error}) => {
+        if (!mounted || request !== identityRequest.current) return;
+        if (error && !user) { setIdentityStatus('error'); return; }
+        activeUserId.current = user?.id || null;
+        setUser(user); setProfile(profile); setIdentityStatus('ready');
+      });
+    };
+    load();
+    window.addEventListener('apex:identity-changed', load);
     const onProfileUpdated = (e: CustomEvent) => {
-      if (mounted && e.detail) {
+      if (mounted && e.detail?.id === activeUserId.current) {
         setProfile(e.detail);
       }
     };
@@ -128,6 +130,7 @@ export function Navbar() {
 
     return () => {
       mounted = false;
+      window.removeEventListener('apex:identity-changed', load);
       window.removeEventListener('apex:profile-updated', onProfileUpdated as EventListener);
     };
   }, [pathname]);
@@ -212,7 +215,7 @@ export function Navbar() {
      {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}</Link>)}
     </nav>
     <div className="nav-actions"><BeijingClock className="desktop-nav"/><Link href="/ai" className="nav-ai">APEX AI <span aria-hidden="true">↗</span></Link>
-     {user ? (
+     {identityStatus !== 'ready' ? <span className="nav-login desktop-nav" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (
        <div className="account-wrap desktop-nav" ref={accountRef}>
          <button
            type="button"
@@ -274,7 +277,7 @@ export function Navbar() {
     {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label} <span aria-hidden="true">↗</span></Link>)}
     <Link href="/ai" onClick={()=>setMenuOpen(false)}>APEX AI ↗</Link>
     <div className="mobile-account">
-      {user ? (
+      {identityStatus !== 'ready' ? <span className="data-note" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (
         <>
           <div className="mobile-profile-card">
             <UserAvatar url={avatarUrl} name={displayName} size={36} />
@@ -296,7 +299,7 @@ export function Navbar() {
           </button>
         </>
       ) : (
-        <Link href="/login" className="btn-primary" onClick={()=>setMenuOpen(false)}>登录 / 注册</Link>
+        identityStatus !== 'ready' ? <span role="status">{identityStatus === 'loading' ? '账户加载中…' : '账户暂不可用，请刷新重试'}</span> : <Link href="/login" className="btn-primary" onClick={()=>setMenuOpen(false)}>登录 / 注册</Link>
       )}
       <BeijingClock/>
     </div>
