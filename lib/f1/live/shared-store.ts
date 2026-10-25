@@ -17,7 +17,7 @@ const driver=z.object({
  sourceTimestamps:z.partialRecord(z.enum(LIVE_TOPICS),timestamp).optional(),sectorPersonalBest:z.array(z.boolean()).max(3).optional(),sectorOverallBest:z.array(z.boolean()).max(3).optional(),
 }).strict();
 const snapshotSchema=z.object({
- schema:z.literal(1),sessionKey:z.string().regex(/^[a-z0-9][a-z0-9_.:-]{0,159}$/i),
+ schema:z.literal(1),sessionKey:z.string().regex(/^[a-z0-9][a-z0-9_.:-]{0,159}$/i),sessionType:nullableText.optional(),lifecycleTimestamp:timestamp.optional(),lifecycleStatus:nullableText.optional(),topicTimestamps:z.partialRecord(z.enum(LIVE_TOPICS),timestamp).optional(),
  phase:z.enum(['UPCOMING','WAITING','LIVE','SUSPENDED','FINISHED','DELAYED','CANCELLED']),connection:z.enum(['LIVE','DELAYED','RECONNECTING','UNAVAILABLE','FINISHED']),
  source:z.string().max(500),sourceTimestamp:timestamp,receivedAt:timestamp,drivers:z.array(driver).max(64),flag:nullableText,
  messages:z.array(z.object({id:z.string().max(1000),date:z.string().datetime({offset:true}),text:z.string().max(500)}).strict()).max(100),
@@ -77,7 +77,7 @@ export class RedisLiveStore implements LiveLease {
  private parsed(input:unknown,sessionKey:string):LiveSnapshot|null{
   const result=snapshotSchema.safeParse(input);if(!result.success||result.data.sessionKey!==sessionKey)return null;
   const snapshot=result.data;
-  const dates=[snapshot.sourceTimestamp,snapshot.receivedAt,...snapshot.drivers.flatMap(d=>[d.updatedAt,...Object.values(d.sourceTimestamps||{})]),...snapshot.messages.map(m=>m.date)];
+  const dates=[snapshot.sourceTimestamp,snapshot.receivedAt,snapshot.lifecycleTimestamp,...Object.values(snapshot.topicTimestamps||{}),...snapshot.drivers.flatMap(d=>[d.updatedAt,...Object.values(d.sourceTimestamps||{})]),...snapshot.messages.map(m=>m.date)];
   if(dates.some(date=>date&&Date.parse(date)>this.now()+5000))return null;
   return snapshot;
  }

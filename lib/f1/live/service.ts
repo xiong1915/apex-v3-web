@@ -65,7 +65,7 @@ export class LivePublicService {
   return {...data,serverTime:new Date(now).toISOString(),isStale:data.isStale||stale,
    // Enforce public policy again when reading cache. Stored/private payloads cannot enable forwarding.
    snapshot:null,availability:{...LIVE_PUBLIC_POLICY,channels:PUBLIC_LIVE_CHANNELS.map(c=>({...c}))},
-   sessions:data.sessions.map(item=>item.phase==='UPCOMING'&&start(item.session)<=now?{...item,phase:'WAITING',reason:'等待赛事正式开始，尚未收到可信开始状态'}:item)};
+   sessions:data.sessions.map(item=>item.phase==='UPCOMING'&&start(item.session)<=now?{...item,phase:'WAITING',reason:'实际节次状态待确认，尚未收到可信开始状态'}:item)};
  }
  private async read(key:string,query:LiveQuery):Promise<PublicLiveResponse>{
   const cached=await this.deps.cache.get<Envelope>(key),now=this.deps.now();
@@ -105,7 +105,7 @@ export class LivePublicService {
   const states:PublicLiveResponse['sessions']=sessions.map(s=>{
    const records=Number.isFinite(start(s))&&start(s)<=now?byType.get(s.type)||[]:[];
    return {session:s,phase:records.length?'FINISHED':start(s)>now?'UPCOMING':'WAITING',classification:records.length?'confirmed':'unavailable',
-    reason:records.length?'已收录该节次成绩；尚未核验官方最终分类':start(s)>now?'按已公布赛程等待开始；时间调整以官方更新为准':'等待赛事正式开始或状态确认；无法从计划时间推断完赛'};
+    reason:records.length?'已收录该节次成绩；尚未核验官方最终分类':start(s)>now?'按已公布赛程等待开始；时间调整以官方更新为准':'实际节次状态待确认；无法从计划时间推断开赛或完赛'};
   });
   const selected=states.find(s=>s.session.id===session?.id),results=selected?.classification==='confirmed'?(byType.get(session!.type)||[]):[];
   const nextMeeting=meetings.filter(m=>Date.parse(m.raceStartUTC)>Date.parse(meeting.raceStartUTC)).sort((a,b)=>Date.parse(a.raceStartUTC)-Date.parse(b.raceStartUTC))[0]||null;

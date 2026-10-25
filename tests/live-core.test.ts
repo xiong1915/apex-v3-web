@@ -73,7 +73,7 @@ test('collector is disabled without grant; lease shares one upstream and stop re
  const lease={async acquire(){if(held)return false;held=true;return true;},async renew(){return true;},async release(){held=false;}};
  const options={sessionKey:'test-only',source:'offline-test',now:()=>now,connect:()=>{opened++;return socket;},lease,onSnapshot:async()=>{},loadSnapshot:async()=>null};
  const blocked=new LiveCollector(options);assert.equal(await blocked.start(),false);assert.equal(opened,0);
- const grant={publicRedistribution:true,reference:'offline-test-only',expiresAt:new Date(now+60000).toISOString(),topics:['TimingData'] as LiveTopic[]};
+ const grant={publicRedistribution:true,reference:'offline-test-only',expiresAt:new Date(now+60000).toISOString(),topics:['SessionInfo','TimingData'] as LiveTopic[]};
  const one=new LiveCollector({...options,permission:grant}),two=new LiveCollector({...options,permission:grant});assert.equal(await one.start(),true);assert.equal(await two.start(),false);assert.equal(opened,1);
  const callback=socket.onmessage;await one.stop();callback?.({data:'{"type":1,"target":"feed","arguments":["TimingData",{},"2026-10-25T20:00:00Z"]}\u001e'});assert.equal(one.snapshot().sourceTimestamp,null);
 });
@@ -81,17 +81,22 @@ test('collector batches, restores on reconnect, times out, backs off and clears 
  let time=now,id=0,loads=0;const timers=new Map<number,{at:number;run:()=>void}>();
  const sockets:any[]=[];const saved:any[]=[];
  const advance=async(ms:number)=>{time+=ms;for(const [key,timer] of [...timers].sort((a,b)=>a[1].at-b[1].at)){if(timer.at<=time){timers.delete(key);timer.run();}}await Promise.resolve();await Promise.resolve();};
- const collector=new LiveCollector({sessionKey:'test-only',source:'offline-fixture',permission:{publicRedistribution:true,reference:'offline-tests-only',expiresAt:new Date(now+600000).toISOString(),topics:['TimingData']},now:()=>time,random:()=>0,
+ const collector=new LiveCollector({sessionKey:'test-only',source:'offline-fixture',permission:{publicRedistribution:true,reference:'offline-tests-only',expiresAt:new Date(now+600000).toISOString(),topics:['SessionInfo','TimingData']},now:()=>time,random:()=>0,
   schedule:(run,delay)=>{const key=++id;timers.set(key,{at:time+delay,run});return key as unknown as ReturnType<typeof setTimeout>;},cancel:timer=>{timers.delete(timer as unknown as number);},
   lease:{acquire:async()=>true,renew:async()=>true,release:async()=>{}},loadSnapshot:async()=>{loads++;return null;},onSnapshot:async snapshot=>{saved.push(snapshot);},
   connect:()=>{const socket={send:(value:string)=>{socket.sent.push(value);},sent:[] as string[],close(){},onopen:null,onmessage:null,onclose:null,onerror:null};sockets.push(socket);return socket;},
  });
  assert.equal(await collector.start(),true);sockets[0].onopen();assert.match(sockets[0].sent[0],/protocol/);sockets[0].onmessage({data:'{}\u001e'});assert.match(sockets[0].sent[1],/Subscribe/);
+ sockets[0].onmessage({data:JSON.stringify({type:3,result:{SessionInfo:{Key:'test-only',SessionStatus:'Started'}}})+'\u001e'});
  const feed=(position:number)=>JSON.stringify({type:1,target:'feed',arguments:['TimingData',{Lines:{'44':{Position:String(position)}}},new Date(time).toISOString()]})+'\u001e';
  sockets[0].onmessage({data:feed(1)});sockets[0].onmessage({data:feed(2)});assert.equal(saved.length,0);await advance(200);assert.equal(saved.length,1);assert.equal(saved[0].drivers[0].position,2);
  sockets[0].onclose();assert.equal(collector.snapshot().connection,'RECONNECTING');await advance(750);assert.equal(sockets.length,2);assert.equal(loads,2);
+ sockets[1].onopen();sockets[1].onmessage({data:'{}\u001e'});
+ sockets[1].onmessage({data:feed(3)});assert.equal(collector.snapshot().drivers[0].position,2,'reconnected transport must validate source scope again');
+ sockets[1].onmessage({data:JSON.stringify({type:3,result:{SessionInfo:{Key:'test-only'}}})+'\u001e'});
+ sockets[1].onmessage({data:feed(3)});assert.equal(collector.snapshot().drivers[0].position,3);
  assert.equal(reconnectDelay(0,()=>0),750);assert.equal(reconnectDelay(2,()=>1),5000);assert.ok(reconnectDelay(999,()=>1)<=37500);
- await advance(31000);await collector.stop();assert.equal(timers.size,0);assert.equal(collector.snapshot().drivers[0].position,2);
+ await advance(31000);await collector.stop();assert.equal(timers.size,0);assert.equal(collector.snapshot().drivers[0].position,3);
 });
 test('sustained synthetic test event sequence has bounded retained memory structures',()=>{
  const state=new LiveState('test-only');
@@ -102,7 +107,7 @@ test('protocol pings require an active grant and completed handshake; send failu
  let time=now,id=0,closed=0,throwPing=false;const timers=new Map<number,{at:number;run:()=>void}>(),sent:string[]=[];
  const socket={send:(value:string)=>{if(throwPing&&value.includes('"type":6'))throw Error('offline-test disconnect');sent.push(value);},close:()=>{closed++;},onopen:null as null|(()=>void),onmessage:null as null|((event:{data:string})=>void),onclose:null as null|(()=>void),onerror:null as null|(()=>void)};
  const advance=async(ms:number)=>{time+=ms;for(const[key,timer]of[...timers])if(timer.at<=time){timers.delete(key);timer.run();}await Promise.resolve();await Promise.resolve();};
- const collector=new LiveCollector({sessionKey:'test-only',source:'offline-test',permission:{publicRedistribution:true,reference:'offline-test-only',expiresAt:new Date(now+600000).toISOString(),topics:['TimingData']},now:()=>time,random:()=>0,
+ const collector=new LiveCollector({sessionKey:'test-only',source:'offline-test',permission:{publicRedistribution:true,reference:'offline-test-only',expiresAt:new Date(now+600000).toISOString(),topics:['SessionInfo','TimingData']},now:()=>time,random:()=>0,
   schedule:(run,delay)=>{const key=++id;timers.set(key,{at:time+delay,run});return key as unknown as ReturnType<typeof setTimeout>;},cancel:timer=>{timers.delete(timer as unknown as number);},connect:()=>socket,
   lease:{acquire:async()=>true,renew:async()=>true,release:async()=>{}},loadSnapshot:async()=>null,onSnapshot:async()=>{},
  });

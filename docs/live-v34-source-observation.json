@@ -1,0 +1,104 @@
+{
+  "startedAt": "2026-10-25T20:18:19.538Z",
+  "endedAt": "2026-10-25T20:28:22.929Z",
+  "authenticated": false,
+  "publicRedistributionAuthorized": false,
+  "connections": 2,
+  "reconnections": 1,
+  "heartbeats": 38,
+  "businessChanges": 3156,
+  "initialSnapshots": 20,
+  "session": {
+    "key": "11396",
+    "name": "Race",
+    "type": "Race",
+    "start": "2026-10-25T15:00:00",
+    "utcOffset": "-05:00:00"
+  },
+  "channels": {
+    "TimingData": {
+      "initial": true,
+      "messages": 6151,
+      "businessChanges": 3063,
+      "firstSourceTimestamp": "2026-10-25T20:18:17.325Z",
+      "lastSourceTimestamp": "2026-10-25T20:28:18.176Z"
+    },
+    "TimingStats": {
+      "initial": true,
+      "messages": 47,
+      "businessChanges": 0,
+      "firstSourceTimestamp": "2026-10-25T20:18:28.825Z",
+      "lastSourceTimestamp": "2026-10-25T20:28:09.164Z"
+    },
+    "TimingAppData": {
+      "initial": true,
+      "messages": 80,
+      "businessChanges": 67,
+      "firstSourceTimestamp": "2026-10-25T20:19:07.451Z",
+      "lastSourceTimestamp": "2026-10-25T20:28:17.523Z"
+    },
+    "DriverList": {
+      "initial": true,
+      "messages": 11,
+      "businessChanges": 0,
+      "firstSourceTimestamp": "2026-10-25T20:22:57.228Z",
+      "lastSourceTimestamp": "2026-10-25T20:28:16.837Z"
+    },
+    "SessionInfo": {
+      "initial": true,
+      "messages": 0,
+      "businessChanges": 0,
+      "firstSourceTimestamp": null,
+      "lastSourceTimestamp": null
+    },
+    "SessionData": {
+      "initial": true,
+      "messages": 6,
+      "businessChanges": 0,
+      "firstSourceTimestamp": "2026-10-25T20:19:03.982Z",
+      "lastSourceTimestamp": "2026-10-25T20:27:30.972Z"
+    },
+    "TrackStatus": {
+      "initial": true,
+      "messages": 0,
+      "businessChanges": 0,
+      "firstSourceTimestamp": null,
+      "lastSourceTimestamp": null
+    },
+    "RaceControlMessages": {
+      "initial": true,
+      "messages": 11,
+      "businessChanges": 11,
+      "firstSourceTimestamp": "2026-10-25T20:19:22.279Z",
+      "lastSourceTimestamp": "2026-10-25T20:28:13.003Z"
+    },
+    "LapCount": {
+      "initial": true,
+      "messages": 6,
+      "businessChanges": 6,
+      "firstSourceTimestamp": "2026-10-25T20:19:03.982Z",
+      "lastSourceTimestamp": "2026-10-25T20:27:30.972Z"
+    },
+    "WeatherData": {
+      "initial": true,
+      "messages": 10,
+      "businessChanges": 9,
+      "firstSourceTimestamp": "2026-10-25T20:18:33.607Z",
+      "lastSourceTimestamp": "2026-10-25T20:27:33.598Z"
+    }
+  },
+  "errors": [],
+  "interruption": {
+    "at": "2026-10-25T20:23:22.918Z",
+    "reason": "controlled_disconnect_for_recovery_test"
+  },
+  "observedSeconds": 600.014,
+  "receiveMinusSourceMs": {
+    "samples": 3156,
+    "median": 4755,
+    "p95": 5123,
+    "min": 4650,
+    "max": 6577
+  },
+  "businessThresholdMet": true
+}

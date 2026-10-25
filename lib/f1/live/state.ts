@@ -41,8 +41,12 @@ export class LiveState {
     this.data.TimingAppData.Lines[d.number]={Stints:[{Compound:d.compound,TotalLaps:d.tyreAge}],NumberOfPitStops:d.pitCount};
     for(const topic of ['DriverList','TimingData','TimingStats','TimingAppData'] as const){const stamp=Date.parse(d.sourceTimestamps?.[topic]||d.updatedAt||'');if(Number.isFinite(stamp))this.timestamps.set(`${topic}:${d.number}`,stamp);}
    }
-   this.data.SessionInfo={Status:restored.sessionFinalized?'Finalised':restored.phase==='FINISHED'?'Finished':restored.phase==='LIVE'?'Started':restored.phase==='SUSPENDED'?'Aborted':restored.phase==='DELAYED'?'Delayed':restored.phase==='CANCELLED'?'Cancelled':''};
-   this.lifecycleStatus=String(this.data.SessionInfo.Status).toLowerCase();this.lifecycleTimestamp=Date.parse(restored.sourceTimestamp||'')||-Infinity;
+   this.data.SessionInfo={Type:restored.sessionType||'',Status:restored.lifecycleStatus??(restored.sessionFinalized?'Finalised':restored.phase==='FINISHED'?'Finished':restored.phase==='LIVE'?'Started':restored.phase==='SUSPENDED'?'Aborted':restored.phase==='DELAYED'?'Delayed':restored.phase==='CANCELLED'?'Cancelled':'')};
+   this.lifecycleStatus=String(this.data.SessionInfo.Status).toLowerCase();
+   const lifecycle=Date.parse(restored.lifecycleTimestamp||'');
+   this.lifecycleTimestamp=Number.isFinite(lifecycle)?lifecycle:-Infinity;
+   for(const [topic,stamp] of Object.entries(restored.topicTimestamps||{})){const at=Date.parse(stamp||'');if(Number.isFinite(at))this.timestamps.set(topic,at);}
+   if(restored.weather)this.data.WeatherData={AirTemp:restored.weather.airTemperature,TrackTemp:restored.weather.trackTemperature,Rainfall:restored.weather.rainfall};
    this.data.LapCount={CurrentLap:restored.currentLap,TotalLaps:restored.totalLaps};
   }
  }
@@ -51,8 +55,9 @@ export class LiveState {
  snapshot(now = Date.now()): LiveSnapshot {return structuredClone({...this.current,connection:connectionAt(this.current,now,this.connected)});}
  apply(event: LiveEvent, now = Date.now()): boolean {
   if(event.sessionKey!==this.sessionKey)return false;
-  const at=event.timestamp===null?null:Date.parse(event.timestamp);
-  if(at!==null&&(!Number.isFinite(at)||at>now+5000||at<now-120000))return false;
+  const seriesTimestamp=event.topic==='SessionData'&&event.initial?last(event.payload?.StatusSeries)?.Utc:null;
+  const at=event.timestamp===null?(seriesTimestamp?Date.parse(seriesTimestamp):null):Date.parse(event.timestamp);
+  if(at!==null&&(!Number.isFinite(at)||at>now+5000||(!event.initial&&at<now-120000)))return false;
   if(at===null&&!event.initial)return false;
   if(!event.payload||typeof event.payload!=='object')return false;
   if(event.topic==='SessionInfo'&&event.payload.Key!==undefined&&String(event.payload.Key)!==this.sessionKey)return false;
@@ -75,7 +80,7 @@ export class LiveState {
   }else{
    const previous=this.timestamps.get(event.topic);
    if(previous!==undefined&&(at===null||at<previous))return false;
-   if(at!==null)this.timestamps.set(event.topic,at);
+   if(at!==null){this.timestamps.set(event.topic,at);this.current.topicTimestamps={...this.current.topicTimestamps,[event.topic]:new Date(at).toISOString()};}
    this.data[event.topic]=deepMerge(this.data[event.topic],patch) as Record<string,any>;accepted=true;
   }
   if(!accepted)return false;
@@ -92,7 +97,8 @@ export class LiveState {
   const incomingStatus=event.topic==='SessionInfo'?infoStatus:event.topic==='SessionData'?seriesStatus:null;
   const statusAt=event.timestamp?Date.parse(event.timestamp):Date.parse(series?.Utc||'');
   const statusAccepted=Boolean(incomingStatus)&&(Number.isFinite(statusAt)?statusAt>=this.lifecycleTimestamp&&statusAt<=now+5000:this.lifecycleTimestamp===-Infinity);
-  if(statusAccepted){this.lifecycleStatus=String(incomingStatus).toLowerCase();if(Number.isFinite(statusAt))this.lifecycleTimestamp=statusAt;}
+  if(statusAccepted){this.lifecycleStatus=String(incomingStatus).toLowerCase();this.current.lifecycleStatus=this.lifecycleStatus;if(Number.isFinite(statusAt)){this.lifecycleTimestamp=statusAt;this.current.lifecycleTimestamp=new Date(statusAt).toISOString();}}
+  if(event.topic==='SessionInfo')this.current.sessionType=text(info.Type)||text(info.Name)||this.current.sessionType||null;
   const status=this.lifecycleStatus;
   if(event.topic==='SessionInfo'||event.topic==='SessionData'){
    // Finalised closes the timing session; it is not an FIA final-classification document.
