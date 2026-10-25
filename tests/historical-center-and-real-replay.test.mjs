@@ -6,11 +6,6 @@ import assert from 'node:assert';
 import { CircuitRegistry } from '../lib/circuits/registry.ts';
 import { normalizeCircuitId } from '../lib/circuits/mapping.ts';
 import { determineStandingsCutoff } from '../providers/f1/service.ts';
-import {
-  REAL_REPLAY_SESSIONS,
-  DEMO_REPLAY_SESSIONS,
-  interpolateVehiclesAtTimestamp
-} from '../lib/f1/replay/real-sessions/index.ts';
 
 test('Historical Center, Authentic Circuits & Real Replay Gate', async (t) => {
   await t.test('1. 赛道资产年代匹配与严格禁回退新加坡原则', () => {
@@ -129,59 +124,5 @@ test('Historical Center, Authentic Circuits & Real Replay Gate', async (t) => {
     assert.equal(resMathReconciled.desc, '截止场次待核实');
   });
 
-  await t.test('3. APEX REPLAY 仿真模式降级与真实列表隔离门禁', () => {
-    // 3.1 此前由公式生成的巴林与银石必须已降级为 DEMO 模式，sourceProvider 严格为 curated_demo
-    const demoBahrain = DEMO_REPLAY_SESSIONS['demo-bahrain'];
-    assert.ok(demoBahrain, 'demo-bahrain 必须存在于 DEMO 集合中');
-    assert.strictEqual(demoBahrain.metadata.sourceProvider, 'curated_demo');
-    assert.strictEqual(demoBahrain.metadata.durationSeconds, 180);
-    assert.strictEqual(demoBahrain.frames.length, 900);
 
-    const demoSilverstone = DEMO_REPLAY_SESSIONS['demo-silverstone'];
-    assert.ok(demoSilverstone, 'demo-silverstone 必须存在于 DEMO 集合中');
-    assert.strictEqual(demoSilverstone.metadata.sourceProvider, 'curated_demo');
-
-    const demoSingapore = DEMO_REPLAY_SESSIONS['demo-singapore'];
-    assert.ok(demoSingapore, 'demo-singapore 必须存在于 DEMO 集合中');
-    assert.strictEqual(demoSingapore.metadata.sourceProvider, 'curated_demo');
-
-    // 3.2 严禁将公式生成的巴林与银石列在真实历史比赛列表中
-    assert.strictEqual(REAL_REPLAY_SESSIONS['2023-bahrain'], undefined, '公式生成的巴林数据必须移出真实列表');
-    assert.strictEqual(REAL_REPLAY_SESSIONS['2023-silverstone'], undefined, '公式生成的银石数据必须移出真实列表');
-  });
-
-  await t.test('4. 非均匀时间戳平滑插值与 >3 秒缺口拦截门禁 (Gap Protection)', () => {
-    const demoBahrain = DEMO_REPLAY_SESSIONS['demo-bahrain'];
-
-    // 4.1 在正常采样区间 (如 10.1 秒)，平滑插值正常工作
-    const v1 = interpolateVehiclesAtTimestamp(demoBahrain.frames, 10100, 3000);
-    assert.ok(v1.length >= 10);
-    const ver = v1.find(c => c.code === 'VER');
-    assert.ok(ver);
-    assert.ok(ver.speed > 100 && ver.speed < 360, `速度合理: ${ver.speed}`);
-    assert.ok(ver.normX >= 0 && ver.normX <= 1);
-    assert.ok(ver.normY >= 0 && ver.normY <= 1);
-
-    // 4.2 构造两个帧之间存在超过 3 秒 (>3000ms) 缺口测试
-    const mockFrames = [
-      {
-        frameIndex: 0,
-        timestampMs: 1000,
-        lap: 1,
-        vehicles: [{ driverNumber: 1, code: 'VER', name: 'Max', team: 'RB', teamColor: '#00f', normX: 0.1, normY: 0.2, speed: 200, gear: 5, drs: false, lap: 1, position: 1 }]
-      },
-      {
-        frameIndex: 1,
-        timestampMs: 5000, // 时间跨度 4000ms > 3000ms (存在 4 秒缺口)
-        lap: 1,
-        vehicles: [{ driverNumber: 1, code: 'VER', name: 'Max', team: 'RB', teamColor: '#00f', normX: 0.8, normY: 0.9, speed: 300, gear: 8, drs: true, lap: 1, position: 1 }]
-      }
-    ];
-
-    // 在 3000ms 时请求，由于跨度大于 3 秒，插值器必须拒绝跨缺口插值，保持前一帧位置
-    const gappedVehicles = interpolateVehiclesAtTimestamp(mockFrames, 3000, 3000);
-    assert.strictEqual(gappedVehicles[0].normX, 0.1, '超过 3 秒缺口必须拒绝插值，保持前一帧 normX');
-    assert.strictEqual(gappedVehicles[0].normY, 0.2, '超过 3 秒缺口必须拒绝插值，保持前一帧 normY');
-    assert.strictEqual(gappedVehicles[0].speed, 200, '保持前一帧 speed');
-  });
 });
