@@ -3,11 +3,25 @@
 
 'use client';
 
-import { UserProfile } from './service';
+import type { UserProfile } from './service';
+import { fetchCurrentSession, readIdentityOnce } from '@/lib/auth/client';
 
 export type { UserProfile };
 
 export async function fetchUserProfile(): Promise<{ profile: UserProfile | null; error?: string }> {
+  return readIdentityOnce('profile', readUserProfile, () => ({profile:null,error:'登录状态已变化，请重试'}));
+}
+
+export async function fetchAccountProfile() {
+  const [identity, initial] = await Promise.all([fetchCurrentSession(), fetchUserProfile()]);
+  if (identity.error || !identity.user) return {...identity, profile:null};
+  // A session refresh may finish after the first profile request.
+  const profile = !initial.profile && !initial.error ? await fetchUserProfile() : initial;
+  if (profile.profile && profile.profile.id !== identity.user.id) return {...identity, profile:null,error:'登录状态已变化，请重试'};
+  return {...identity, ...profile, error:profile.error || (!profile.profile ? '个人资料暂不可用，请重试' : undefined)};
+}
+
+async function readUserProfile(): Promise<{ profile: UserProfile | null; error?: string }> {
   try {
     const res = await fetch('/api/profile', {
       cache: 'no-store'
@@ -28,11 +42,12 @@ export async function fetchUserProfile(): Promise<{ profile: UserProfile | null;
 export async function updateUserProfileApi(updates: {
   display_name?: string;
   favorite_team_ids?: string[];
-}): Promise<{ profile: UserProfile | null; error?: string }> {
+}, expectedUserId: string): Promise<{ profile: UserProfile | null; error?: string }> {
+  if (!expectedUserId) return {profile:null,error:'登录状态待确认，请重新加载个人资料'};
   try {
     const res = await fetch('/api/profile', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-apex-profile-owner':expectedUserId },
       body: JSON.stringify(updates)
     });
     const data = await res.json();
@@ -50,13 +65,15 @@ export async function updateUserProfileApi(updates: {
   }
 }
 
-export async function uploadAvatarApi(file: File | Blob): Promise<{ profile: UserProfile | null; error?: string }> {
+export async function uploadAvatarApi(file: File | Blob, expectedUserId: string): Promise<{ profile: UserProfile | null; error?: string }> {
+  if (!expectedUserId) return {profile:null,error:'登录状态待确认，请重新加载个人资料'};
   try {
     const formData = new FormData();
     formData.append('file', file);
 
     const res = await fetch('/api/profile/avatar', {
       method: 'POST',
+      headers: { 'x-apex-profile-owner':expectedUserId },
       body: formData
     });
     const data = await res.json();
@@ -74,10 +91,12 @@ export async function uploadAvatarApi(file: File | Blob): Promise<{ profile: Use
   }
 }
 
-export async function deleteAvatarApi(): Promise<{ profile: UserProfile | null; error?: string }> {
+export async function deleteAvatarApi(expectedUserId: string): Promise<{ profile: UserProfile | null; error?: string }> {
+  if (!expectedUserId) return {profile:null,error:'登录状态待确认，请重新加载个人资料'};
   try {
     const res = await fetch('/api/profile/avatar', {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: { 'x-apex-profile-owner':expectedUserId }
     });
     const data = await res.json();
     if (!res.ok) {

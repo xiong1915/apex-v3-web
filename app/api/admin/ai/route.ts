@@ -1,26 +1,16 @@
-// app/api/admin/ai/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminAccess } from '@/lib/auth/server';
+import { NextRequest } from 'next/server';
 import { getAdminAIMetrics } from '@/lib/admin/service';
+import { adminAccess, adminJson } from '../_security';
 
 export const dynamic = 'force-dynamic';
 
+// All branches are private and no-store, including authorization and storage outages.
 export async function GET(req: NextRequest) {
-  const auth = await verifyAdminAccess(req);
-  if (!auth.ok) {
-    return NextResponse.json(
-      { error: auth.message },
-      {
-        status: auth.status,
-        headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
-      }
-    );
+  try {
+    const auth = await adminAccess(req);
+    if (!auth.ok) return adminJson({ error: auth.message }, auth.status);
+    return adminJson(await getAdminAIMetrics());
+  } catch {
+    return adminJson({ error: 'AI 监控暂不可用，请稍后重试' }, 503);
   }
-
-  const data = await getAdminAIMetrics();
-  return NextResponse.json(data, {
-    headers: {
-      'Cache-Control': 'private, no-cache, no-store, must-revalidate'
-    }
-  });
 }

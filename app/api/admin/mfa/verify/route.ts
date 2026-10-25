@@ -1,137 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { getServerSession, createSupabaseServerClient } from '@/lib/auth/server';
-import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isProduction, isValidUuid } from '@/lib/auth/config';
+import { NextRequest } from 'next/server';
+import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isProduction } from '@/lib/auth/config';
+import { verifySessionCredential } from '@/lib/auth/verified-session';
 import { mockAuthManager } from '@/lib/auth/mock';
+import { adminAccess, adminJson, sameOrigin, boundMFAClient, allowMFAAttempt } from '../../_security';
 
 export const dynamic = 'force-dynamic';
+// adminJson keeps every response private and no-store.
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(req);
-  if (!session || !session.user) {
-    return NextResponse.json({ error: '未登录' }, { status: 401 });
-  }
-
-  const configuredAdminId = AUTH_CONFIG.adminUserId;
-  const isConfiguredAdmin = Boolean(
-    configuredAdminId &&
-    isValidUuid(configuredAdminId) &&
-    session.user.id === configuredAdminId
-  );
-
-  if (!isConfiguredAdmin) {
-    return NextResponse.json({ error: '权限不足：仅允许专属管理员进行 TOTP 验证' }, { status: 403 });
-  }
-
-  const body = await req.json().catch(() => null);
-  const code = body?.code ? String(body.code).trim() : '';
-
-  if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
-    return NextResponse.json({ error: '请输入有效的 6 位数字 TOTP 动态验证码' }, { status: 400 });
-  }
-
-  // 1. Supabase 生产模式
-  if (isSupabaseConfigured()) {
-    try {
-      const supabase = await createSupabaseServerClient();
-      const requestedFactorId = body?.factorId ? String(body.factorId).trim() : '';
-      let factorId = requestedFactorId;
-
-      if (!factorId) {
-        const { data: factors, error: factorErr } = await supabase.auth.mfa.listFactors();
-        if (factorErr || !factors?.totp?.length) {
-          return NextResponse.json({ error: '尚未绑定 TOTP 双重验证器，请先完成扫码绑定' }, { status: 400 });
-        }
-        const verifiedFactor = factors.totp.find((f: any) => f.status === 'verified');
-        factorId = verifiedFactor?.id || factors.totp[0].id;
+  if (!sameOrigin(req)) return adminJson({ error: '请求来源不受信任' }, 403);
+  try {
+    const auth = await adminAccess(req, { requireAal2: false });
+    if (!auth.ok) return adminJson({ error: auth.message }, auth.status);
+    if (!await allowMFAAttempt(auth.user.id, 'verify')) return adminJson({ error: '验证尝试过于频繁，请稍后重试' }, 429);
+    const body = await req.json().catch(() => null);
+    const code = typeof body?.code === 'string' ? body.code.trim() : '';
+    if (!/^\d{6}$/.test(code)) return adminJson({ error: '请输入有效的 6 位数字动态验证码' }, 400);
+    let upgraded;
+    if (isSupabaseConfigured()) {
+      const client = await boundMFAClient(auth.session);
+      const { data: factors, error: factorError } = await client.auth.mfa.listFactors();
+      if (factorError || !factors) return adminJson({ error: '验证器状态暂不可用' }, 503);
+      const totp = factors.all.filter(f => f.factor_type === 'totp');
+      // Once MFA is active, an abandoned enrollment secret must never grant AAL2.
+      const owned = totp.some(f => f.status === 'verified') ? totp.filter(f => f.status === 'verified') : totp;
+      const requested = typeof body?.factorId === 'string' ? body.factorId.trim() : '';
+      const factor = requested ? owned.find(f => f.id === requested) : owned.find(f => f.status === 'verified');
+      if (!factor) return adminJson({ error: '验证器不属于当前会话或尚未绑定' }, 400);
+      const { data, error } = await client.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+      if (error) {
+        const unavailable = error.status === 0 || (error.status || 0) >= 500;
+        return adminJson({ error: unavailable ? '身份服务暂不可用' : '动态验证码验证失败' }, unavailable ? 503 : 400);
       }
-      const { data: challengeData, error: challengeErr } = await supabase.auth.mfa.challengeAndVerify({
-        factorId,
-        code
-      });
-      if (challengeErr) {
-        return NextResponse.json({ error: challengeErr.message || 'TOTP 验证码错误' }, { status: 400 });
-      }
-
-      const res = NextResponse.json({
-        success: true,
-        message: 'TOTP 双重验证成功 (AAL2)',
-        aal: 'aal2'
-      }, {
-        headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
-      });
-
-      // 同步 Supabase SSR 内部在 challengeAndVerify 期间写入的 cookieStore cookies
-      try {
-        const cookieStore = await cookies();
-        cookieStore.getAll().forEach((c) => {
-          if (c.name.startsWith('sb-')) {
-            res.cookies.set(c.name, c.value, {
-              path: '/',
-              httpOnly: true,
-              secure: isProduction(),
-              sameSite: 'lax',
-              maxAge: AUTH_CONFIG.sessionMaxAge
-            });
-          }
-        });
-      } catch (_) {}
-
-      // 更新会话 Cookie 为升级后的 AAL2 凭证
-      if (challengeData?.access_token) {
-        res.cookies.set(AUTH_CONFIG.cookieName, challengeData.access_token, {
-          httpOnly: true,
-          secure: isProduction(),
-          sameSite: 'lax',
-          maxAge: AUTH_CONFIG.sessionMaxAge,
-          path: '/'
-        });
-      }
-      if (challengeData?.refresh_token) {
-        res.cookies.set(AUTH_CONFIG.refreshCookieName, challengeData.refresh_token, {
-          httpOnly: true,
-          secure: isProduction(),
-          sameSite: 'lax',
-          maxAge: AUTH_CONFIG.sessionMaxAge,
-          path: '/'
-        });
-      }
-
-      return res;
-    } catch (e: any) {
-      return NextResponse.json({ error: e.message || 'TOTP 验证异常' }, { status: 500 });
+      if (!data?.access_token) return adminJson({ error: '验证凭证未返回，请重试' }, 503);
+      upgraded = await verifySessionCredential(client, { ...data, user: { id: auth.user.id } }, AUTH_CONFIG.sessionMaxAge);
+      if (!upgraded || upgraded.user.id !== auth.user.id || upgraded.aal !== 'aal2') return adminJson({ error: '双重验证凭证校验失败' }, 503);
+    } else {
+      if (!isMockAuthAllowed()) return adminJson({ error: '系统认证服务未就绪' }, 503);
+      const result = mockAuthManager.verifyAdminTOTP(auth.session.access_token, code);
+      if (result.error || !result.session || result.session.user.id !== auth.user.id) return adminJson({ error: '动态验证码错误' }, 400);
+      upgraded = result.session;
     }
+    const res = adminJson({ success: true, aal: 'aal2', message: 'TOTP 双重验证成功' });
+    const options = { httpOnly: true, secure: isProduction(), sameSite: 'lax' as const, maxAge: AUTH_CONFIG.sessionMaxAge, path: '/' };
+    res.cookies.set(AUTH_CONFIG.cookieName, upgraded.access_token, options);
+    if (upgraded.refresh_token) res.cookies.set(AUTH_CONFIG.refreshCookieName, upgraded.refresh_token, options);
+    return res;
+  } catch {
+    return adminJson({ error: '身份服务暂不可用，请稍后重试' }, 503);
   }
-
-  // 生产环境绝对禁止 Mock
-  if (!isMockAuthAllowed()) {
-    return NextResponse.json({ error: '系统认证服务未就绪，禁止执行 TOTP 验证' }, { status: 503 });
-  }
-
-  // 2. 本地测试 Mock 模式
-  const token = req.cookies.get(AUTH_CONFIG.cookieName)?.value || session.access_token;
-  const result = mockAuthManager.verifyAdminTOTP(token, code);
-
-  if (result.error || !result.session) {
-    return NextResponse.json({ error: result.error?.message || '动态验证码错误' }, { status: 400 });
-  }
-
-  const res = NextResponse.json({
-    success: true,
-    message: 'TOTP 双重验证成功，已升级为 AAL2 安全级别',
-    aal: 'aal2'
-  }, {
-    headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
-  });
-
-  // 更新会话 Cookie 为升级后的会话
-  res.cookies.set(AUTH_CONFIG.cookieName, result.session.access_token, {
-    httpOnly: true,
-    secure: isProduction(),
-    sameSite: 'lax',
-    maxAge: AUTH_CONFIG.sessionMaxAge,
-    path: '/'
-  });
-
-  return res;
 }
