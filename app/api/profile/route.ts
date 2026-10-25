@@ -44,6 +44,11 @@ export async function PATCH(req: NextRequest) {
       });
     }
 
+    // An optimistic owner is a stale-form guard, never an authentication source.
+    const expectedOwner = req.headers.get('x-apex-profile-owner');
+    if (expectedOwner !== null && expectedOwner !== session.user.id) {
+      return NextResponse.json({error:'登录账号已变化，请重新加载个人资料'}, {status:409,headers:{'Cache-Control':'private, no-store'}});
+    }
     // 频率限制防刷保护 (每用户每分钟最多允许 30 次更新)
     const rateKey = `rate:profile:${session.user.id}`;
     const rateCheck = await defaultRateLimitStore.checkRateLimit(rateKey, 30, 60);

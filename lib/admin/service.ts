@@ -6,7 +6,6 @@ import { getStorageInfo, getCacheStore } from '@/lib/storage';
 import { BUILD_ID, BUILD_ENV, BUILD_TIMESTAMP } from '@/lib/build-info';
 import { isSupabaseConfigured, isMockAuthAllowed, isValidUuid, AUTH_CONFIG } from '@/lib/auth/config';
 import { mockAuthManager } from '@/lib/auth/mock';
-import { createSupabaseServerClient } from '@/lib/auth/server';
 import { providerConfiguration, readAIMonitor } from './ai-monitor';
 
 export interface AdminOverview {
@@ -60,14 +59,22 @@ let lastSyncTimestamp = 0;
 const SYNC_COOLDOWN_MS = 30 * 1000; // 30 秒冷却防刷保护
 
 export async function getAdminOverview(): Promise<AdminOverview> {
-  const overview = await defaultF1Service.getOverview().catch(() => null);
   const storageInfo = getStorageInfo();
+  const cache = getCacheStore();
+  const [f1Result, storageResult] = await Promise.allSettled([
+    defaultF1Service.getOverview(),
+    cache.getStrict ? cache.getStrict('stats:ai:last_request_time') : cache.get('stats:ai:last_request_time'),
+  ]);
+  const overview = f1Result.status === 'fulfilled' ? f1Result.value : null;
+  const storageConnected = storageResult.status === 'fulfilled';
+  const f1Available = overview && overview.dataSource !== 'unavailable';
+  const healthy = f1Available && storageConnected && !overview.isStale && overview.dataSource !== 'lkg' && overview.upstreamSyncSuccess === true;
 
   return {
     health: {
-      status: overview ? 'healthy' : 'degraded',
+      status: !f1Available ? 'offline' : healthy ? 'healthy' : 'degraded',
       apiUptime: true,
-      storageConnected: storageInfo.connected,
+      storageConnected,
       storageProvider: storageInfo.detail || storageInfo.provider,
       checkedAt: new Date().toISOString()
     },
@@ -75,7 +82,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       buildId: BUILD_ID,
       environment: BUILD_ENV,
       deployedAt: BUILD_TIMESTAMP,
-      vercelEnv: process.env.VERCEL_ENV || 'production'
+      vercelEnv: process.env.VERCEL_ENV || BUILD_ENV
     },
     f1: {
       season: overview?.season || '2026',
@@ -83,7 +90,7 @@ export async function getAdminOverview(): Promise<AdminOverview> {
       upstreamSyncSuccess: overview?.upstreamSyncSuccess,
       isStale: overview?.isStale,
       syncCutoffDesc: overview?.standingsCutoffDesc,
-      errorMessage: overview?.upstreamSyncSuccess === false ? '上游 Jolpica 服务连接重试已降级至 LKG 离线快照' : undefined
+      errorMessage: !f1Available ? '赛事数据当前不可用' : overview?.upstreamSyncSuccess === false ? '最近上游同步未成功，请检查数据来源和更新时间' : overview?.isStale || overview?.dataSource === 'lkg' ? '当前使用历史快照，请核对更新时间' : undefined
     }
   };
 }
@@ -94,8 +101,11 @@ export async function getAdminUsers(): Promise<{ total: number; users: AdminUser
     try {
       const { createClient } = await import('@supabase/supabase-js');
       const supabaseAdmin = createClient(AUTH_CONFIG.supabaseUrl, AUTH_CONFIG.supabaseServiceRoleKey);
-      const { data, error } = await supabaseAdmin.auth.admin.listUsers();
-      if (!error && data?.users) {
+      const allUsers = new Map<string, AdminUserItem>();
+      const perPage = 200;
+      for (let page = 1; ; page++) {
+        const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        if (error || !Array.isArray(data?.users)) throw new Error('用户目录暂不可用');
         const users = data.users.map(u => ({
           id: u.id,
           email: u.email || '未绑定邮箱',
@@ -104,16 +114,19 @@ export async function getAdminUsers(): Promise<{ total: number; users: AdminUser
           role: (AUTH_CONFIG.adminUserId && isValidUuid(AUTH_CONFIG.adminUserId) && u.id === AUTH_CONFIG.adminUserId) ? '专属管理员' : '普通用户',
           createdAt: u.created_at
         }));
-        return { total: users.length, users };
+        const previousCount = allUsers.size;
+        users.forEach(u => allUsers.set(u.id, u));
+        if (data.users.length < perPage) return { total: allUsers.size, users: [...allUsers.values()] };
+        if (allUsers.size === previousCount || page >= 1000) throw new Error('用户目录分页异常');
       }
     } catch (e) {
-      console.warn('[Admin Service] Supabase listUsers error:', e);
+      throw new Error('用户目录暂不可用，请稍后重试');
     }
   }
 
   // 生产环境下禁止返回任何 Mock 用户数据
   if (!isMockAuthAllowed()) {
-    return { total: 0, users: [] };
+    throw new Error('用户管理服务未配置，暂不可用');
   }
 
   // 2. 本地测试 Mock 数据源
@@ -160,17 +173,22 @@ export async function recordAITokenUsage(tokens: number): Promise<void> {
 
 export async function getAdminAIMetrics(): Promise<AdminAIMetrics> {
   const cache = getCacheStore();
-  const total = await cache.get<number>('stats:ai:total_requests') || 0;
-  const rateLimitHits = await cache.get<number>('stats:ai:rate_limit_hits') || 0;
-  const tokenCount = await cache.get<number>('stats:ai:tokens_estimated') || 0;
-  const lastActive = await cache.get<string>('stats:ai:last_request_time');
+  const read = <T,>(key: string) => cache.getStrict ? cache.getStrict<T>(key) : cache.get<T>(key);
+  const [total, rateLimitHits, tokenCount, lastActive, monitoring] = await Promise.all([
+    read<number>('stats:ai:total_requests'),
+    read<number>('stats:ai:rate_limit_hits'),
+    read<number>('stats:ai:tokens_estimated'),
+    read<string>('stats:ai:last_request_time'),
+    readAIMonitor(),
+  ]);
+  if (!monitoring.available) throw new Error('AI 监控存储暂不可用');
 
   return {
-    totalRequests: total,
-    rateLimitHits,
-    estimatedTokens: tokenCount,
+    totalRequests: total ?? 0,
+    rateLimitHits: rateLimitHits ?? 0,
+    estimatedTokens: tokenCount ?? 0,
     ...providerConfiguration(),
-    monitoring: await readAIMonitor(),
+    monitoring,
     limits: { hourly: 600, perMinute: 15, requestTimeoutSeconds: 25 },
     historyStorageConfigured: Boolean((process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL) && (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN) && process.env.STORAGE_PROVIDER !== 'memory'),
     lastActiveTime: lastActive || undefined

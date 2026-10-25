@@ -7,9 +7,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { fetchCurrentSession } from '@/lib/auth/client';
 import {
-  fetchUserProfile,
+  fetchAccountProfile,
   updateUserProfileApi,
   uploadAvatarApi,
   deleteAvatarApi,
@@ -49,11 +48,17 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // 1. 初始化鉴权与读取 Profile (严格区分未登录与网络/服务端临时异常)
+  const loadRevision = useRef(0);
+  const activeUserId = useRef<string|null>(null);
+  const loadedOwnerId = useRef<string|null>(null);
   const init = async () => {
+    const revision = ++loadRevision.current;
+    activeUserId.current = null;
     setLoading(true);
     setNetworkError(null);
     try {
-      const { user: currentSessionUser, error: authError } = await fetchCurrentSession();
+      const { user: currentSessionUser, profile: userProfile, error: authError } = await fetchAccountProfile();
+      if (revision !== loadRevision.current) return;
 
       if (authError) {
         // 网络抖动或身份服务临时异常，绝不误判为未登录而强行登出
@@ -67,34 +72,36 @@ export default function ProfilePage() {
         return;
       }
 
+      activeUserId.current = currentSessionUser.id;
+      if (loadedOwnerId.current && loadedOwnerId.current !== currentSessionUser.id) {
+        setCropModalOpen(false);
+        setCropImageSrc(null);
+        setAvatarError(null);
+        setNicknameError(null);
+        setTeamsError(null);
+        setNicknameSavedNotice(false);
+        setTeamsSavedNotice(false);
+      }
+      loadedOwnerId.current = currentSessionUser.id;
       setUser(currentSessionUser);
 
-      const { profile: userProfile, error: profileErr } = await fetchUserProfile();
-
-      if (userProfile) {
-        setProfile(userProfile);
-        setNicknameInput(userProfile.display_name || '');
-        setFavoriteTeamIds(userProfile.favorite_team_ids || []);
-      } else {
-        const fallbackName =
-          currentSessionUser.user_metadata?.name ||
-          currentSessionUser.email?.split('@')[0] ||
-          'APEX 车迷';
-        setNicknameInput(fallbackName);
-        if (profileErr) {
-          console.warn('[APEX Profile] Profile read notice:', profileErr);
-        }
-      }
+      if (!userProfile) { setNetworkError('个人资料暂不可用，请重试'); return; }
+      setProfile(userProfile);
+      setNicknameInput(userProfile.display_name);
+      setFavoriteTeamIds(userProfile.favorite_team_ids);
     } catch (e: any) {
       console.error('Failed to load profile session:', e);
       setNetworkError(e?.message || '网络连接异常，请重试');
     } finally {
-      setLoading(false);
+      if (revision === loadRevision.current) setLoading(false);
     }
   };
 
   useEffect(() => {
     init();
+    const reload = () => { setUser(null); setProfile(null); init(); };
+    window.addEventListener('apex:identity-changed', reload);
+    return () => { loadRevision.current++; window.removeEventListener('apex:identity-changed', reload); };
   }, [router]);
 
   // 防模态框背景滚动与 Escape 键监听
@@ -147,10 +154,10 @@ export default function ProfilePage() {
     try {
       const { profile: updated, error } = await updateUserProfileApi({
         display_name: check.value
-      });
+      }, profile?.id || '');
       if (error) {
         setNicknameError(error);
-      } else if (updated) {
+      } else if (updated && updated.id === activeUserId.current) {
         setProfile(updated);
         setNicknameInput(updated.display_name);
         setNicknameSavedNotice(true);
@@ -231,7 +238,7 @@ export default function ProfilePage() {
       ctx.stroke();
       ctx.restore();
     };
-  }, [cropModalOpen, cropImageSrc, cropScale]);
+  }, [cropModalOpen, cropImageSrc, cropScale, loading]);
 
   // 6. 执行裁切并上传至 Supabase Storage
   const handleConfirmCropAndUpload = async () => {
@@ -275,10 +282,10 @@ export default function ProfilePage() {
 
       if (!blob) throw new Error('生成头像失败');
 
-      const { profile: updated, error } = await uploadAvatarApi(blob);
+      const { profile: updated, error } = await uploadAvatarApi(blob, profile?.id || '');
       if (error) {
         setAvatarError(error);
-      } else if (updated) {
+      } else if (updated && updated.id === activeUserId.current) {
         setProfile(updated);
         setCropModalOpen(false);
       }
@@ -296,10 +303,10 @@ export default function ProfilePage() {
     setUploadingAvatar(true);
     setAvatarError(null);
     try {
-      const { profile: updated, error } = await deleteAvatarApi();
+      const { profile: updated, error } = await deleteAvatarApi(profile?.id || '');
       if (error) {
         setAvatarError(error);
-      } else if (updated) {
+      } else if (updated && updated.id === activeUserId.current) {
         setProfile(updated);
       }
     } catch {
@@ -327,10 +334,10 @@ export default function ProfilePage() {
     try {
       const { profile: updated, error } = await updateUserProfileApi({
         favorite_team_ids: favoriteTeamIds
-      });
+      }, profile?.id || '');
       if (error) {
         setTeamsError(error);
-      } else if (updated) {
+      } else if (updated && updated.id === activeUserId.current) {
         setProfile(updated);
         setFavoriteTeamIds(updated.favorite_team_ids || []);
         setTeamsSavedNotice(true);
@@ -365,10 +372,10 @@ export default function ProfilePage() {
             </svg>
           </div>
           <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#FFF', marginBottom: '8px' }}>
-            无法连接至 APEX 身份中心
+            个人资料暂不可用
           </h2>
           <p style={{ fontSize: '13px', color: '#8E929C', marginBottom: '24px', lineHeight: 1.6 }}>
-            网络连接不稳定或身份服务出现临时波动。系统未检测到登出状态，您的个人资料未受影响。
+            {networkError}
           </p>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
@@ -392,6 +399,8 @@ export default function ProfilePage() {
       </div>
     );
   }
+
+  if (!user || !profile) return <div className="profile-page-shell" role="status">正在转到登录页面…</div>;
 
   const currentDisplayName = profile?.display_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'APEX 车迷';
   const currentAvatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || null;

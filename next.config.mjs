@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-let buildSha=process.env.VERCEL_GIT_COMMIT_SHA || process.env.NEXT_PUBLIC_GIT_SHA || '';
+let buildSha=process.env.NEXT_PUBLIC_GIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || '';
 try {if(!buildSha)buildSha=execFileSync('git',['-c',`safe.directory=${process.cwd().replaceAll('\\','/')}`,'rev-parse','HEAD'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();} catch {}
 /** @type {import('next').NextConfig} */
 const securityHeaders = [

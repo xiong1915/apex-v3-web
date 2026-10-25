@@ -1,53 +1,27 @@
-// app/api/admin/f1/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyAdminAccess } from '@/lib/auth/server';
+import { NextRequest } from 'next/server';
 import { executeAdminF1Sync } from '@/lib/admin/service';
 import { defaultF1Service } from '@/providers/f1/service';
+import { adminAccess, adminJson, sameOrigin } from '../_security';
 
 export const dynamic = 'force-dynamic';
 
+// Every success or error remains private and no-store.
 export async function GET(req: NextRequest) {
-  const auth = await verifyAdminAccess(req);
-  if (!auth.ok) {
-    return NextResponse.json(
-      { error: auth.message },
-      {
-        status: auth.status,
-        headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
-      }
-    );
-  }
-
-  const overview = await defaultF1Service.getOverview().catch(() => null);
-
-  return NextResponse.json({
-    season: overview?.season || '2026',
-    updatedAt: overview?.updatedAt,
-    upstreamSyncSuccess: overview?.upstreamSyncSuccess,
-    isStale: overview?.isStale,
-    cutoffDesc: overview?.standingsCutoffDesc,
-    cutoffVerified: overview?.standingsCutoffVerified
-  }, {
-    headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
-  });
+  try {
+    const auth = await adminAccess(req);
+    if (!auth.ok) return adminJson({ error: auth.message }, auth.status);
+    const overview = await defaultF1Service.getOverview();
+    if (!overview) return adminJson({ error: '赛事数据暂不可用' }, 503);
+    return adminJson({ season: overview.season, updatedAt: overview.updatedAt, upstreamSyncSuccess: overview.upstreamSyncSuccess, isStale: overview.isStale, cutoffDesc: overview.standingsCutoffDesc, cutoffVerified: overview.standingsCutoffVerified });
+  } catch { return adminJson({ error: '身份或赛事数据服务暂不可用' }, 503); }
 }
 
 export async function POST(req: NextRequest) {
-  // 必须是已登录管理员，且敏感操作需要 TOTP AAL2 双重认证
-  const auth = await verifyAdminAccess(req, { requireAal2: true });
-  if (!auth.ok) {
-    return NextResponse.json(
-      { error: auth.message },
-      {
-        status: auth.status,
-        headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
-      }
-    );
-  }
-
-  const result = await executeAdminF1Sync();
-  return NextResponse.json(result, {
-    status: result.success ? 200 : 429,
-    headers: { 'Cache-Control': 'private, no-cache, no-store, must-revalidate' }
-  });
+  if (!sameOrigin(req)) return adminJson({ error: '请求来源不受信任' }, 403);
+  try {
+    const auth = await adminAccess(req, { requireAal2: true });
+    if (!auth.ok) return adminJson({ error: auth.message }, auth.status);
+    const result = await executeAdminF1Sync();
+    return adminJson(result, result.success ? 200 : result.cooldownRemaining ? 429 : 503);
+  } catch { return adminJson({ error: '身份或赛事同步服务暂不可用' }, 503); }
 }
