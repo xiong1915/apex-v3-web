@@ -6,7 +6,7 @@
 - F1 数据由 Canonical Data Layer 统一规范，Jolpica/OpenF1/官方赛程 → Cache → LKG → Unavailable。禁止硬编码动态比赛事实或把缓存猜测当真实数据；全站复用 RaceStateService，内部 UTC ISO-8601，展示 Asia/Shanghai。
 - `lib/auth/` 使用 Supabase，`lib/admin/` 与 `app/api/admin/` 涉及管理员权限和 MFA。生产环境禁止 mock auth，服务端验证身份与 AAL2；不得将 service role、管理员凭据或令牌放到 NEXT_PUBLIC_*。
 - AI 使用现有 DeepSeek/provider 注册，保持事实优先、URL 安全和 AbortSignal 贯通；未经授权不启用收费回退。存储使用 Upstash Redis 或本地内存。
-- Vercel `vercel.json` 的 `/api/cron/sync` 每日 01:00 UTC 同步；Cloudflare 根 `wrangler.toml` / `cf_worker.js` 为 apex-v3-gateway，配置的上游是现有 f1-race-reminder-cloud.vercel.app。禁止改动生产路由或恢复提醒端点作为普通测试。
+- Vercel `vercel.json` 的 `/api/cron/sync` 每日 01:00 UTC 同步；Cloudflare 根 `wrangler.toml` / `cf_worker.js` 为现有网站代理 feishu-f1-bot（历史名称，无提醒处理器），配置的上游是现有 f1-race-reminder-cloud.vercel.app。禁止改动生产路由或恢复提醒端点作为普通测试。
 - 赛道按 season + circuitId + layoutId，保持许可与 SVG 清洗。界面沿用现有设计系统与移动端材质降级。
 
 ## Codex 开发与交付工作流
@@ -35,7 +35,9 @@
 
 ## 当前发布前待核实事项
 
-- 当前网关使用 new URL(pathname + search, upstream)，双斜杠路径可能被解释为外部 origin，并转发 Cookie/Authorization。现有安全问题尚未修复；涉及网关发布前必须修复并添加本地回归测试，不能仅凭构建通过发布。
+- 网关已固定 upstream origin 后单独设置 pathname/search，并保留 socket-bearing 101 Response。保持 tests/gateway-security.test.mjs 与 tests/live-integration.test.ts；正式域名实际映射 feishu-f1-bot，独立 f1-reminder-worker 禁止改动。
 - CI 中赛历、事实卡、赛果字段及引用编排测试使用 tests/fixtures/offline-service.mjs 与固定搜索输入；这是合成数据契约测试，不证明现实赛事数据。保留真实上游/线上交互的独立验收边界。其他回退测试仍可能进行无密钥公共网络读取；完整 quality 未通过时停止交付，不跳过测试或降低断言。
 - 远程 required checks、Vercel Git 集成、Codex 自动审查是否启用需另行核实；AGENTS.md 与新增 CI 不会自动启用这些平台设置。
 - 2026-10-16 只读检查：GitHub main 未配置经典分支保护，rulesets 列表为空；后续启用质量检查约束需明确授权。
+
+- V3.3：/live 采用 lib/f1/live/policy.ts 的公开许可门控；当前只发布真实赛程、倒计时与已收录成绩。不得通过配置开关或缓存绕过门控，不得将离线状态机测试当真实直播验收。参见 docs/live-timing.md。

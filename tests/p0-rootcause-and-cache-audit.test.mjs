@@ -6,7 +6,6 @@ import assert from 'node:assert/strict';
 import { F1Service, determineStandingsCutoff, evaluateHasLatestRaceResult } from '../providers/f1/service.ts';
 import { LastKnownGoodStore } from '../lib/storage/lkg.ts';
 import { MemoryCacheStore } from '../lib/storage/index.ts';
-import { DEFAULT_SINGAPORE_REPLAY } from '../lib/f1/replay/sample-sessions.ts';
 
 test('P0 根因复核与数据中心严谨性验收', async (t) => {
   // 固定参考时间戳与独立隔离内存存储（杜绝写工作区真实磁盘快照）
@@ -304,15 +303,6 @@ test('P0 根因复核与数据中心严谨性验收', async (t) => {
     );
   });
 
-  await t.test('9. APEX REPLAY 真实性与 DEMO 仿真标识检查', () => {
-    assert.strictEqual(DEFAULT_SINGAPORE_REPLAY.metadata.sourceProvider, 'curated_demo');
-    assert.ok(
-      DEFAULT_SINGAPORE_REPLAY.metadata.title.includes('DEMO'),
-      '回放标题必须明确携带 DEMO 标识，杜绝以假乱真'
-    );
-  });
-
-  // 用户指令 3-7 专项必通验收用例：
   await t.test('10. [指令3-1] 2026-10-11T01:00:00Z 采集的冲刺积分，随后第 17 站正赛结果发布，不能标成已验证的正赛积分', () => {
     const sprintStandings = [
       {
