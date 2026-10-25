@@ -45,6 +45,13 @@ test('permission, key, timestamps, size and strict schema fail closed before tou
 });
 test('corrupt or cross-session persisted records are rejected and all keys have private namespace',async()=>{
  const f=fixture(),store=f.store();await store.acquire('test-only','one',30000);await store.saveSnapshot(snapshot(),'one');assert.ok([...f.values.keys()].every(key=>key.startsWith('apex:private:f1:live:v1:')));
+ assert.deepEqual([...new Set([...f.values.keys()].map(key=>/\{([^}]+)\}/.exec(key)?.[1]))],['test-only'],'atomic Lua keys share the same Redis hash slot');
  const key=[...f.values.keys()].find(key=>key.endsWith(':snapshot'))!;const value=f.values.get(key)!;const envelope=JSON.parse(value.body);envelope.snapshot.sessionKey='other';value.body=JSON.stringify(envelope);assert.equal(await store.loadSnapshot('test-only'),null);
  value.body='{broken';assert.equal(await store.loadSnapshot('test-only'),null);
+});
+test('a changed grant cannot recover snapshots collected under the previous topic scope',async()=>{
+ const f=fixture(),original=f.store();await original.acquire('test-only','one',30000);await original.saveSnapshot(snapshot(),'one');
+ const changed=new RedisLiveStore(f.redis as unknown as LiveRedisClient,{permission:{...f.permission,topics:['SessionInfo','LapCount']},now:f.now});
+ assert.equal(await changed.loadSnapshot('test-only'),null);
+ assert.ok(await original.loadSnapshot('test-only'));
 });

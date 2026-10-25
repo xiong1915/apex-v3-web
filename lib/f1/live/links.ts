@@ -1,3 +1,4 @@
+export const OFFICIAL_LIVE_TIMING_URL = 'https://www.formula1.com/en/timing/f1-live';
 export function buildLiveRedirect(params: Record<string, string | string[] | undefined>): string {
  const query=new URLSearchParams();
  const season=params.season || params.year;

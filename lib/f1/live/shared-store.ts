@@ -17,7 +17,7 @@ const driver=z.object({
  sourceTimestamps:z.partialRecord(z.enum(LIVE_TOPICS),timestamp).optional(),sectorPersonalBest:z.array(z.boolean()).max(3).optional(),sectorOverallBest:z.array(z.boolean()).max(3).optional(),
 }).strict();
 const snapshotSchema=z.object({
- schema:z.literal(1),sessionKey:z.string().regex(/^[a-z0-9][a-z0-9_.:-]{0,159}$/i),
+ schema:z.literal(1),sessionKey:z.string().regex(/^[a-z0-9][a-z0-9_.:-]{0,159}$/i),sessionType:nullableText.optional(),lifecycleTimestamp:timestamp.optional(),lifecycleStatus:nullableText.optional(),topicTimestamps:z.partialRecord(z.enum(LIVE_TOPICS),timestamp).optional(),
  phase:z.enum(['UPCOMING','WAITING','LIVE','SUSPENDED','FINISHED','DELAYED','CANCELLED']),connection:z.enum(['LIVE','DELAYED','RECONNECTING','UNAVAILABLE','FINISHED']),
  source:z.string().max(500),sourceTimestamp:timestamp,receivedAt:timestamp,drivers:z.array(driver).max(64),flag:nullableText,
  messages:z.array(z.object({id:z.string().max(1000),date:z.string().datetime({offset:true}),text:z.string().max(500)}).strict()).max(100),
@@ -48,13 +48,17 @@ function validKey(value:string){return /^[a-z0-9][a-z0-9_.:-]{0,159}$/i.test(val
 function validOwner(value:string){return /^[a-z0-9_.:-]{1,160}$/i.test(value);}
 function keys(sessionKey:string){const base=`${PREFIX}{${sessionKey}}`;return {lease:`${base}:lease`,snapshot:`${base}:snapshot`};}
 export interface RedisLiveStoreOptions {permission?:LivePermission;now?:()=>number;snapshotTtlSeconds?:number;}
-/** Private collector storage only. Public routes must never import this store or infer a grant from its contents. */
+/** Private collector storage. Public readers require the reviewed source registry and projection; stored contents never grant permission. */
 export class RedisLiveStore implements LiveLease {
  private readonly now:()=>number;
  private readonly ttl:number;
+ private readonly scope:Promise<string>;
  constructor(private readonly redis:LiveRedisClient,private readonly options:RedisLiveStoreOptions={}){
   this.now=options.now||Date.now;this.ttl=Math.max(60,Math.min(21600,Math.floor(options.snapshotTtlSeconds||3600)));
+  const grant=options.permission;
+  this.scope=crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify([grant?.reference,grant?.expiresAt,[...(grant?.topics||[])].sort()]))).then(buffer=>Array.from(new Uint8Array(buffer),n=>n.toString(16).padStart(2,'0')).join(''));
  }
+ private async scopedKeys(sessionKey:string){return {lease:keys(sessionKey).lease,snapshot:`${PREFIX}{${sessionKey}}:${await this.scope}:snapshot`};}
  private permitted(){return hasLivePermission(this.options.permission,this.now());}
  private leaseDuration(ttlMs:number){
   if(!Number.isFinite(ttlMs)||ttlMs<1000)return 0;
@@ -63,27 +67,27 @@ export class RedisLiveStore implements LiveLease {
  async acquire(sessionKey:string,owner:string,ttlMs:number):Promise<boolean>{
   if(!this.permitted()||!validKey(sessionKey)||!validOwner(owner))return false;
   const duration=this.leaseDuration(ttlMs);if(duration<1000)return false;
-  return await this.redis.set(keys(sessionKey).lease,owner,{nx:true,px:duration})==='OK';
+  return await this.redis.set((await this.scopedKeys(sessionKey)).lease,owner,{nx:true,px:duration})==='OK';
  }
  async renew(sessionKey:string,owner:string,ttlMs:number):Promise<boolean>{
   if(!this.permitted()||!validKey(sessionKey)||!validOwner(owner))return false;
   const duration=this.leaseDuration(ttlMs);if(duration<1000)return false;
-  return Number(await this.redis.eval(LIVE_RENEW_SCRIPT,[keys(sessionKey).lease],[owner,duration]))===1;
+  return Number(await this.redis.eval(LIVE_RENEW_SCRIPT,[(await this.scopedKeys(sessionKey)).lease],[owner,duration]))===1;
  }
  async release(sessionKey:string,owner:string):Promise<void>{
   // An expired grant must not prevent safe token-checked cleanup.
-  if(validKey(sessionKey)&&validOwner(owner))await this.redis.eval(LIVE_RELEASE_SCRIPT,[keys(sessionKey).lease],[owner]);
+  if(validKey(sessionKey)&&validOwner(owner))await this.redis.eval(LIVE_RELEASE_SCRIPT,[(await this.scopedKeys(sessionKey)).lease],[owner]);
  }
  private parsed(input:unknown,sessionKey:string):LiveSnapshot|null{
   const result=snapshotSchema.safeParse(input);if(!result.success||result.data.sessionKey!==sessionKey)return null;
   const snapshot=result.data;
-  const dates=[snapshot.sourceTimestamp,snapshot.receivedAt,...snapshot.drivers.flatMap(d=>[d.updatedAt,...Object.values(d.sourceTimestamps||{})]),...snapshot.messages.map(m=>m.date)];
+  const dates=[snapshot.sourceTimestamp,snapshot.receivedAt,snapshot.lifecycleTimestamp,...Object.values(snapshot.topicTimestamps||{}),...snapshot.drivers.flatMap(d=>[d.updatedAt,...Object.values(d.sourceTimestamps||{})]),...snapshot.messages.map(m=>m.date)];
   if(dates.some(date=>date&&Date.parse(date)>this.now()+5000))return null;
   return snapshot;
  }
  async loadSnapshot(sessionKey:string):Promise<LiveSnapshot|null>{
   if(!this.permitted()||!validKey(sessionKey))return null;
-  const stored=await this.redis.get<unknown>(keys(sessionKey).snapshot);if(stored===null)return null;
+  const stored=await this.redis.get<unknown>((await this.scopedKeys(sessionKey)).snapshot);if(stored===null||!this.permitted())return null;
   try{
    const serialized=typeof stored==='string'?stored:JSON.stringify(stored);if(new TextEncoder().encode(serialized).byteLength>MAX_BYTES)return null;
    const envelope=typeof stored==='string'?JSON.parse(stored):stored;
@@ -97,7 +101,7 @@ export class RedisLiveStore implements LiveLease {
   try{serialized=JSON.stringify(snapshot);}catch{return false;}
   if(new TextEncoder().encode(serialized).byteLength>MAX_BYTES)return false;
   const valid=this.parsed(snapshot,snapshot.sessionKey);if(!valid||!valid.receivedAt)return false;
-  const key=keys(valid.sessionKey),sourceMs=valid.sourceTimestamp?Date.parse(valid.sourceTimestamp):-1,receivedMs=Date.parse(valid.receivedAt);
+  const key=await this.scopedKeys(valid.sessionKey),sourceMs=valid.sourceTimestamp?Date.parse(valid.sourceTimestamp):-1,receivedMs=Date.parse(valid.receivedAt);
   return Number(await this.redis.eval(LIVE_SAVE_SCRIPT,[key.lease,key.snapshot],[owner,serialized,valid.sessionKey,sourceMs,receivedMs,this.ttl]))===1;
  }
 }
