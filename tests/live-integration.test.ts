@@ -14,7 +14,7 @@ test('legacy links preserve valid meeting context without interpreting DEMO or O
 test('legacy route emits an HTTP redirect before any page rendering',()=>{
  const response=replayRedirect(new NextRequest('https://f1.tike69.cc.cd/replay?season=2026&round=18&session=race'));
  assert.equal(response.status,308);
- assert.equal(response.headers.get('location'),'https://f1.tike69.cc.cd/live?season=2026&round=18&session=race');
+ assert.equal(response.headers.get('location'),'/live?season=2026&round=18&session=race');
 });
 test('Cloudflare upgrade returns the original socket-bearing response instead of reconstructing HTTP', async () => {
  const original=globalThis.fetch;
