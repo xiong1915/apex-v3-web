@@ -5,6 +5,9 @@ import type {CacheStore} from '@/lib/storage/interfaces';
 import type {F1Meeting, F1Session, DetailedRaceResultItem, DetailedQualifyingResultItem, DetailedSprintResultItem} from '../types';
 import type {PublicLiveResponse, LiveResult} from './public-types';
 import {LIVE_PUBLIC_POLICY, PUBLIC_LIVE_CHANNELS} from './policy';
+import {approvedLiveSource,projectPublicSnapshot,sourceActive,type ApprovedLiveSource} from './sources';
+import {RedisLiveStore} from './shared-store';
+import type {LiveSnapshot} from './types';
 
 export class LiveRequestError extends Error {constructor(message:string,public status=400){super(message);}}
 export interface LiveQuery {season:string;round?:number;session?:string}
@@ -16,6 +19,7 @@ export function parseLiveQuery(params:URLSearchParams,year=new Date().getUTCFull
  return {season,...(round!==null?{round:Number(round)}:{}),...(session!==null?{session}: {})};
 }
 interface Dependencies {
+ live?:{source:(query:LiveQuery,now:number)=>ApprovedLiveSource|null;load:(source:ApprovedLiveSource)=>Promise<LiveSnapshot|null>};
  now:()=>number; persistent:boolean; cache:CacheStore; coordinator:{acquire:(key:string)=>Promise<boolean>;release?:(key:string)=>Promise<void>};sleep:(ms:number)=>Promise<void>;
  calendar:(season:string)=>Promise<DataFetchResult<F1Meeting[]>>;
  race:(season:string,round:number)=>Promise<DetailedRaceResultItem[]>;
@@ -60,12 +64,26 @@ export class LivePublicService {
   const task=this.read(key,query);this.pending.set(key,task);
   try{return await task;}finally{if(this.pending.get(key)===task)this.pending.delete(key);}
  }
- private stamp(data:PublicLiveResponse,stale=false):PublicLiveResponse{
+ private async stamp(data:PublicLiveResponse,stale=false):Promise<PublicLiveResponse>{
   const now=this.deps.now();
-  return {...data,serverTime:new Date(now).toISOString(),isStale:data.isStale||stale,
+  const result:PublicLiveResponse={...data,serverTime:new Date(now).toISOString(),isStale:data.isStale||stale,
    // Enforce public policy again when reading cache. Stored/private payloads cannot enable forwarding.
    snapshot:null,availability:{...LIVE_PUBLIC_POLICY,channels:PUBLIC_LIVE_CHANNELS.map(c=>({...c}))},
-   sessions:data.sessions.map(item=>item.phase==='UPCOMING'&&start(item.session)<=now?{...item,phase:'WAITING',reason:'等待赛事正式开始，尚未收到可信开始状态'}:item)};
+   sessions:data.sessions.map(item=>item.phase==='UPCOMING'&&start(item.session)<=now?{...item,phase:'WAITING',reason:'实际节次状态待确认，尚未收到可信开始状态'}:item)};
+  if(!data.meeting||!data.session)return result;
+  const source=this.deps.live?.source({season:data.season,round:data.meeting.round,session:data.session.id},now);
+  if(!source||!sourceActive(source,now))return result;
+  result.availability={...result.availability,timingPublic:true,source:source.source,reason:'仅展示经核验来源与授权范围内的真实数据',channels:PUBLIC_LIVE_CHANNELS.map(channel=>({...channel,note:source.permission.topics.some(topic=>topic===channel.name)?'本来源公开展示范围已核验；'+channel.note.replace('；尚未取得公开再分发授权',''):'本来源未获准公开此频道'}))};
+  try{
+   const saved=await this.deps.live!.load(source),receivedNow=this.deps.now();
+   result.serverTime=new Date(receivedNow).toISOString();
+   if(!sourceActive(source,receivedNow)){result.availability={...LIVE_PUBLIC_POLICY,channels:PUBLIC_LIVE_CHANNELS.map(c=>({...c}))};return result;}
+   const snapshot=saved?projectPublicSnapshot(saved,source,receivedNow):null;
+   if(!snapshot){result.availability.reason='已获准来源尚无可用快照，正在等待采集恢复';return result;}
+   result.snapshot=snapshot;result.isStale ||= snapshot.connection==='DELAYED'||snapshot.connection==='RECONNECTING'||snapshot.connection==='UNAVAILABLE';
+   result.sessions=result.sessions.map(item=>item.session.id===data.session!.id?{...item,phase:snapshot.phase,reason:snapshot.reason||'节次状态来自经核验来源'}:item);
+  }catch{result.isStale=true;result.availability.reason='共享实时数据暂不可用，正在恢复';}
+  return result;
  }
  private async read(key:string,query:LiveQuery):Promise<PublicLiveResponse>{
   const cached=await this.deps.cache.get<Envelope>(key),now=this.deps.now();
@@ -92,7 +110,18 @@ export class LivePublicService {
   if(calendar.source==='unavailable'||!calendar.data.length)throw new LiveRequestError('赛程来源暂不可用',503);
   const meetings=calendar.data.filter(m=>m.season===query.season&&m.round>0),meeting=query.round?meetings.find(m=>m.round===query.round)||null:defaultMeeting(meetings,now);
   if(!meeting)throw new LiveRequestError('未找到该分站',404);
-  const sessions=sortedSessions(meeting),session=query.session?selectedSession(sessions,query.session):defaultSession(meeting,now);
+  const sessions=sortedSessions(meeting);let session=query.session?selectedSession(sessions,query.session):defaultSession(meeting,now);
+  if(!query.session&&this.deps.live){
+   // A delayed/paused session can outlast its planned window. Source evidence wins over the clock.
+   const running=await Promise.all(sessions.map(async candidate=>{
+    const source=this.deps.live!.source({season:query.season,round:meeting.round,session:candidate.id},this.deps.now());
+    if(!source)return null;
+    try{const saved=await this.deps.live!.load(source);const snapshot=saved?projectPublicSnapshot(saved,source,this.deps.now()):null;
+     return snapshot&&['LIVE','SUSPENDED','DELAYED'].includes(snapshot.phase)?{session:candidate,timestamp:Date.parse(snapshot.sourceTimestamp||'')}:null;
+    }catch{return null;}
+   }));
+   const active=running.filter(item=>item!==null).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0))[0];if(active)session=active.session;
+  }
   if(query.session&&!session)throw new LiveRequestError('未找到该节次',400);
   const byType=new Map<string,LiveResult[]>();
   const due=(type:string)=>sessions.some(s=>s.type===type&&Number.isFinite(start(s))&&start(s)<=now);
@@ -105,7 +134,7 @@ export class LivePublicService {
   const states:PublicLiveResponse['sessions']=sessions.map(s=>{
    const records=Number.isFinite(start(s))&&start(s)<=now?byType.get(s.type)||[]:[];
    return {session:s,phase:records.length?'FINISHED':start(s)>now?'UPCOMING':'WAITING',classification:records.length?'confirmed':'unavailable',
-    reason:records.length?'已收录该节次成绩；尚未核验官方最终分类':start(s)>now?'按已公布赛程等待开始；时间调整以官方更新为准':'等待赛事正式开始或状态确认；无法从计划时间推断完赛'};
+    reason:records.length?'已收录该节次成绩；尚未核验官方最终分类':start(s)>now?'按已公布赛程等待开始；时间调整以官方更新为准':'实际节次状态待确认；无法从计划时间推断开赛或完赛'};
   });
   const selected=states.find(s=>s.session.id===session?.id),results=selected?.classification==='confirmed'?(byType.get(session!.type)||[]):[];
   const nextMeeting=meetings.filter(m=>Date.parse(m.raceStartUTC)>Date.parse(meeting.raceStartUTC)).sort((a,b)=>Date.parse(a.raceStartUTC)-Date.parse(b.raceStartUTC))[0]||null;
@@ -123,6 +152,7 @@ function defaultDependencies():Dependencies{
  const locks=new Map<string,number>();
  const leaseTokens=new Map<string,string>();
  return {now:Date.now,persistent:Boolean(redis&&getStorageInfo().persistent)||!production,cache:getCacheStore(),sleep:ms=>new Promise(resolve=>setTimeout(resolve,ms)),
+ live:{source:approvedLiveSource,load:async source=>redis?new RedisLiveStore(redis,{permission:source.permission}).loadSnapshot(source.sessionKey):null},
  coordinator:{acquire:async key=>{
   if(redis){const token=crypto.randomUUID();const acquired=await redis.set(key,token,{nx:true,ex:45})==='OK';if(acquired)leaseTokens.set(key,token);return acquired;}
   if(production)throw new Error('Shared coordination unavailable');

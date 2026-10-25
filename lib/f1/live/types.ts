@@ -12,6 +12,10 @@ export interface LiveDriver {
   sectorPersonalBest?: boolean[]; sectorOverallBest?: boolean[];
 }
 export interface LiveSnapshot {
+  sessionType?: string | null;
+  lifecycleTimestamp?: string | null;
+  lifecycleStatus?: string | null;
+  topicTimestamps?: Partial<Record<LiveTopic, string | null>>;
   schema: 1; sessionKey: string; phase: LivePhase; connection: LiveConnection; source: string;
   sourceTimestamp: string | null; receivedAt: string | null; drivers: LiveDriver[];
   flag: string | null; messages: {id: string; date: string; text: string}[];

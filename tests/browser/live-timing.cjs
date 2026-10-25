@@ -27,7 +27,7 @@ fs.mkdirSync(output,{recursive:true});
     if(failed)return route.fulfill({status:503,json:{error:'本地验收连接故障'}});
     const selected=sessions.find(session=>session.id===url.searchParams.get('session'))||sessions[0];
     const timestamp=new Date(Date.now()-(stale?60000:0)).toISOString();
-    return route.fulfill({json:{version:'3.3.0',serverTime:new Date().toISOString(),season:'2026',meeting:{round:18,season:'2026',name:'Local Test',nameZh:'本地协议验收大奖赛',country:'测试',locality:'隔离环境',circuitId:'americas',circuitName:'仅本地验收赛道',raceStartUTC:sessions[6].startTimeUTC,isSprintWeekend:true,sessions},session:selected,nextSession:sessions[6],calendarUpdatedAt:timestamp,calendarSource:'local-test-fixture',isStale:false,availability:{timingPublic:allowed,reason:'完整计时数据的公开展示许可尚未核实。',source:'local-test-fixture',officialUrl:'https://www.formula1.com/en/f1-live',channels:[{name:'TimingData',status:'blocked',note:'仅本地合成测试'}]},sessions:sessions.map(session=>({session,phase:session.id===selected.id?phase:'UPCOMING',classification:'unavailable',reason:'本地合成测试'})),snapshot:{schema:1,sessionKey:selected.id,phase,connection:phase==='FINISHED'?'FINISHED':'LIVE',source:'local-test-fixture',sourceTimestamp:timestamp,receivedAt:timestamp,drivers:[driver('44',2,'1:20.222','1:20.100'),driver('1',1,'1:20.111','1:20.050')],flag,messages:flag?[{id:'test-flag',date:timestamp,text:'仅本地测试：红旗暂停'}]:[],weather:{airTemperature:24,trackTemperature:null,rainfall:false},currentLap:12,totalLaps:56,segment,remainingSeconds:720,classification:phase==='FINISHED'?'provisional':'unavailable',reason:phase==='SUSPENDED'?'红旗暂停，等待恢复':null},results:phase==='FINISHED'?[{position:1,number:'1',code:'VER',name:'本地车手乙',team:'协议验收车队',laps:56,time:'1:40:00.000',status:'Finished',points:25}]:[],resultStatus:phase==='FINISHED'?'provisional':'unavailable',resultSourceUrls:[]}});
+    return route.fulfill({json:{version:'3.3.0',serverTime:new Date().toISOString(),season:'2026',meeting:{round:18,season:'2026',name:'Local Test',nameZh:'本地协议验收大奖赛',country:'测试',locality:'隔离环境',circuitId:'americas',circuitName:'仅本地验收赛道',raceStartUTC:sessions[6].startTimeUTC,isSprintWeekend:true,sessions},session:selected,nextSession:sessions[6],calendarUpdatedAt:timestamp,calendarSource:'local-test-fixture',isStale:false,availability:{timingPublic:allowed,reason:'完整计时数据的公开展示许可尚未核实。',source:'local-test-fixture',officialUrl:'https://www.formula1.com/en/timing/f1-live',channels:[{name:'TimingData',status:'blocked',note:'仅本地合成测试'}]},sessions:sessions.map(session=>({session,phase:session.id===selected.id?phase:'UPCOMING',classification:'unavailable',reason:'本地合成测试'})),snapshot:{schema:1,sessionKey:selected.id,phase,connection:phase==='FINISHED'?'FINISHED':'LIVE',source:'local-test-fixture',sourceTimestamp:timestamp,receivedAt:timestamp,drivers:[driver('44',2,'1:20.222','1:20.100'),driver('1',1,'1:20.111','1:20.050')],flag,messages:flag?[{id:'test-flag',date:timestamp,text:'仅本地测试：红旗暂停'}]:[],weather:{airTemperature:24,trackTemperature:null,rainfall:false},currentLap:12,totalLaps:56,segment,remainingSeconds:720,classification:phase==='FINISHED'?'provisional':'unavailable',reason:phase==='SUSPENDED'?'红旗暂停，等待恢复':null},results:phase==='FINISHED'?[{position:1,number:'1',code:'VER',name:'本地车手乙',team:'协议验收车队',laps:56,time:'1:40:00.000',status:'Finished',points:25}]:[],resultStatus:phase==='FINISHED'?'provisional':'unavailable',resultSourceUrls:[]}});
    }
    return route.continue();
   });
@@ -35,7 +35,7 @@ fs.mkdirSync(output,{recursive:true});
   await page.getByRole('heading',{name:'完整实时圈速尚不可公开提供'}).waitFor();
   assert.equal(await page.getByRole('note').innerText(),'旧回放已升级，请选择分站和节次；历史回放编号不代表当前直播。');
   assert.equal(await page.locator('tbody tr').count(),0,'blocked permission never renders a mistakenly supplied timing snapshot');
-  for(const width of [375,390,768,1440,1920]){
+  for(const width of [320,375,390,768,1440,1920]){
    await page.setViewportSize({width,height:width<768?844:1000});
    await page.waitForTimeout(80);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`no document overflow at ${width}`);
@@ -57,8 +57,15 @@ fs.mkdirSync(output,{recursive:true});
   phase='LIVE';
   // No refresh or selection: automatic snapshot polling changes the phase.
   await page.locator('[data-phase="LIVE"]').first().waitFor({timeout:12000});
+  await page.getByText(/来源时间距当前约 \d+ 秒/).waitFor();
   assert.equal(await page.locator('tbody tr').count(),2);
   const timingTable=page.getByRole('region',{name:'实时计时表，可横向滚动'});
+  for(const width of [320,375,390,768,1440,1920]){
+   await page.setViewportSize({width,height:width<768?844:1000});
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`timing table contained at ${width}`);
+   await page.screenshot({path:path.join(output,`live-table-${width}-local-fixture.png`)});
+  }
+  await page.setViewportSize({width:1440,height:1000});
   await page.getByLabel('查看顺序').selectOption('best');
   assert.match(await timingTable.locator('tbody tr').first().innerText(),/VER/);
   await page.getByRole('button',{name:'关注 HAM',exact:true}).click();
@@ -79,6 +86,7 @@ fs.mkdirSync(output,{recursive:true});
   failed=false;phase='LIVE';flag=null;stale=true;
   await page.getByRole('button',{name:'重新连接',exact:true}).click();
   await page.locator('[data-connection="DELAYED"]').waitFor();
+  assert.match(await page.locator('[data-connection="DELAYED"]').innerText(),/STALE/);
   stale=false;await refresh();await page.locator('[data-connection="LIVE"]').waitFor();
   // An inactive tab stops polling; foregrounding immediately fetches one new snapshot.
   await page.evaluate(()=>{window.__qaHidden=true;Object.defineProperty(document,'hidden',{configurable:true,get:()=>window.__qaHidden});document.dispatchEvent(new Event('visibilitychange'));});
@@ -110,6 +118,6 @@ fs.mkdirSync(output,{recursive:true});
   const transition=await page.getByRole('button',{name:'取消关注 HAM',exact:true}).evaluate(button=>getComputedStyle(button).transitionDuration);assert.equal(transition,'0s');
   assert.deepEqual(errors,[]);
   await context.close();
-  console.log(`PASS live timing: permission gate, 5 widths, scheduled WAITING, automatic LIVE, pause/resume, stale/failed/recovery, hidden/foreground, 80 refresh bounded heap delta=${heapAfter-heapBefore}, all session kinds and Q/SQ stages, filtering/favorites, provisional finish, reduced motion; synthetic local fixtures only`);
+  console.log(`PASS live timing: permission gate, 6 widths, scheduled WAITING, automatic LIVE, pause/resume, stale/failed/recovery, hidden/foreground, 80 refresh bounded heap delta=${heapAfter-heapBefore}, all session kinds and Q/SQ stages, filtering/favorites, provisional finish, reduced motion; synthetic local fixtures only`);
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

@@ -21,6 +21,7 @@ export interface CollectorOptions {
  now?:()=>number; random?:()=>number;
  schedule?:(callback:()=>void,delay:number)=>ReturnType<typeof setTimeout>;
  cancel?:(timer:ReturnType<typeof setTimeout>)=>void;
+ flushIntervalMs?:number;
 }
 export function hasLivePermission(permission: LivePermission|undefined, now=Date.now()): boolean {
  return Boolean(permission?.publicRedistribution&&permission.reference.trim()&&Date.parse(permission.expiresAt)>now&&permission.topics.length&&permission.topics.every(isLiveTopic));
@@ -31,6 +32,7 @@ export class LiveCollector {
  private state:LiveState;
  private socket:LiveSocket|null=null;
  private handshaken=false;
+ private sourceSessionVerified=false;
  private running=false;
  private generation=0;
  private attempt=0;
@@ -48,7 +50,7 @@ export class LiveCollector {
  private valid(generation:number){return this.running&&generation===this.generation&&hasLivePermission(this.options.permission,this.now());}
  async start():Promise<boolean>{
   if(this.running)return true;
-  if(!hasLivePermission(this.options.permission,this.now()))return false;
+  if(!hasLivePermission(this.options.permission,this.now())||!this.options.permission!.topics.includes('SessionInfo'))return false;
   this.running=true;const generation=++this.generation;
   try{
    const acquired=await this.options.lease.acquire(this.options.sessionKey,this.owner,30000);
@@ -65,7 +67,7 @@ export class LiveCollector {
   if(!this.valid(generation))return;
   let socket:LiveSocket;
   try{socket=this.options.connect();}catch{this.reconnect(generation);return;}
-  this.socket=socket;this.handshaken=false;this.lastMessage=this.now();this.state.setConnected(false);
+  this.socket=socket;this.handshaken=false;this.sourceSessionVerified=false;this.lastMessage=this.now();this.state.setConnected(false);
   const frames=new SignalRFrames(this.options.sessionKey);
   const active=()=>this.valid(generation)&&this.socket===socket;
   socket.onopen=()=>{if(active())socket.send(handshakeFrame());};
@@ -76,6 +78,12 @@ export class LiveCollector {
     if(batch.error||batch.closed){this.disconnect(socket,generation);return;}
     this.lastMessage=this.now();
     if(batch.handshake){socket.send(subscriptionFrame(this.options.permission!.topics));this.handshaken=true;this.state.setConnected(true);this.attempt=0;}
+    // A latest-session stream is not scoped by our requested key. Validate the
+    // entire batch before accepting any timing, regardless of event order.
+    const scopes=batch.events.filter(item=>item.topic==='SessionInfo'&&item.payload.Key!==undefined);
+    if(scopes.some(item=>String(item.payload.Key)!==this.options.sessionKey)){void this.stop();return;}
+    if(scopes.some(item=>String(item.payload.Key)===this.options.sessionKey))this.sourceSessionVerified=true;
+    if(!this.sourceSessionVerified)return;
     let changed=false;
     for(const item of batch.events)if(this.options.permission!.topics.includes(item.topic))changed=this.state.apply(item,this.now())||changed;
     if(changed)this.flush(generation);
@@ -104,11 +112,11 @@ export class LiveCollector {
  }
  private flush(generation:number){
   if(this.flushPending)return;this.flushPending=true;
-  this.timer(()=>{this.flushPending=false;if(this.valid(generation)){this.pendingSnapshot=this.snapshot();void this.publish(generation);}},200);
+  this.timer(()=>{this.flushPending=false;if(this.valid(generation)){this.pendingSnapshot=this.snapshot();void this.publish(generation);}},Math.max(200,Math.min(10000,this.options.flushIntervalMs||200)));
  }
  private async publish(generation:number){
   if(this.publishing)return;this.publishing=true;
-  try{while(this.pendingSnapshot&&this.valid(generation)){const snapshot=this.pendingSnapshot;this.pendingSnapshot=null;try{await this.options.onSnapshot(snapshot,this.owner);}catch{}}}
+  try{while(this.pendingSnapshot&&this.valid(generation)){const snapshot=this.pendingSnapshot;this.pendingSnapshot=null;try{await this.options.onSnapshot(snapshot,this.owner);}catch{await this.stop();}}}
   finally{this.publishing=false;}
  }
  private check(generation:number){
