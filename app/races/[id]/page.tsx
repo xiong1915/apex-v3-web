@@ -49,7 +49,7 @@ export default async function RaceDetailPage({
       <Link href={`/races?season=${season}`} className="breadcrumb">← {season} 赛季日历</Link>
       <div className="race-detail-cover"><div><PageHeading category={`第 ${race.round} 站 / 共 ${calendar.length} 站 · ${season} 赛季`} title={race.nameZh||race.name} description={`${circuitMeta?.nameZh||race.circuitName} · ${race.locality} / ${race.country}`}/>
        <div className="race-detail-tags">{race.isSprintWeekend&&<span className="badge-pill badge-red">冲刺周末</span>}{circuitMeta&&<><span className="badge-pill">{circuitMeta.lengthKm} 公里</span><span className="badge-pill">{circuitMeta.turns} 弯角</span>{circuitMeta.drsZones>0&&<span className="badge-pill">{circuitMeta.drsZones} 个 DRS 区</span>}</>}</div>
-       <Link href={`/replay?season=${season}&round=${race.round}`} className="btn-primary">进入本分站回放 ↗</Link>
+       <Link href={`/live?season=${season}&round=${race.round}`} className="btn-primary">进入本分站实时数据 ↗</Link>
       </div><figure className="race-detail-map"><CircuitTrace circuitId={race.circuitId} season={season} meetingName={race.name}/><figcaption>{circuitMeta?.nameZh||race.circuitName} · {season} 构型</figcaption></figure></div>
         {/* 正赛官方赛果列表 */}
         {hasRaceResults && (

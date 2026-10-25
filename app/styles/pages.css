@@ -765,63 +765,6 @@ body:has(.ai-chat-console) {
 .ai-chat-console .glass-button {
   min-height:44px
 }
-.replay-shell {
-  --bg-primary:#111315;
-  --bg-secondary:#1c1f24;
-  --bg-elevated:#24272c;
-  --text-primary:#F4F3EF;
-  --text-secondary:#A5A7AD;
-  --text-muted:#A5A7AD;
-  --line-dark:#ffffff1c;
-  --accent-cyan:#c1ccd5;
-  color-scheme:dark;
-  border-radius:0 0 32px 32px;
-  overflow:clip
-}
-.replay-shell .page-heading {
-  margin-bottom:32px
-}
-.replay-shell .page-heading h1 {
-  font-size:36px
-}
-.replay-shell .page-heading>p {
-  max-width:650px
-}
-.replay-shell .card-dark {
-  border-radius:20px
-}
-.replay-shell button {
-  min-height:44px
-}
-.replay-shell select {
-  min-height:44px;
-  padding:8px 12px;
-  border-radius:999px;
-  max-width:100%
-}
-.replay-shell .replay-workbench {
-  gap:24px!important
-}
-.replay-canvas-container {
-  overflow:hidden;
-  border-radius:20px
-}
-.replay-controls-card {
-  border-radius:20px!important
-}
-.replay-fullscreen-mode {
-  position:fixed!important;
-  inset:0!important;
-  z-index:99999!important;
-  width:100vw!important;
-  height:100dvh!important;
-  overflow:auto!important;
-  background:#111315!important;
-  padding:16px!important
-}
-.replay-fullscreen-mode .replay-canvas-container {
-  min-height:240px
-}
 .system-layout {
   display:grid;
   grid-template-columns:.85fr 1.15fr;
@@ -1046,18 +989,6 @@ body:has(.ai-chat-console) {
   .ai-chat-console .glass-composer {
     padding:12px!important
   }
-  .replay-shell .page-heading h1 {
-    font-size:30px
-  }
-  .replay-shell>section:first-child {
-    padding-top:24px!important
-  }
-  .replay-workbench {
-    grid-template-columns:1fr!important
-  }
-  .replay-shell h2 {
-    font-size:22px!important
-  }
   .system-layout {
     grid-template-columns:1fr;
     gap:16px
@@ -1104,11 +1035,4 @@ body:has(.ai-chat-console) {
   .message-state h1 {
     font-size:28px
   }
-}
-
-@media(max-width:768px){
- .replay-stage{display:flex;flex-direction:column}
- .replay-stage .replay-controls-card{order:-1;padding:12px!important}
- .replay-stage .replay-canvas-area{min-height:320px!important}
- .replay-stage .replay-canvas-container{min-height:300px}
 }

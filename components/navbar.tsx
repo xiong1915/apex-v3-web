@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { href: '/#race', label: '当前分站' },
   { href: '/races', label: '全季赛历' },
   { href: '/standings', label: '积分榜' },
-  { href: '/replay', label: '动态回放' },
+  { href: '/live', label: '实时数据' },
   { href: '/drivers', label: '车手' },
   { href: '/teams', label: '车队' }
 ];
@@ -212,7 +212,7 @@ export function Navbar() {
    <div className="container nav-inner">
     <Link href="/" className="nav-brand" aria-label="APEX 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19L11 4h6l4 15h-5l-1-4H9l-2 4zM11 11h3l-1-4z" fill="currentColor"/></svg><span>APEX</span></Link>
     <nav className="nav-links desktop-nav" aria-label="主导航" style={{'--nav-index':Math.max(0,currentIndex),'--nav-active':currentIndex<0?0:1} as React.CSSProperties}>
-     {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}</Link>)}
+     {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}</Link>)}
     </nav>
     <div className="nav-actions"><BeijingClock className="desktop-nav"/><Link href="/ai" className="nav-ai">APEX AI <span aria-hidden="true">↗</span></Link>
      {identityStatus !== 'ready' ? <span className="nav-login desktop-nav" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (
@@ -274,7 +274,7 @@ export function Navbar() {
    {logoutError&&<div className="nav-feedback" role="alert">{logoutError}</div>}
    {menuOpen&&<div id="mobile-menu" className="mobile-menu" role="dialog" aria-modal="true" aria-label="网站导航" ref={drawerRef}>
     <button type="button" className="mobile-menu-close" onClick={()=>{setMenuOpen(false);toggleRef.current?.focus()}}>网站导航 <span>关闭 ×</span></button>
-    {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/replay' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label} <span aria-hidden="true">↗</span></Link>)}
+    {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label} <span aria-hidden="true">↗</span></Link>)}
     <Link href="/ai" onClick={()=>setMenuOpen(false)}>APEX AI ↗</Link>
     <div className="mobile-account">
       {identityStatus !== 'ready' ? <span className="data-note" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (

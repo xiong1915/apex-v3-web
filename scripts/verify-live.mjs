@@ -111,17 +111,10 @@ async function main() {
   console.log(`- 2015 墨尔本分站页面状态: HTTP ${trackRes.status}`);
   console.log(`- 是否展示“历史赛道构型暂缺”明确提示 (禁止现代冒充): ${hasMissingLayoutNotice ? '【正常：如实提示暂缺】' : '【异常：未提示暂缺】'}`);
 
-  // 8. 测试 APEX REPLAY 比赛动态回放与会话
-  console.log('\n8. 测试 APEX REPLAY 回放 API 与 DEMO 隔离:');
-  const replayPageRes = await fetch(`${BASE_URL}/replay`);
-  console.log(`- /replay 页面状态: HTTP ${replayPageRes.status}`);
-  const replayApiRes = await fetch(`${BASE_URL}/api/f1/replay?season=2023`);
-  const replayApiData = await replayApiRes.json();
-  console.log(`- 2023 赛季可用历史正赛场次数量: ${replayApiData.sessions?.length || 0}`);
-  if (replayApiData.sessions?.length) {
-    console.log(`  * 第一场: ${replayApiData.sessions[0].nameZh} (key: ${replayApiData.sessions[0].session_key})`);
-  }
-
+  // 8. 只读检查实时中心公开能力；不触发任何采集连接。
+  const liveRes = await fetch(`${BASE_URL}/api/f1/live/snapshot`);
+  const liveData = await liveRes.json();
+  console.log('实时中心公开接口', {status:liveRes.status, timingPublic:liveData.availability?.timingPublic, source:liveData.calendarSource});
   // 9. 测试 AI 通道一：指定网址直读 (URL 直通解析)
   console.log('\n9. 测试 AI 通道一: 指定网页直通解析 (无模糊搜索污染)');
   const targetUrl = 'https://www.formula1.com/en/latest.html';

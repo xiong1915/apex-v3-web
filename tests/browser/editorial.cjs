@@ -29,7 +29,6 @@ const widths = [375, 390, 768, 1440, 1920];
      assert.equal(await page.locator('.auth-frame').evaluate(e => getComputedStyle(e).display), 'grid');
      assert.equal(await page.locator('.auth-intro').isVisible(), width >= 768);
     }
-    if (name === 'replay') assert.equal(await page.locator('.replay-shell').evaluate(e => getComputedStyle(e).getPropertyValue('--bg-primary').trim()), '#111315');
     if (name === 'system') assert.equal(await page.locator('.system-layout').evaluate(e => getComputedStyle(e).display), 'grid');
     if ([390, 1440].includes(width) || name === 'home') {
      await page.screenshot({ path: path.join(out, `${name}-${width}.png`) });
@@ -42,12 +41,11 @@ const widths = [375, 390, 768, 1440, 1920];
    ['teams', '/teams'], ['race-detail', '/races/1'], ['driver-detail', '/drivers/antonelli'],
    ['team-detail', '/teams/mercedes'], ['login', '/login'], ['register', '/register'],
    ['forgot-password', '/forgot-password'], ['reset-password', '/reset-password'],
-   ['system', '/system'], ['replay', '/replay?session=demo-singapore']
+   ['system', '/system'], ['live', '/live']
   ]) await capture(name, route);
-  await page.getByRole('button', { name: /暂停/ }).click();
-  await page.getByRole('button', { name: /播放/ }).click();
-  await page.getByRole('slider', { name: '回放进度' }).fill('1000');
-  results.checks.push('replay demo play/pause and seek');
+  assert.equal((await page.request.get(base+'/replay?season=2026&round=18', {maxRedirects:0})).status(),308);
+  assert.equal((await page.request.get(base+'/api/f1/replay')).status(),410);
+  results.checks.push('legacy replay redirects to live; retired replay API returns Gone');
   await capture('not-found', '/not-a-real-apex-page', 404);
   await page.goto(base);
   await page.locator('.home-loading').waitFor({ state: 'detached' });

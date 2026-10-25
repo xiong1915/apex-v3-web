@@ -1,4 +1,6 @@
-name = "apex-v3-gateway"
+# Existing production website proxy (historical name); no reminder or scheduled handler.
+# Verified custom domain: f1.tike69.cc.cd. The separate f1-reminder-worker is out of scope.
+name = "feishu-f1-bot"
 main = "cf_worker.js"
 compatibility_date = "2024-09-23"
 

@@ -6,11 +6,6 @@ import assert from 'node:assert';
 import { defaultAIOrchestrator } from '../lib/ai/orchestrator.ts';
 import { CircuitRegistry } from '../lib/circuits/registry.ts';
 import { determineStandingsCutoff } from '../providers/f1/service.ts';
-import {
-  REAL_REPLAY_SESSIONS,
-  DEMO_REPLAY_SESSIONS,
-  interpolateVehiclesAtTimestamp
-} from '../lib/f1/replay/real-sessions/index.ts';
 import { extractCleanTables, extractCleanParagraphs } from '../lib/search/content_fetcher.ts';
 import { checkUrlSafety } from '../lib/search/url_safety.ts';
 
@@ -176,37 +171,5 @@ test('Comprehensive Acceptance & Real Verification Suite', async (t) => {
     assert.strictEqual(resRaceReconciled.desc, '截止场次待核实');
   });
 
-  await t.test('5. APEX REPLAY 真实性、DEMO 隔离与非均匀时间戳缺口拦截', () => {
-    // 5.1 公式生成的巴林与银石必须严格隔离在 DEMO_REPLAY_SESSIONS 中，sourceProvider 为 curated_demo
-    assert.ok(DEMO_REPLAY_SESSIONS['demo-bahrain']);
-    assert.strictEqual(DEMO_REPLAY_SESSIONS['demo-bahrain'].metadata.sourceProvider, 'curated_demo');
-    assert.ok(DEMO_REPLAY_SESSIONS['demo-silverstone']);
-    assert.strictEqual(DEMO_REPLAY_SESSIONS['demo-silverstone'].metadata.sourceProvider, 'curated_demo');
-    assert.ok(DEMO_REPLAY_SESSIONS['demo-singapore']);
-    assert.strictEqual(DEMO_REPLAY_SESSIONS['demo-singapore'].metadata.sourceProvider, 'curated_demo');
 
-    // 5.2 严禁将公式生成的数据留在 REAL_REPLAY_SESSIONS 冒充真实比赛
-    assert.strictEqual(REAL_REPLAY_SESSIONS['2023-bahrain'], undefined);
-    assert.strictEqual(REAL_REPLAY_SESSIONS['2023-silverstone'], undefined);
-
-    // 5.3 缺口拦截门禁：两帧时间跨度 > 3000ms 严禁跨缺口插值
-    const mockFrames = [
-      {
-        frameIndex: 0,
-        timestampMs: 1000,
-        lap: 1,
-        vehicles: [{ driverNumber: 1, code: 'VER', name: 'Max', team: 'RB', teamColor: '#00f', normX: 0.1, normY: 0.2, speed: 200, gear: 5, drs: false, lap: 1, position: 1 }]
-      },
-      {
-        frameIndex: 1,
-        timestampMs: 5000, // 4000ms 缺口 > 3000ms
-        lap: 1,
-        vehicles: [{ driverNumber: 1, code: 'VER', name: 'Max', team: 'RB', teamColor: '#00f', normX: 0.9, normY: 0.9, speed: 320, gear: 8, drs: true, lap: 1, position: 1 }]
-      }
-    ];
-
-    const resultAt3s = interpolateVehiclesAtTimestamp(mockFrames, 3000, 3000);
-    assert.strictEqual(resultAt3s[0].normX, 0.1, '超过 3 秒缺口必须拒绝插值，保持前一帧坐标');
-    assert.strictEqual(resultAt3s[0].speed, 200, '保持前一帧速度');
-  });
 });
