@@ -21,6 +21,7 @@ export interface CollectorOptions {
  now?:()=>number; random?:()=>number;
  schedule?:(callback:()=>void,delay:number)=>ReturnType<typeof setTimeout>;
  cancel?:(timer:ReturnType<typeof setTimeout>)=>void;
+ flushIntervalMs?:number;
 }
 export function hasLivePermission(permission: LivePermission|undefined, now=Date.now()): boolean {
  return Boolean(permission?.publicRedistribution&&permission.reference.trim()&&Date.parse(permission.expiresAt)>now&&permission.topics.length&&permission.topics.every(isLiveTopic));
@@ -111,11 +112,11 @@ export class LiveCollector {
  }
  private flush(generation:number){
   if(this.flushPending)return;this.flushPending=true;
-  this.timer(()=>{this.flushPending=false;if(this.valid(generation)){this.pendingSnapshot=this.snapshot();void this.publish(generation);}},200);
+  this.timer(()=>{this.flushPending=false;if(this.valid(generation)){this.pendingSnapshot=this.snapshot();void this.publish(generation);}},Math.max(200,Math.min(10000,this.options.flushIntervalMs||200)));
  }
  private async publish(generation:number){
   if(this.publishing)return;this.publishing=true;
-  try{while(this.pendingSnapshot&&this.valid(generation)){const snapshot=this.pendingSnapshot;this.pendingSnapshot=null;try{await this.options.onSnapshot(snapshot,this.owner);}catch{}}}
+  try{while(this.pendingSnapshot&&this.valid(generation)){const snapshot=this.pendingSnapshot;this.pendingSnapshot=null;try{await this.options.onSnapshot(snapshot,this.owner);}catch{await this.stop();}}}
   finally{this.publishing=false;}
  }
  private check(generation:number){

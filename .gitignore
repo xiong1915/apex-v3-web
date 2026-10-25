@@ -35,3 +35,4 @@ scratch_check_*.cjs
 # Version the gateway source and non-secret deployment configuration.
 !/cf_worker.js
 !/wrangler.toml
+!/workers/live-collector/wrangler.toml
