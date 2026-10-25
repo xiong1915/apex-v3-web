@@ -1,0 +1,17 @@
+# Candidate only. Does not replace the website proxy or reminder Worker.
+name = "apex-live-collector"
+main = "worker.ts"
+compatibility_date = "2026-10-25"
+workers_dev = false
+preview_urls = false
+
+[durable_objects]
+bindings = [{ name = "LIVE_COLLECTOR", class_name = "LiveCollectorHost" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveCollectorHost"]
+
+[triggers]
+crons = ["*/5 * * * *"]
+# Reuse existing Redis credentials through approved deployment, never commit values.

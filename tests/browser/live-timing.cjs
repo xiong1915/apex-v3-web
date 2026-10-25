@@ -57,6 +57,7 @@ fs.mkdirSync(output,{recursive:true});
   phase='LIVE';
   // No refresh or selection: automatic snapshot polling changes the phase.
   await page.locator('[data-phase="LIVE"]').first().waitFor({timeout:12000});
+  await page.getByText(/来源时间距当前约 \d+ 秒/).waitFor();
   assert.equal(await page.locator('tbody tr').count(),2);
   const timingTable=page.getByRole('region',{name:'实时计时表，可横向滚动'});
   for(const width of [320,375,390,768,1440,1920]){

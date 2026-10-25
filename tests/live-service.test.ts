@@ -3,6 +3,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {LivePublicService, LiveRequestError, parseLiveQuery} from '../lib/f1/live/service';
 import type {F1Meeting} from '../lib/f1/types';
+import {emptySnapshot} from '../lib/f1/live/state';
+import {LIVE_TOPICS} from '../lib/f1/live/types';
+import type {ApprovedLiveSource} from '../lib/f1/live/sources';
 const now=Date.parse('2026-10-23T12:00:00Z');
 const meeting={season:'2026',round:18,name:'Test Grand Prix',nameZh:'测试大奖赛',country:'Test',locality:'Test',circuitId:'test',circuitName:'Test',raceStartUTC:'2026-10-25T20:00:00Z',isSprintWeekend:false,sessions:[
 {id:'fp1',name:'练习一',nameEn:'FP1',type:'practice',startTimeUTC:'2026-10-23T11:00:00Z',durationMinutes:60},
@@ -16,6 +19,24 @@ function harness(shared?:{values:Map<string,unknown>;locks:Set<string>}){
  race:async()=>{resultCalls++;return [];},qualifying:async()=>{resultCalls++;return [];},sprint:async()=>{resultCalls++;return [];}};
  return{deps,backing,service:new LivePublicService(deps),counts:()=>({calendarCalls,resultCalls})};
 }
+
+test('approved source reads new Redis snapshots on cached calendar without caching private payloads',async()=>{
+ const h=harness();let reads=0;let active=true;
+ const source:ApprovedLiveSource={id:'fixture',source:'offline-only',season:'2026',round:18,sessionId:'fp1',sessionKey:'test-only',notBefore:new Date(now-1000).toISOString(),stopAfter:new Date(now+60000).toISOString(),permission:{publicRedistribution:true,reference:'offline fixture',topics:LIVE_TOPICS,expiresAt:new Date(now+60000).toISOString()}};
+ const snapshot=emptySnapshot('test-only');snapshot.phase='LIVE';snapshot.connection='LIVE';snapshot.currentLap=2;snapshot.topicTimestamps={LapCount:new Date(now).toISOString()};snapshot.receivedAt=new Date(now).toISOString();
+ h.deps.live={source:()=>active?source:null,load:async()=>{reads++;return structuredClone(snapshot);}};
+ const first=await h.service.getSnapshot({season:'2026',round:18,session:'fp1'});assert.equal(first.snapshot?.currentLap,2);assert.equal(first.snapshot?.connection,'LIVE');
+ snapshot.currentLap=3;const second=await h.service.getSnapshot({season:'2026',round:18,session:'fp1'});assert.equal(second.snapshot?.currentLap,3);assert.equal(h.counts().calendarCalls,1);assert.equal(reads,2);
+ assert.ok([...h.backing.values.values()].every((v:any)=>v.data.snapshot===null));
+ h.deps.live.load=async()=>{throw Error('private Redis failure');};const failed=await h.service.getSnapshot({season:'2026',round:18,session:'fp1'});assert.equal(failed.snapshot,null);assert.equal(failed.isStale,true);
+ active=false;const denied=await h.service.getSnapshot({season:'2026',round:18,session:'fp1'});assert.equal(denied.snapshot,null);assert.equal(denied.availability.timingPublic,false);
+ active=true;let time=now;h.deps.now=()=>time;h.deps.live.load=async()=>{time=now+60001;return snapshot;};
+ const expired=await h.service.getSnapshot({season:'2026',round:18,session:'fp1'});assert.equal(expired.snapshot,null);assert.equal(expired.availability.timingPublic,false);assert.equal(expired.serverTime,new Date(time).toISOString());
+ const delayed=harness();const later=now+600000;delayed.deps.now=()=>later;
+ const extended={...source,stopAfter:new Date(later+60000).toISOString(),permission:{...source.permission,expiresAt:new Date(later+60000).toISOString()}};
+ delayed.deps.live={source:query=>query.session==='fp1'?extended:null,load:async()=>({...snapshot,topicTimestamps:{LapCount:new Date(later).toISOString()}})};
+ const automatic=await delayed.service.getSnapshot({season:'2026',round:18});assert.equal(automatic.session?.id,'fp1','actual running session wins after scheduled practice end');assert.equal(automatic.snapshot?.phase,'LIVE');
+});
 test('live query rejects unknown or malformed season, round and session',()=>{
  for(const query of ['season=bad','season=1949','round=0','round=1.5','round=99','session='+ 'a'.repeat(100),'session=../race'])assert.throws(()=>parseLiveQuery(new URLSearchParams(query),2026),LiveRequestError);
  assert.deepEqual(parseLiveQuery(new URLSearchParams('season=2026&round=18&session=fp1'),2026),{season:'2026',round:18,session:'fp1'});

@@ -11,4 +11,8 @@ export const LIVE_PUBLIC_POLICY = Object.freeze({
 export const PUBLIC_LIVE_CHANNELS = Object.freeze([
  'TimingData', 'TimingStats', 'TimingAppData', 'DriverList', 'SessionInfo',
  'SessionData', 'TrackStatus', 'RaceControlMessages', 'LapCount', 'WeatherData'
-].map(name => Object.freeze({name, status: name === 'LapCount' ? 'not-observed' : 'snapshot-only', note: name === 'LapCount' ? '开发探测未收到此频道；尚未取得公开再分发授权' : '开发探测收到初始快照，非比赛时段未验证实时增量；尚未取得公开再分发授权'})));
+].map(name => {
+ const incremental=['TimingData','TimingAppData','RaceControlMessages','LapCount','WeatherData'].includes(name);
+ const messages=['TimingStats','DriverList','SessionData'].includes(name);
+ return Object.freeze({name,status:incremental?'incremental-observed':messages?'messages-observed':'snapshot-only',note:`美国站2026-10-25观测：${incremental?'收到业务增量':messages?'收到后续消息，业务投影无变化':'仅收到初始快照'}；尚未取得公开再分发授权`});
+}));
