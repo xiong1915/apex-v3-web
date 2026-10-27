@@ -497,7 +497,16 @@ export default function AdminPage() {
 
         {errorMsg && <p role="alert">{errorMsg}</p>}
         {aalLevel === 'aal2' && loading && <p role="status">正在读取后台数据…</p>}
-        {aalLevel === 'aal2' && dataErrors[currentTab] && <div role="alert"><p>{dataErrors[currentTab]}</p><GlassButton onClick={() => loadData()}>重试读取</GlassButton></div>}
+        {aalLevel === 'aal2' && dataErrors[currentTab] && (
+          <GlassCard style={{ padding: '24px', textAlign: 'center', borderRadius: '16px', marginBottom: '20px' }}>
+            <p style={{ color: 'var(--accent-red)', marginBottom: '14px', fontSize: '14px', fontWeight: 600 }}>
+              {dataErrors[currentTab]}
+            </p>
+            <GlassButton variant="primary" size="sm" onClick={() => loadData()}>
+              重试读取
+            </GlassButton>
+          </GlassCard>
+        )}
         {/* Tab 1: 网站概览 */}
         {aalLevel === 'aal2' && currentTab === 'overview' && overviewData && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -570,7 +579,7 @@ export default function AdminPage() {
                   {(usersData?.users || []).map((u: any) => (
                     <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                       <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: 600 }}>{u.email}</div>
+                        <div style={{ fontWeight: 600 }}>{u.displayName ? `${u.displayName} (${u.email})` : u.email}</div>
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{u.id}</div>
                       </td>
                       <td style={{ padding: '12px' }}>
