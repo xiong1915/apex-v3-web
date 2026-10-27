@@ -6,6 +6,7 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { User, Session, AuthResponse } from './types';
 import { AUTH_CONFIG, isSupabaseConfigured } from './config';
+import { registrationError } from './registration-error';
 
 let browserClient: any = null;
 let identityRevision = 0;
@@ -98,14 +99,16 @@ export async function apiRegister(email: string, password: string): Promise<Auth
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    const json = await res.json();
+    const json = await res.json().catch(()=>({}));
     if (!res.ok) {
-      return { data: null, error: { message: json.error || '注册失败', status: res.status } };
+      const failure=registrationError({message:json.error,code:json.code,status:res.status});
+      const retry=Number(res.headers.get('Retry-After')||json.retryAfterSeconds||failure.retryAfterSeconds||0);
+      return {data:null,error:{message:json.error&&/[\u4e00-\u9fff]/.test(json.error)?json.error:failure.message,status:res.status,retryAfterSeconds:res.status===429?Math.min(3600,Math.max(1,Number.isFinite(retry)&&retry>0?retry:60)):failure.retryAfterSeconds}};
     }
     invalidateIdentityReads();
     return { data: json, error: null };
   } catch (e: any) {
-    return { data: null, error: { message: e.message || '网络连接异常' } };
+    return { data: null, error: { message: '注册请求未能完成，请检查网络后重试' } };
   }
 }
 

@@ -15,7 +15,8 @@ export function AdminAIMonitor({
   automatic,
   setAutomatic,
   users,
-  initialUserId
+  initialUserId,
+  onUnauthorized
 }: {
   data: AdminAIMetrics | null;
   loading: boolean;
@@ -25,8 +26,9 @@ export function AdminAIMonitor({
   setAutomatic: (value: boolean) => void;
   users?: Array<{ id: string; email: string; displayName?: string }>;
   initialUserId?: string;
+  onUnauthorized?:()=>void;
 }) {
-  const [viewMode, setViewMode] = useState<'logs' | 'metrics'>('logs');
+  const [viewMode, setViewMode] = useState<'logs' | 'metrics'>(initialUserId?'logs':'metrics');
   const [onlyErrors, setOnlyErrors] = useState(false);
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export function AdminAIMonitor({
       setViewMode('logs');
     }
   }, [initialUserId]);
+  useEffect(()=>{if(viewMode!=='metrics')setAutomatic(false);},[viewMode,setAutomatic]);
 
   const raw = data?.monitoring;
   const monitor = raw?.available && 'totals' in raw ? raw : null;
@@ -51,47 +54,10 @@ export function AdminAIMonitor({
 
   return (
     <div className="ai-monitor-panel">
-      {/* 顶部视图切换导航 */}
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setViewMode('logs')}
-          style={{
-            padding: '8px 18px',
-            borderRadius: 'var(--radius-pill)',
-            border: viewMode === 'logs' ? '1px solid var(--accent-red)' : '1px solid var(--line-dark)',
-            background: viewMode === 'logs' ? 'rgba(255, 45, 32, 0.12)' : '#fff',
-            color: viewMode === 'logs' ? 'var(--accent-red)' : 'var(--text-secondary)',
-            fontSize: '13px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          💬 对话审计明细 (含真实 IP 与上下文)
-        </button>
-        <button
-          type="button"
-          onClick={() => setViewMode('metrics')}
-          style={{
-            padding: '8px 18px',
-            borderRadius: 'var(--radius-pill)',
-            border: viewMode === 'metrics' ? '1px solid var(--accent-red)' : '1px solid var(--line-dark)',
-            background: viewMode === 'metrics' ? 'rgba(255, 45, 32, 0.12)' : '#fff',
-            color: viewMode === 'metrics' ? 'var(--accent-red)' : 'var(--text-secondary)',
-            fontSize: '13px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          📊 运行指标与统计大盘
-        </button>
-      </div>
-
+      <nav className="admin-subnav" aria-label="AI 管理视图"><button type="button" onClick={()=>setViewMode('metrics')} aria-pressed={viewMode==='metrics'}>运行指标</button><button type="button" onClick={()=>setViewMode('logs')} aria-pressed={viewMode==='logs'}>对话记录</button></nav>
       {/* 视图一：AI 对话审计明细 (真实 IP、完整上下文、用户维度) */}
       {viewMode === 'logs' && (
-        <AdminAIChatLogs users={users} initialUserId={initialUserId} />
+        <AdminAIChatLogs users={users} initialUserId={initialUserId} onUnauthorized={onUnauthorized}/>
       )}
 
       {/* 视图二：运行指标大盘 */}
@@ -100,8 +66,8 @@ export function AdminAIMonitor({
           <div className="monitor-heading">
             <div>
               <span className="eyebrow">AI 运行监控</span>
-              <h2>看清每一次请求</h2>
-              <p>统计运行指标与系统健康度；若需查看对话历史与客户端真实 IP 请切换至「对话审计明细」。</p>
+              <h2>运行指标</h2>
+              <p>调用结果、耗时和用量；对话内容在「对话记录」中查询。</p>
             </div>
             <div className="monitor-actions">
               <label>
@@ -117,7 +83,7 @@ export function AdminAIMonitor({
             </div>
           </div>
 
-          {error && <p className="monitor-alert" role="alert">{error}。当前展示上次成功读取的数据。</p>}
+          {error && <p className="monitor-alert" role="alert">{error}{data?'。当前展示上次成功读取的数据。':'。尚无可展示数据。'}</p>}
           {!data && <p className="empty-state">{loading ? '正在加载 AI 监控…' : '监控数据暂不可用，请刷新重试。'}</p>}
 
           {data && (
@@ -130,8 +96,8 @@ export function AdminAIMonitor({
                 </div>
                 <div>
                   <small>审计持久化</small>
-                  <strong>{data.historyStorageConfigured ? '数据库存储就绪' : '临时存储就绪'}</strong>
-                  <p>完整支持用户对话审计与 IP 溯源追踪。</p>
+                  <strong>{data.historyStorageConfigured ? '持久存储已配置' : '持久存储未配置'}</strong>
+                  <p>配置状态不代表本次读写已验证。</p>
                 </div>
                 <div>
                   <small>调用保护</small>

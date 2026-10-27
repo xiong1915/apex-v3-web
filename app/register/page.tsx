@@ -2,7 +2,7 @@
 'use client';
 import { AuthIntro } from '@/components/auth-intro';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
@@ -18,9 +18,20 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const submitting=useRef(false);
+  const [retryAt,setRetryAt]=useState(0),[remaining,setRemaining]=useState(0);
+  useEffect(()=>{
+    try{const saved=Number(sessionStorage.getItem('apex:register-retry-until'));if(saved>Date.now()&&saved<Date.now()+3600000)setRetryAt(saved);}catch{}
+  },[]);
+  useEffect(()=>{
+    const update=()=>{const left=Math.max(0,Math.ceil((retryAt-Date.now())/1000));setRemaining(left);return left;};
+    if(update()===0)return;
+    const timer=setInterval(()=>{if(update()===0)clearInterval(timer);},1000);return()=>clearInterval(timer);
+  },[retryAt]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(submitting.current||retryAt>Date.now()||success)return;
     if (!email || !password || !confirmPassword) {
       setError('请完整填写所有必填信息');
       return;
@@ -36,14 +47,15 @@ function RegisterForm() {
       return;
     }
 
-    setLoading(true);
+    submitting.current=true;setLoading(true);
     setError(null);
 
     const res = await apiRegister(email, password);
-    setLoading(false);
+    submitting.current=false;setLoading(false);
 
     if (res.error) {
       setError(res.error.message);
+      if(res.error.retryAfterSeconds){const until=Date.now()+res.error.retryAfterSeconds*1000;setRetryAt(until);try{sessionStorage.setItem('apex:register-retry-until',String(until));}catch{}}
       return;
     }
 
@@ -105,7 +117,7 @@ function RegisterForm() {
             <>
               {/* Error Alert */}
               {error && (
-                <div style={{
+                <div role="alert" id="registration-error" style={{
                   background: '#e1060008',
                   border: '1px solid rgba(255, 45, 32, 0.3)',
                   borderRadius: '12px',
@@ -195,13 +207,14 @@ function RegisterForm() {
                 <GlassButton
                   type="submit"
                   variant="primary"
-                  disabled={loading}
+                  disabled={loading||remaining>0}
                   style={{ width: '100%', marginTop: '8px', padding: '12px 0', fontSize: '14px', fontWeight: 700 }}
                 >
-                  {loading ? '正在提交注册…' : '立即注册'}
+                  {loading ? '正在提交注册…' : remaining>0?`请等待 ${remaining} 秒再重试`:'立即注册'}
                 </GlassButton>
               </form>
 
+              {remaining>0&&<p role="status" style={{fontSize:12,color:'var(--text-secondary)',marginTop:12}}>已暂停重复提交。倒计时结束不代表邮件额度已恢复，请勿频繁重试。</p>}
               {/* Footer */}
               <div style={{ textAlign: 'center', marginTop: '24px' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>已有账号？</span>{' '}
