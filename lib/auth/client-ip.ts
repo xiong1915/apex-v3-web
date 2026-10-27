@@ -1,4 +1,5 @@
 import { isIP } from 'node:net';
+
 export function trustedClientBucket(headers: Headers, vercel = process.env.VERCEL === '1') {
   // CF headers on the publicly reachable origin are not proof of a trusted proxy.
   if(vercel){
@@ -7,4 +8,22 @@ export function trustedClientBucket(headers: Headers, vercel = process.env.VERCE
     if(ip&&isIP(ip))return ip;
   }
   return 'unknown-peer';
+}
+
+export function extractClientIp(headers: Headers): string {
+  const cf = headers.get('cf-connecting-ip')?.trim();
+  if (cf && isIP(cf)) return cf;
+  const vercel = headers.get('x-vercel-forwarded-for')?.trim();
+  if (vercel) {
+    const ip = vercel.split(',')[0].trim();
+    if (ip && isIP(ip)) return ip;
+  }
+  const forwarded = headers.get('x-forwarded-for')?.trim();
+  if (forwarded) {
+    const ip = forwarded.split(',')[0].trim();
+    if (ip && isIP(ip)) return ip;
+  }
+  const real = headers.get('x-real-ip')?.trim();
+  if (real && isIP(real)) return real;
+  return headers.get('host')?.includes('localhost') ? '127.0.0.1' : 'unknown';
 }
