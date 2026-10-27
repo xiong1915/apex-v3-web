@@ -35,6 +35,8 @@ export interface AdminOverview {
 export interface AdminUserItem {
   id: string;
   email: string;
+  displayName?: string;
+  avatarPath?: string;
   isVerified: boolean;
   provider: string;
   role: string;
@@ -106,14 +108,28 @@ export async function getAdminUsers(): Promise<{ total: number; users: AdminUser
       for (let page = 1; ; page++) {
         const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
         if (error || !Array.isArray(data?.users)) throw new Error('用户目录暂不可用');
-        const users = data.users.map(u => ({
-          id: u.id,
-          email: u.email || '未绑定邮箱',
-          isVerified: Boolean(u.email_confirmed_at),
-          provider: (u.app_metadata?.provider as string) || (u.app_metadata?.providers?.[0] as string) || 'email',
-          role: (AUTH_CONFIG.adminUserId && isValidUuid(AUTH_CONFIG.adminUserId) && u.id === AUTH_CONFIG.adminUserId) ? '专属管理员' : '普通用户',
-          createdAt: u.created_at
-        }));
+        let profileMap = new Map<string, { display_name?: string; avatar_path?: string }>();
+        try {
+          const { data: profiles } = await supabaseAdmin.from('profiles').select('id, display_name, avatar_path');
+          if (profiles) {
+            for (const p of profiles) {
+              profileMap.set(p.id, { display_name: p.display_name, avatar_path: p.avatar_path });
+            }
+          }
+        } catch (_) {}
+        const users = data.users.map(u => {
+          const prof = profileMap.get(u.id);
+          return {
+            id: u.id,
+            email: u.email || '未绑定邮箱',
+            displayName: prof?.display_name || (u.user_metadata?.full_name as string) || (u.user_metadata?.name as string) || undefined,
+            avatarPath: prof?.avatar_path || undefined,
+            isVerified: Boolean(u.email_confirmed_at),
+            provider: (u.app_metadata?.provider as string) || (u.app_metadata?.providers?.[0] as string) || 'email',
+            role: (AUTH_CONFIG.adminUserId && isValidUuid(AUTH_CONFIG.adminUserId) && u.id === AUTH_CONFIG.adminUserId) ? '专属管理员' : '普通用户',
+            createdAt: u.created_at
+          };
+        });
         const previousCount = allUsers.size;
         users.forEach(u => allUsers.set(u.id, u));
         if (data.users.length < perPage) return { total: allUsers.size, users: [...allUsers.values()] };
