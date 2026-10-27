@@ -58,6 +58,7 @@ export default function AdminPage() {
 
   // Tab State
   const [currentTab, setCurrentTab] = useState<AdminTab>('overview');
+  const [selectedAuditUserId, setSelectedAuditUserId] = useState<string | undefined>(undefined);
 
   // Data States (全部读取真实数据)
   const [overviewData, setOverviewData] = useState<any>(null);
@@ -476,7 +477,7 @@ export default function AdminPage() {
               cursor: 'pointer'
             }}
           >
-            AI 监控与用量
+            AI 监控与对话审计
           </button>
           <button
             onClick={() => setCurrentTab('f1')}
@@ -573,6 +574,7 @@ export default function AdminPage() {
                     <th style={{ padding: '10px 12px' }}>邮箱验证</th>
                     <th style={{ padding: '10px 12px' }}>登录来源</th>
                     <th style={{ padding: '10px 12px' }}>注册时间</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right' }}>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -604,11 +606,34 @@ export default function AdminPage() {
                       <td className="tabular-nums" style={{ padding: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
                         {formatBeijingDisplay(u.createdAt)}
                       </td>
+                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAuditUserId(u.id);
+                            setCurrentTab('ai');
+                          }}
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '11px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--line-dark)',
+                            background: 'rgba(255, 45, 32, 0.08)',
+                            color: 'var(--accent-red)',
+                            cursor: 'pointer',
+                            fontWeight: 700,
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="查看该用户的完整 AI 对话记录与 IP"
+                        >
+                          查看 AI 对话
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {(!usersData?.users || usersData.users.length === 0) && (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                         暂无注册用户
                       </td>
                     </tr>
@@ -619,8 +644,19 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* Tab 3: AI 运行监控 */}
-        {aalLevel === 'aal2' && currentTab === 'ai' && <AdminAIMonitor data={aiData} loading={aiRefreshing || loading} error={aiMonitorError || dataErrors.ai || null} refresh={refreshAIMonitor} automatic={autoRefreshAI} setAutomatic={setAutoRefreshAI}/>}
+        {/* Tab 3: AI 运行监控与对话审计 */}
+        {aalLevel === 'aal2' && currentTab === 'ai' && (
+          <AdminAIMonitor
+            data={aiData}
+            loading={aiRefreshing || loading}
+            error={aiMonitorError || dataErrors.ai || null}
+            refresh={refreshAIMonitor}
+            automatic={autoRefreshAI}
+            setAutomatic={setAutoRefreshAI}
+            users={usersData?.users}
+            initialUserId={selectedAuditUserId}
+          />
+        )}
 
         {/* Tab 4: F1 数据调度 */}
         {aalLevel === 'aal2' && currentTab === 'f1' && f1Data && (

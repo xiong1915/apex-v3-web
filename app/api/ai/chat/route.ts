@@ -1,4 +1,5 @@
-import { trustedClientBucket } from '@/lib/auth/client-ip';
+import { trustedClientBucket, extractClientIp } from '@/lib/auth/client-ip';
+import { recordAIChatLog } from '@/lib/admin/ai-chat-logs';
 import { after } from 'next/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { defaultAIOrchestrator } from '@/lib/ai/orchestrator';
@@ -112,6 +113,8 @@ export async function POST(req: NextRequest) {
     }
 
     const clientIp = trustedClientBucket(req.headers);
+    const realIp = extractClientIp(req.headers);
+    const userAgent = req.headers.get('user-agent') || undefined;
     const body = await req.json().catch(() => null);
 
     if (!body) {
@@ -193,6 +196,7 @@ export async function POST(req: NextRequest) {
           let collectedText = '';
           let completed = false;
           let failed = false;
+          let estTokens = 0;
           try {
             for await (const chunk of defaultAIOrchestrator.streamAnswer(messages, clientIp, abortController.signal)) {
               if (abortController.signal.aborted) break;
@@ -209,7 +213,7 @@ export async function POST(req: NextRequest) {
               // 统计 Token 用量
               const inChars = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
               const outChars = collectedText.length;
-              const estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
+              estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
               after(() => recordAITokenUsage(estTokens).catch(() => {}));
             }
           } catch (err: any) {
@@ -222,7 +226,21 @@ export async function POST(req: NextRequest) {
           } finally {
             clearTimeout(timeoutTimer);
             const outcome = failed ? 'error' : completed ? 'success' : abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error';
+            const durationMs = Math.max(0, Math.min(120000, Date.now() - startedAt));
             after(() => recordAIOutcome(outcome, startedAt));
+            after(() => recordAIChatLog({
+              userId: user.id,
+              userEmail: user.email || '未绑定邮箱',
+              userDisplayName: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || undefined,
+              clientIp: realIp,
+              userAgent,
+              messages,
+              response: collectedText,
+              model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+              tokensEstimated: estTokens,
+              durationMs,
+              outcome
+            }).catch(() => {}));
             try {
               controller.close();
             } catch (_) {}
@@ -249,11 +267,40 @@ export async function POST(req: NextRequest) {
       const inChars = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
       const outChars = result.reply?.length || 0;
       const estTokens = Math.ceil(inChars / 2) + Math.ceil(outChars / 2);
+      const durationMs = Math.max(0, Math.min(120000, Date.now() - startedAt));
       after(() => recordAITokenUsage(estTokens).catch(() => {}));
       after(() => recordAIOutcome('success', startedAt));
+      after(() => recordAIChatLog({
+        userId: user.id,
+        userEmail: user.email || '未绑定邮箱',
+        userDisplayName: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || undefined,
+        clientIp: realIp,
+        userAgent,
+        messages,
+        response: result.reply || '',
+        model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+        tokensEstimated: estTokens,
+        durationMs,
+        outcome: 'success'
+      }).catch(() => {}));
       return NextResponse.json(result);
     } catch (error) {
-      after(() => recordAIOutcome(abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error', startedAt));
+      const durationMs = Math.max(0, Math.min(120000, Date.now() - startedAt));
+      const outcome = abortController.signal.reason?.message === 'REQUEST_TIMEOUT' ? 'timeout' : abortController.signal.aborted ? 'cancelled' : 'error';
+      after(() => recordAIOutcome(outcome, startedAt));
+      after(() => recordAIChatLog({
+        userId: user.id,
+        userEmail: user.email || '未绑定邮箱',
+        userDisplayName: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || undefined,
+        clientIp: realIp,
+        userAgent,
+        messages,
+        response: '',
+        model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
+        tokensEstimated: 0,
+        durationMs,
+        outcome
+      }).catch(() => {}));
       throw error;
     } finally {
       clearTimeout(timeoutTimer);
