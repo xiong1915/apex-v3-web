@@ -25,11 +25,15 @@ const profile={...user,display_name:'围场测试车迷',avatar_url:null,avatar_
   const paddock=page.locator('#paddock');
   await paddock.locator('a[href="/teams/ferrari"]').waitFor({timeout:90000});
   assert.equal(await paddock.locator('article').count(),2,'only persisted favorite IDs appear');
-  for(const width of [375,390,768,1440,1920]){
+  for(const width of [320,375,390,768,1440,1920]){
    await page.setViewportSize({width,height:width<768?844:960});
    await page.waitForTimeout(100);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`overflow at ${width}`);
+   assert.equal(await paddock.locator('table').count(),2,'one aligned driver table per team');
+   if(process.env.QA_ARTIFACT_DIR){const fs=require('node:fs'),path=require('node:path');fs.mkdirSync(process.env.QA_ARTIFACT_DIR,{recursive:true});await paddock.screenshot({path:path.join(process.env.QA_ARTIFACT_DIR,`paddock-${width}.png`),animations:'disabled',style:'.site-header,.skip-link{visibility:hidden!important}'});}
   }
+  const range=paddock.locator('article details').first();await range.locator('summary').focus();await page.keyboard.press('Enter');assert.equal(await range.getAttribute('open'),'');assert.match(await range.innerText(),/截止|待核实/);await range.locator('summary').press('Enter');
+  const source=paddock.locator('details').last();await source.locator('summary').click();await source.getByRole('link',{name:/查看积分榜统计范围与来源/}).waitFor();
   await page.locator('#race-cockpit').waitFor({timeout:90000});
   assert.match(await page.locator('#race-cockpit').innerText(),/预计|计划|实际开始|时间待公布|暂不可用/);
   const detailLinks=page.locator('#race-cockpit a[href*="/races/"]');
@@ -62,6 +66,6 @@ const profile={...user,display_name:'围场测试车迷',avatar_url:null,avatar_
   await page.waitForFunction(()=>document.querySelector('#nickname-input')?.value==='账号丙');
   await other.close();
   assert.deepEqual(errors,[]);
-  console.log('PASS: persisted favorites, five responsive widths, explicit identity/profile failures, retry, no login flash, stale account event isolation, cockpit source and season links');
+  console.log('PASS: persisted favorites, six responsive widths and keyboard-accessible data details, explicit identity/profile failures, retry, no login flash, stale account event isolation, cockpit source and season links');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
