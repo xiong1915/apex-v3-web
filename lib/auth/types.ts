@@ -38,6 +38,7 @@ export interface Session {
 }
 
 export interface AuthError {
+  retryAfterSeconds?: number;
   message: string;
   status?: number;
   code?: string;

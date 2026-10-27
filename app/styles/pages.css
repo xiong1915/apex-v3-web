@@ -880,73 +880,6 @@ body:has(.ai-chat-console) {
   gap:16px;
   flex-wrap:wrap
 }
-.admin-page-container {
-  padding-bottom:24px
-}
-.admin-page-container>header {
-  position:static!important;
-  background:transparent!important;
-  border-bottom:0!important;
-  padding:32px 0 16px!important
-}
-.admin-page-container>header>.container {
-  max-width:1200px;
-  flex-wrap:wrap;
-  gap:16px
-}
-.admin-workspace {
-  max-width:1200px!important;
-  padding:24px 40px!important
-}
-.admin-tabs {
-  flex-wrap:wrap;
-}
-@media(max-width:768px) {
-  .admin-tabs {
-    display:none!important;
-  }
-}
-.admin-page-container .glass-surface {
-  background:#fff;
-  border:0;
-  border-radius:20px!important;
-  box-shadow:none
-}
-.admin-page-container .glass-surface h3 {
-  font-size:18px
-}
-.admin-page-container .glass-button {
-  border-radius:999px
-}
-.admin-page-container table {
-  font-size:12px
-}
-.admin-page-container th,.admin-page-container td {
-  padding:16px!important
-}
-.mobile-admin-bottom-nav {
-  background:#fff!important;
-  border-top:1px solid var(--line-dark)!important
-}
-.mobile-admin-bottom-nav button {
-  min-height:44px;
-  font-size:11px
-}
-.admin-shell input {
-  font-size:16px!important;
-  border-radius:12px!important
-}
-.admin-shell .glass-sheet-panel {
-  background:#fff
-}
-.admin-shell main {
-  min-width:0
-}
-@media(min-width:769px) {
-  .mobile-admin-bottom-nav {
-    display:none!important
-  }
-}
 @media(max-width:767px) {
   :root {
     --nav-height:64px
@@ -1008,30 +941,7 @@ body:has(.ai-chat-console) {
     align-items:start;
     gap:16px
   }
-  .admin-page-container {
-    padding-bottom:calc(80px + env(safe-area-inset-bottom))
-  }
-  .admin-workspace {
-    padding:24px!important
-  }
-  .admin-page-container>header {
-    padding-top:24px!important
-  }
-  .admin-page-container>header>.container {
-    padding-inline:24px
-  }
-  .admin-page-container th,.admin-page-container td {
-    padding:12px!important
-  }
-  .admin-page-container .glass-surface {
-    min-width:0!important
-  }
-  .admin-page-container .glass-surface[style*='display: flex'] {
-    flex-wrap:wrap
-  }
-  .admin-page-container header .glass-button {
-    font-size:11px
-  }
+
   .message-state h1 {
     font-size:28px
   }
