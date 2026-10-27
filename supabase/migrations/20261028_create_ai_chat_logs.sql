@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.ai_chat_logs (
     tokens_estimated INTEGER DEFAULT 0,
     duration_ms INTEGER DEFAULT 0,
     outcome TEXT DEFAULT 'success',
+    device_info JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

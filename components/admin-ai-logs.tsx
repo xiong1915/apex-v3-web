@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { formatBeijingDisplay } from '@/lib/f1/time';
 import type { AIChatLogRecord } from '@/lib/admin/ai-chat-logs';
+import { parseUserPersona } from '@/lib/admin/user-persona';
 
 const outcomeLabels: Record<string, { label: string; bg: string; color: string; border: string }> = {
   success: { label: '完成', bg: '#eff6f1', color: '#28764e', border: 'rgba(40, 118, 78, 0.25)' },
@@ -26,6 +27,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedUaId, setCopiedUaId] = useState<string | null>(null);
 
   // 当外部传入的 initialUserId 发生变化时同步
   useEffect(() => {
@@ -80,7 +82,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
     return Array.from(map.values());
   }, [users, logs]);
 
-  // 客户端检索过滤 (按 IP、邮箱、提问内容、回答、模型等)
+  // 客户端检索过滤 (按 IP、邮箱、提问内容、回答、操作系统、浏览器等)
   const filteredLogs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return logs;
@@ -91,6 +93,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
       if (log.userId.toLowerCase().includes(q)) return true;
       if (log.model.toLowerCase().includes(q)) return true;
       if (log.response.toLowerCase().includes(q)) return true;
+      if (log.userAgent?.toLowerCase().includes(q)) return true;
       if (log.messages.some(m => m.content?.toLowerCase().includes(q))) return true;
       return false;
     });
@@ -105,6 +108,15 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
       navigator.clipboard.writeText(JSON.stringify(log, null, 2));
       setCopiedId(log.id);
       setTimeout(() => setCopiedId(null), 2000);
+    } catch (_) {}
+  };
+
+  const handleCopyUa = (ua?: string, id?: string) => {
+    if (!ua || !id) return;
+    try {
+      navigator.clipboard.writeText(ua);
+      setCopiedUaId(id);
+      setTimeout(() => setCopiedUaId(null), 2000);
     } catch (_) {}
   };
 
@@ -123,13 +135,13 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent-red)', fontWeight: 700 }}>
-              AI CONVERSATION AUDIT
+              AI CONVERSATION & USER PERSONA AUDIT
             </span>
             <h3 style={{ fontSize: '20px', fontWeight: 800, margin: '4px 0 0', color: 'var(--text-primary)' }}>
               对话审计与详细记录
             </h3>
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-              完整记录每位用户的对话上下文、客户端真实 IP、网络设备与调用性能。
+              完整记录每位用户的对话内容、客户端真实 IP、操作系统、浏览器、屏幕配置与硬件画像。
             </p>
           </div>
 
@@ -190,7 +202,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
           <div style={{ flex: '2 1 300px' }}>
             <input
               type="text"
-              placeholder="搜索客户端 IP / 邮箱 / 提问内容 / 回复关键字..."
+              placeholder="搜索客户端 IP / 浏览器 / 操作系统 / 邮箱 / 提问内容关键字..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               style={{
@@ -241,7 +253,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
       )}
 
       {/* 列表区 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         {loading && logs.length === 0 && (
           <div style={{
             background: '#fff',
@@ -274,16 +286,17 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
           const outcomeInfo = outcomeLabels[log.outcome] || outcomeLabels.success;
           const isExpanded = expandedId === log.id;
           const lastUserMessage = [...log.messages].reverse().find(m => m.role === 'user')?.content || '无消息输入';
+          const persona = parseUserPersona(log.userAgent, log.deviceInfo as any, log.clientIp);
 
           return (
             <div
               key={log.id}
               style={{
                 background: '#fff',
-                borderRadius: '16px',
+                borderRadius: '18px',
                 border: '1px solid var(--line-dark)',
-                padding: '18px 20px',
-                boxShadow: isExpanded ? '0 4px 20px rgba(0,0,0,0.06)' : 'none',
+                padding: '20px 22px',
+                boxShadow: isExpanded ? '0 6px 24px rgba(0,0,0,0.06)' : 'none',
                 transition: 'all 0.2s ease'
               }}
             >
@@ -297,7 +310,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
                 borderBottom: '1px solid rgba(23, 25, 29, 0.06)',
                 paddingBottom: '12px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   {/* 时间戳 */}
                   <time style={{ fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
                     {formatBeijingDisplay(log.createdAt)}
@@ -334,16 +347,51 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
                     {log.clientIp}
                   </span>
 
-                  {/* 模型标识 */}
+                  {/* 用户画像轻量标签：操作系统 */}
                   <span style={{
                     fontSize: '11px',
-                    fontFamily: 'var(--font-mono)',
+                    fontFamily: 'var(--font-sans)',
                     background: '#f4f3ef',
-                    padding: '2px 8px',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    color: 'var(--text-primary)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    border: '1px solid rgba(0,0,0,0.04)'
+                  }}>
+                    <span>{persona.os.icon}</span>
+                    <strong style={{ fontWeight: 600 }}>{persona.os.name}</strong>
+                    {persona.os.architecture && <small style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>({persona.os.architecture})</small>}
+                  </span>
+
+                  {/* 用户画像轻量标签：浏览器 */}
+                  <span style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-sans)',
+                    background: '#f4f3ef',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    color: 'var(--text-primary)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    border: '1px solid rgba(0,0,0,0.04)'
+                  }}>
+                    <span>{persona.browser.icon}</span>
+                    <strong style={{ fontWeight: 600 }}>{persona.browser.name}</strong>
+                    {persona.browser.version && <small style={{ color: 'var(--text-secondary)', fontSize: '10px' }}>v{persona.browser.version}</small>}
+                  </span>
+
+                  {/* 用户画像轻量标签：设备类型 */}
+                  <span style={{
+                    fontSize: '11px',
+                    background: '#f4f3ef',
+                    padding: '3px 8px',
                     borderRadius: '6px',
                     color: 'var(--text-secondary)'
                   }}>
-                    {log.model}
+                    {persona.device.typeLabel}
                   </span>
                 </div>
 
@@ -369,7 +417,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
                       padding: '4px 6px'
                     }}
                   >
-                    {isExpanded ? '收起详情 ▲' : '展开对话 ▼'}
+                    {isExpanded ? '收起画像与详情 ▲' : '展开画像与详情 ▼'}
                   </button>
                 </div>
               </div>
@@ -386,15 +434,15 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{
-                    width: '24px',
-                    height: '24px',
+                    width: '26px',
+                    height: '26px',
                     borderRadius: '50%',
                     background: 'var(--accent-red)',
                     color: '#fff',
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '11px',
+                    fontSize: '12px',
                     fontWeight: 700
                   }}>
                     {(log.userDisplayName || log.userEmail)[0].toUpperCase()}
@@ -415,7 +463,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
                       border: '1px solid var(--line-dark)',
                       background: '#faf9f5',
                       color: 'var(--text-secondary)',
-                      padding: '2px 8px',
+                      padding: '3px 8px',
                       borderRadius: '6px',
                       fontSize: '11px',
                       cursor: 'pointer'
@@ -458,22 +506,137 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
                 </div>
               )}
 
-              {/* 展开时的完整对话与设备明细 */}
+              {/* 展开时的完整用户画像、硬件信号与对话明细 */}
               {isExpanded && (
-                <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {/* User-Agent 设备信息 */}
+                <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* 用户画像与设备规格矩阵 */}
                   <div style={{
-                    fontSize: '11px',
-                    color: 'var(--text-muted)',
-                    background: '#f8f8f7',
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    fontFamily: 'var(--font-mono)',
-                    wordBreak: 'break-all',
-                    border: '1px solid rgba(0,0,0,0.03)'
+                    background: '#faf9f5',
+                    borderRadius: '14px',
+                    border: '1px solid var(--line-dark)',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
                   }}>
-                    <strong style={{ color: 'var(--text-secondary)' }}>客户端设备 (UA): </strong>
-                    {log.userAgent || '未知客户端'}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-red)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                        👤 终端用户画像与硬件规格信号
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        识别自客户端与 HTTP 报头
+                      </span>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                      gap: '12px'
+                    }}>
+                      {/* 画像 1: 操作系统 */}
+                      <div style={{ background: '#fff', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>操作系统 (OS)</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{persona.os.icon}</span>
+                          <span>{persona.os.name}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {persona.os.architecture || '默认架构'}{persona.os.version ? ` · v${persona.os.version}` : ''}
+                        </div>
+                      </div>
+
+                      {/* 画像 2: 浏览器与内核 */}
+                      <div style={{ background: '#fff', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>浏览器与排版引擎</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{persona.browser.icon}</span>
+                          <span>{persona.browser.name}</span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {persona.browser.version ? `版本: ${persona.browser.version}` : '内核'}: {persona.browser.engine}
+                        </div>
+                      </div>
+
+                      {/* 画像 3: 设备形态与机型 */}
+                      <div style={{ background: '#fff', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>设备形态</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {persona.device.typeLabel}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {persona.device.model || '标准个人计算机'}
+                        </div>
+                      </div>
+
+                      {/* 画像 4: 硬件配置信号 */}
+                      <div style={{ background: '#fff', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>硬件配置与算力信号</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          ⚙️ {persona.hardware.cores ? `${persona.hardware.cores}核 CPU` : '常规硬件配置'} {persona.hardware.memoryGb ? `· ≥${persona.hardware.memoryGb}GB 内存` : ''}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {persona.hardware.touchLabel}
+                        </div>
+                      </div>
+
+                      {/* 画像 5: 屏幕分辨率与显示 */}
+                      <div style={{ background: '#fff', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>屏幕与显示信号</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          🖥️ {persona.display.screenResolution || '自适应分辨率'}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {persona.display.viewport ? `视口: ${persona.display.viewport}` : ''} {persona.display.pixelRatio ? `· DPR: ${persona.display.pixelRatio}x` : ''} {persona.display.colorScheme ? `· ${persona.display.colorScheme === 'dark' ? '🌙 深色' : '☀️ 浅色'}` : ''}
+                        </div>
+                      </div>
+
+                      {/* 画像 6: 网络与语言环境 */}
+                      <div style={{ background: '#fff', padding: '12px 14px', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>网络与本地化环境</div>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+                          🌐 {log.clientIp}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          {persona.environment.country ? `地区: ${persona.environment.country} · ` : ''}{persona.environment.language || '中文简体 (zh-CN)'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 原始 User-Agent */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: '#f0efe9',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '11px',
+                      fontFamily: 'var(--font-mono)',
+                      color: 'var(--text-secondary)',
+                      wordBreak: 'break-all',
+                      gap: '8px'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>UA: </strong>
+                        {log.userAgent || '未知客户端'}
+                      </div>
+                      <button
+                        onClick={() => handleCopyUa(log.userAgent, log.id)}
+                        style={{
+                          border: 'none',
+                          background: '#fff',
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '10px',
+                          whiteSpace: 'nowrap',
+                          color: 'var(--text-primary)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                        }}
+                      >
+                        {copiedUaId === log.id ? '✓ 已复制' : '复制 UA'}
+                      </button>
+                    </div>
                   </div>
 
                   {/* 消息对话流 */}
@@ -483,7 +646,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
                     gap: '12px',
                     background: '#faf9f5',
                     padding: '16px',
-                    borderRadius: '12px',
+                    borderRadius: '14px',
                     border: '1px solid var(--line-dark)'
                   }}>
                     <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
@@ -571,7 +734,7 @@ export function AdminAIChatLogs({ users = [], initialUserId }: AdminAIChatLogsPr
                     <button
                       onClick={() => handleCopyJson(log)}
                       className="btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '11px', borderRadius: '8px' }}
+                      style={{ padding: '6px 14px', fontSize: '11px', borderRadius: '8px' }}
                     >
                       {copiedId === log.id ? '✓ 已复制 JSON' : '复制此条完整 JSON'}
                     </button>

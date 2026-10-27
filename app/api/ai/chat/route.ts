@@ -121,6 +121,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '无效的 JSON 请求体' }, { status: 400 });
     }
 
+    const rawSignals = (body?.deviceSignals && typeof body.deviceSignals === 'object') ? body.deviceSignals : {};
+    const country = req.headers.get('cf-ipcountry') || undefined;
+    const acceptLanguage = req.headers.get('accept-language')?.split(',')[0] || undefined;
+    const deviceInfo = {
+      ...rawSignals,
+      language: rawSignals.language || acceptLanguage,
+      country: rawSignals.country || country,
+      secChUa: req.headers.get('sec-ch-ua') || undefined,
+      secChUaPlatform: req.headers.get('sec-ch-ua-platform')?.replace(/"/g, '') || undefined,
+      secChUaMobile: req.headers.get('sec-ch-ua-mobile') === '?1'
+    };
+
     let messages: AIMessage[] = [];
     if (Array.isArray(body.messages)) {
       messages = body.messages;
@@ -234,6 +246,7 @@ export async function POST(req: NextRequest) {
               userDisplayName: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || undefined,
               clientIp: realIp,
               userAgent,
+              deviceInfo,
               messages,
               response: collectedText,
               model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
@@ -276,6 +289,7 @@ export async function POST(req: NextRequest) {
         userDisplayName: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || undefined,
         clientIp: realIp,
         userAgent,
+        deviceInfo,
         messages,
         response: result.reply || '',
         model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',
@@ -294,6 +308,7 @@ export async function POST(req: NextRequest) {
         userDisplayName: (user.user_metadata?.full_name as string) || (user.user_metadata?.name as string) || undefined,
         clientIp: realIp,
         userAgent,
+        deviceInfo,
         messages,
         response: '',
         model: process.env.DEEPSEEK_MODEL || 'deepseek-chat',

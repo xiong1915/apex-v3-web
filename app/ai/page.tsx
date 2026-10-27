@@ -225,7 +225,20 @@ export default function AIPage() {
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-apex-history-owner': accountId },
-        body: JSON.stringify({ messages: apiPayload, stream: true }),
+        body: JSON.stringify({
+          messages: apiPayload,
+          stream: true,
+          deviceSignals: typeof window !== 'undefined' ? {
+            screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
+            viewport: `${window.innerWidth || 0}x${window.innerHeight || 0}`,
+            dpr: window.devicePixelRatio || 1,
+            cores: navigator.hardwareConcurrency || undefined,
+            memory: (navigator as any).deviceMemory || undefined,
+            touch: navigator.maxTouchPoints > 0,
+            language: navigator.language || undefined,
+            colorScheme: window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          } : undefined
+        }),
         signal: controller.signal
       });
 
