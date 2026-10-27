@@ -11,6 +11,7 @@ export interface AIChatLogRecord {
   userDisplayName?: string;
   clientIp: string;
   userAgent?: string;
+  deviceInfo?: Record<string, any>;
   messages: AIMessage[];
   response: string;
   model: string;
@@ -26,6 +27,7 @@ export interface RecordAIChatLogInput {
   userDisplayName?: string;
   clientIp: string;
   userAgent?: string;
+  deviceInfo?: Record<string, any>;
   messages: AIMessage[];
   response: string;
   model: string;
@@ -50,6 +52,7 @@ export async function recordAIChatLog(input: RecordAIChatLogInput): Promise<void
     userDisplayName: input.userDisplayName,
     clientIp: input.clientIp || 'unknown',
     userAgent: input.userAgent,
+    deviceInfo: input.deviceInfo,
     messages: input.messages,
     response: input.response,
     model: input.model,
@@ -77,6 +80,7 @@ export async function recordAIChatLog(input: RecordAIChatLogInput): Promise<void
         user_display_name: input.userDisplayName || null,
         client_ip: input.clientIp || 'unknown',
         user_agent: input.userAgent || null,
+        device_info: input.deviceInfo || {},
         messages: input.messages,
         response: input.response,
         model: input.model,
@@ -123,6 +127,7 @@ export async function getAdminAIChatLogs(params: {
           userDisplayName: row.user_display_name || undefined,
           clientIp: row.client_ip || 'unknown',
           userAgent: row.user_agent || undefined,
+          deviceInfo: row.device_info || undefined,
           messages: Array.isArray(row.messages) ? row.messages : [],
           response: row.response || '',
           model: row.model || 'deepseek-chat',

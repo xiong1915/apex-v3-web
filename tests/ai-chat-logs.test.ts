@@ -7,6 +7,7 @@ import {
   resetMemoryAIChatLogs,
   type RecordAIChatLogInput
 } from '../lib/admin/ai-chat-logs';
+import { parseUserPersona } from '../lib/admin/user-persona';
 import { NextRequest } from 'next/server';
 import { GET as getAdminLogsRoute } from '../app/api/admin/ai/logs/route';
 
@@ -113,4 +114,58 @@ test('admin ai logs API protects against unauthenticated requests', async () => 
   assert.equal(res.status, 401);
   const json = await res.json();
   assert.ok(json.error);
+});
+
+test('parseUserPersona accurately identifies OS, browser, device, and hardware signals', () => {
+  // 1. Windows 10/11 x64 PC Chrome
+  const winUA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36';
+  const p1 = parseUserPersona(winUA, {
+    screen: '1920x1080',
+    viewport: '1440x820',
+    dpr: 1.25,
+    cores: 16,
+    memory: 16,
+    touch: false,
+    language: 'zh-CN',
+    colorScheme: 'light',
+    country: 'CN'
+  }, '54.178.4.224');
+
+  assert.equal(p1.os.name, 'Windows 10 / 11');
+  assert.equal(p1.os.architecture, '64位 (x64)');
+  assert.equal(p1.browser.name, 'Google Chrome');
+  assert.equal(p1.browser.version, '155.0');
+  assert.equal(p1.device.type, 'desktop');
+  assert.equal(p1.hardware.cores, 16);
+  assert.equal(p1.hardware.memoryGb, 16);
+  assert.equal(p1.hardware.touch, false);
+  assert.equal(p1.display.screenResolution, '1920 × 1080');
+  assert.equal(p1.display.pixelRatio, 1.25);
+  assert.equal(p1.environment.ip, '54.178.4.224');
+  assert.equal(p1.environment.country, 'CN');
+
+  // 2. iPhone Safari iOS 18
+  const iosUA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Mobile/15E148 Safari/604.1';
+  const p2 = parseUserPersona(iosUA, {
+    screen: '390x844',
+    dpr: 3,
+    touch: true
+  }, '114.242.25.10');
+
+  assert.equal(p2.os.name, 'iOS (iPhone)');
+  assert.equal(p2.os.version, '18.1');
+  assert.equal(p2.browser.name, 'Apple Safari');
+  assert.equal(p2.browser.version, '18.1');
+  assert.equal(p2.device.type, 'mobile');
+  assert.equal(p2.hardware.touch, true);
+
+  // 3. Android WeChat WebView
+  const wechatUA = 'Mozilla/5.0 (Linux; Android 14; SM-S928B Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/122.0.6261.119 Mobile Safari/537.36 MicroMessenger/8.0.48.2580(0x28003036)';
+  const p3 = parseUserPersona(wechatUA);
+
+  assert.equal(p3.os.name, 'Android');
+  assert.equal(p3.os.version, '14');
+  assert.equal(p3.browser.name, '微信内置浏览器');
+  assert.equal(p3.device.type, 'mobile');
+  assert.equal(p3.device.model, 'SM-S928B');
 });
