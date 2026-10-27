@@ -36,6 +36,10 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw new Error('L
     await page.getByRole('button', { name: 'TOTP 绑定 / 验证', exact: true }).click();
     await page.getByRole('heading', { name: 'TOTP 双重身份验证 (AAL2)', exact: true }).waitFor();
     assert.deepEqual(enrollMethods, ['POST']);
+    const dialog=page.getByRole('dialog');await dialog.waitFor();
+    await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+    assert.equal(await page.getByRole('button',{name:'TOTP 绑定 / 验证',exact:true}).evaluate(el=>el===document.activeElement),true,'modal returns focus to its trigger');
+    await page.getByRole('button',{name:'TOTP 绑定 / 验证',exact:true}).click();await dialog.waitFor();
     assert.equal(await page.getByText('更换 / 重新绑定手机验证器', { exact: true }).count(), 0);
     await page.getByPlaceholder('000000').fill('123456');
     await page.getByRole('button', { name: '确认授权', exact: true }).click();
@@ -43,7 +47,7 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw new Error('L
     await page.getByRole('button', { name: /用户管理/ }).click();
     await page.getByText('用户目录测试不可用', { exact: true }).waitFor();
     assert.equal(await page.getByText('暂无注册用户', { exact: true }).count(), 0, '503 must not become empty users');
-    assert.equal(await page.getByText(/真实注册用户/).count(), 0);
+    assert.equal(await page.getByText(/注册用户/).count(), 0);
     usersAvailable = true;
     await page.getByRole('button', { name: '重试读取', exact: true }).click();
     await page.getByText('暂无注册用户', { exact: true }).waitFor();

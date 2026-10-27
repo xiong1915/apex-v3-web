@@ -107,7 +107,7 @@ async function fixtures(context, owner = 'test-owner') {
   for (const width of [375, 390, 768, 900, 1024, 1440, 1920]) { await page.setViewportSize({ width, height: 900 }); assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)); }
   await page.setViewportSize({ width: 390, height: 844 }); await page.getByRole('button', { name: '历史对话', exact: true }).click();
   assert.equal(await page.locator('.ai-chat-console').evaluate(e => e.inert), true); await page.screenshot({ path: path.join(out, 'ai-history-390.png') }); await page.keyboard.press('Escape'); assert.equal(await page.locator('.ai-chat-console').evaluate(e => e.inert), false);
-  await page.setViewportSize({ width: 1440, height: 1000 }); await page.goto(base + '/admin'); await page.getByRole('button', { name: 'AI 监控与用量', exact: true }).click(); await page.getByRole('heading', { name: '看清每一次请求' }).waitFor();
+  await page.setViewportSize({ width: 1440, height: 1000 }); await page.goto(base + '/admin'); await page.getByRole('button', { name: 'AI 监控与用量', exact: true }).click(); await page.getByRole('heading', { name: '运行指标', exact: true }).waitFor();
   const reads = aiReads; await page.getByRole('button', { name: '刷新 AI 数据', exact: true }).click(); await page.waitForFunction(() => !document.querySelector('.monitor-actions button').disabled); assert.ok(aiReads > reads);
   await page.getByRole('checkbox', { name: '只看异常与超时' }).check(); assert.equal(await page.locator('.monitor-events li').count(), 2);
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: '导出监控摘要' }).click(); await (await download).saveAs(path.join(out, 'ai-monitor-local-fixture.json'));

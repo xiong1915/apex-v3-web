@@ -1,13 +1,14 @@
 // app/admin/layout.tsx
 import type { Metadata, Viewport } from 'next';
 import React from 'react';
+import './admin.css';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: 'APEX Control · 私人管理中枢',
-  description: 'APEX V3 私人管理中枢 - 实时监控与 F1 数据同步',
+  title: 'APEX · 管理后台',
+  description: 'APEX 网站运行监控、用户查询与赛事数据管理',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

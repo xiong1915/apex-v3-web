@@ -20,8 +20,8 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw Error('Local
    assert.equal(await desktop.isVisible(), width > 768, `desktop tabs at ${width}px`);
    const nav = page.locator(width > 768 ? '.admin-tabs' : '.mobile-admin-bottom-nav');
    for (const [label, content] of width > 768
-    ? [['用户管理', '真实注册用户'], ['AI 监控与用量', '累计有效提问'], ['F1 数据调度', 'F1 赛事数据管理与手动调度'], ['网站概览', '当前部署版本']]
-    : [['用户', '真实注册用户'], ['AI 监控', '累计有效提问'], ['F1 调度', 'F1 赛事数据管理与手动调度'], ['概览', '当前部署版本']]) {
+    ? [['用户管理', '注册用户'], ['AI 监控与用量', '累计有效提问'], ['F1 数据调度', 'F1 赛事数据管理与手动调度'], ['网站概览', '当前部署版本']]
+    : [['用户', '注册用户'], ['AI 监控', '累计有效提问'], ['F1 调度', 'F1 赛事数据管理与手动调度'], ['概览', '当前部署版本']]) {
     await nav.getByRole('button', { name: new RegExp(label) }).click();
     await page.getByText(content, { exact: false }).first().waitFor({ state: 'visible' });
     if (width === 1024 && label === 'F1 数据调度' && process.env.QA_ARTIFACT_DIR) {
