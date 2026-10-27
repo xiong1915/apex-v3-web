@@ -34,13 +34,26 @@ export async function POST(req: NextRequest) {
       });
 
       if (error) {
-        const failure=registrationError(error);
-        return NextResponse.json({error:failure.message,code:failure.code,retryAfterSeconds:failure.retryAfterSeconds},{status:failure.status,headers:{'Cache-Control':'no-store',...(failure.retryAfterSeconds?{'Retry-After':String(failure.retryAfterSeconds)}:{})}});
+        const failure = registrationError(error);
+        return NextResponse.json(
+          { error: failure.message, code: failure.code, retryAfterSeconds: failure.retryAfterSeconds },
+          {
+            status: failure.status,
+            headers: {
+              'Cache-Control': 'no-store',
+              ...(failure.retryAfterSeconds ? { 'Retry-After': String(failure.retryAfterSeconds) } : {})
+            }
+          }
+        );
       }
 
+      const isConfirmed = Boolean(data?.user?.email_confirmed_at);
       return NextResponse.json({
-        message: '注册申请已提交，请查收验证邮件以激活账号',
-        user: data.user
+        message: isConfirmed
+          ? '注册成功！账号已激活，可直接登录'
+          : '注册申请已提交，请查收验证邮件以激活账号',
+        user: data?.user,
+        autoConfirmed: isConfirmed
       });
     }
 
@@ -69,6 +82,6 @@ export async function POST(req: NextRequest) {
       user: result.user
     });
   } catch (err: any) {
-    return NextResponse.json({ error: '注册服务暂不可用，请稍后重试' }, { status: 503,headers:{'Cache-Control':'no-store'} });
+    return NextResponse.json({ error: '注册服务暂不可用，请稍后重试' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
 }

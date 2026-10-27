@@ -18,20 +18,33 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const submitting=useRef(false);
-  const [retryAt,setRetryAt]=useState(0),[remaining,setRemaining]=useState(0);
-  useEffect(()=>{
-    try{const saved=Number(sessionStorage.getItem('apex:register-retry-until'));if(saved>Date.now()&&saved<Date.now()+3600000)setRetryAt(saved);}catch{}
-  },[]);
-  useEffect(()=>{
-    const update=()=>{const left=Math.max(0,Math.ceil((retryAt-Date.now())/1000));setRemaining(left);return left;};
-    if(update()===0)return;
-    const timer=setInterval(()=>{if(update()===0)clearInterval(timer);},1000);return()=>clearInterval(timer);
-  },[retryAt]);
+  const [autoConfirmed, setAutoConfirmed] = useState(false);
+  const submitting = useRef(false);
+  const [retryAt, setRetryAt] = useState(0), [remaining, setRemaining] = useState(0);
+
+  useEffect(() => {
+    try {
+      const saved = Number(sessionStorage.getItem('apex:register-retry-until'));
+      if (saved > Date.now() && saved < Date.now() + 3600000) setRetryAt(saved);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      const left = Math.max(0, Math.ceil((retryAt - Date.now()) / 1000));
+      setRemaining(left);
+      return left;
+    };
+    if (update() === 0) return;
+    const timer = setInterval(() => {
+      if (update() === 0) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [retryAt]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(submitting.current||retryAt>Date.now()||success)return;
+    if (submitting.current || retryAt > Date.now() || success) return;
     if (!email || !password || !confirmPassword) {
       setError('请完整填写所有必填信息');
       return;
@@ -47,18 +60,27 @@ function RegisterForm() {
       return;
     }
 
-    submitting.current=true;setLoading(true);
+    submitting.current = true;
+    setLoading(true);
     setError(null);
 
     const res = await apiRegister(email, password);
-    submitting.current=false;setLoading(false);
+    submitting.current = false;
+    setLoading(false);
 
     if (res.error) {
       setError(res.error.message);
-      if(res.error.retryAfterSeconds){const until=Date.now()+res.error.retryAfterSeconds*1000;setRetryAt(until);try{sessionStorage.setItem('apex:register-retry-until',String(until));}catch{}}
+      if (res.error.retryAfterSeconds) {
+        const until = Date.now() + res.error.retryAfterSeconds * 1000;
+        setRetryAt(until);
+        try {
+          sessionStorage.setItem('apex:register-retry-until', String(until));
+        } catch {}
+      }
       return;
     }
 
+    setAutoConfirmed(Boolean((res.data as any)?.autoConfirmed));
     setSuccess(true);
   };
 
@@ -103,9 +125,15 @@ function RegisterForm() {
               }}>
                 ✓
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>验证邮件已发送</h3>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>
+                {autoConfirmed ? '注册成功！' : '验证邮件已发送'}
+              </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
-                我们已向 <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> 发送了激活确认邮件。请点击邮件中的链接完成验证后即可登录。
+                {autoConfirmed ? (
+                  <>账号 <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> 已创建并激活，现在即可直接登录体验 APEX V3。</>
+                ) : (
+                  <>我们已向 <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> 发送了激活确认邮件。请点击邮件中的链接完成验证后即可登录。</>
+                )}
               </p>
               <Link href={`/login${returnUrl !== '/' ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ''}`}>
                 <GlassButton variant="primary" style={{ width: '100%', padding: '12px 0' }}>
@@ -207,14 +235,19 @@ function RegisterForm() {
                 <GlassButton
                   type="submit"
                   variant="primary"
-                  disabled={loading||remaining>0}
+                  disabled={loading || remaining > 0}
                   style={{ width: '100%', marginTop: '8px', padding: '12px 0', fontSize: '14px', fontWeight: 700 }}
                 >
-                  {loading ? '正在提交注册…' : remaining>0?`请等待 ${remaining} 秒再重试`:'立即注册'}
+                  {loading ? '正在提交注册…' : remaining > 0 ? `请等待 ${remaining} 秒再重试` : '立即注册'}
                 </GlassButton>
               </form>
 
-              {remaining>0&&<p role="status" style={{fontSize:12,color:'var(--text-secondary)',marginTop:12}}>已暂停重复提交。倒计时结束不代表邮件额度已恢复，请勿频繁重试。</p>}
+              {remaining > 0 && (
+                <p role="status" style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 12 }}>
+                  已暂停重复提交。倒计时结束不代表邮件额度已恢复，请勿频繁重试。
+                </p>
+              )}
+
               {/* Footer */}
               <div style={{ textAlign: 'center', marginTop: '24px' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>已有账号？</span>{' '}
