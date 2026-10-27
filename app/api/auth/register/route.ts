@@ -4,6 +4,7 @@ import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed } from '@/lib/auth
 import { createSupabaseServerClient, getTrustedPublicOrigin } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 import { sendVerificationEmail } from '@/lib/auth/email';
+import { registrationError } from '@/lib/auth/registration-error';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
       });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: error.status || 400 });
+        const failure=registrationError(error);
+        return NextResponse.json({error:failure.message,code:failure.code,retryAfterSeconds:failure.retryAfterSeconds},{status:failure.status,headers:{'Cache-Control':'no-store',...(failure.retryAfterSeconds?{'Retry-After':String(failure.retryAfterSeconds)}:{})}});
       }
 
       return NextResponse.json({
@@ -67,6 +69,6 @@ export async function POST(req: NextRequest) {
       user: result.user
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || '服务异常' }, { status: 500 });
+    return NextResponse.json({ error: '注册服务暂不可用，请稍后重试' }, { status: 503,headers:{'Cache-Control':'no-store'} });
   }
 }

@@ -1,7 +1,7 @@
 // app/admin/page.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
@@ -10,6 +10,8 @@ import { formatBeijingDisplay } from '@/lib/f1/time';
 import { AdminAIMonitor } from '@/components/admin-ai-monitor';
 
 type AdminTab = 'overview' | 'users' | 'ai' | 'f1';
+const adminTabs = [{id:'overview',label:'网站概览',short:'概览',description:'服务状态、发布版本与数据更新时间。'}, {id:'users',label:'用户管理',short:'用户',description:'查询账号、验证状态和关联的 AI 记录。'}, {id:'ai',label:'AI 监控与用量',short:'AI 监控',description:'查看运行指标和请求记录。'}, {id:'f1',label:'F1 数据调度',short:'F1 调度',description:'核对数据状态，按需重新同步。'}] as const;
+function tabFromLocation():AdminTab {const value=new URLSearchParams(window.location.search).get('tab');return adminTabs.some(tab=>tab.id===value)?value as AdminTab:'overview';}
 
 function renderTotpQr(qr?: string) {
   if (!qr) return null;
@@ -59,6 +61,13 @@ export default function AdminPage() {
   // Tab State
   const [currentTab, setCurrentTab] = useState<AdminTab>('overview');
   const [selectedAuditUserId, setSelectedAuditUserId] = useState<string | undefined>(undefined);
+  const [userSearch,setUserSearch]=useState('');
+  const [userVerification,setUserVerification]=useState('all');
+  const [userPage,setUserPage]=useState(1);
+  const [updatedAt,setUpdatedAt]=useState<Partial<Record<AdminTab,string>>>({});
+  const loadSequence=useRef(0),aiInFlight=useRef(false),syncInFlight=useRef(false);
+  const aiReadSequence=useRef(0);
+  const modalRef=useRef<HTMLDivElement>(null),totpBusy=useRef(false);
 
   // Data States (全部读取真实数据)
   const [overviewData, setOverviewData] = useState<any>(null);
@@ -77,12 +86,14 @@ export default function AdminPage() {
     permissionGeneration.current++;
     setOverviewData(null); setUsersData(null); setAiData(null); setF1Data(null);
     setAutoRefreshAI(false);
+    setUpdatedAt({});setSelectedAuditUserId('');setAiMonitorError(null);
   }, []);
 
   // TOTP Modal & Enroll
   const [showTotpModal, setShowTotpModal] = useState(false);
   const [totpCode, setTotpCode] = useState('');
   const [totpSubmitting, setTotpSubmitting] = useState(false);
+  totpBusy.current=totpSubmitting;
   const [totpError, setTotpError] = useState<string | null>(null);
   const [copiedSecret, setCopiedSecret] = useState(false);
   const [enrollData, setEnrollData] = useState<{
@@ -171,40 +182,27 @@ export default function AdminPage() {
   }, [router]);
 
   // 2. 加载数据
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (only?: AdminTab) => {
     if (!isAdmin || aalLevel !== 'aal2') return;
-    const generation = permissionGeneration.current;
-    setLoading(true);
-    setErrorMsg(null);
-
+    const generation=permissionGeneration.current, sequence=++loadSequence.current;
+    setLoading(true);setErrorMsg(null);
+    const setters={overview:setOverviewData,users:setUsersData,ai:setAiData,f1:setF1Data};
     try {
-      const tabs = ['overview', 'users', 'ai', 'f1'] as const;
-      const results = await Promise.all(tabs.map(async tab => {
+      await Promise.all((only?[only]:['overview','users','ai','f1'] as AdminTab[]).map(async tab=>{
+        const aiRead=tab==='ai'?++aiReadSequence.current:0;
         try {
-          const response = await fetch(`/api/admin/${tab}`, { cache: 'no-store' });
-          const data = await response.json().catch(() => ({}));
-          return { tab, response, data };
-        } catch { return { tab, response: null, data: { error: '网络连接失败，请重试' } }; }
+          const response=await fetch(`/api/admin/${tab}`,{cache:'no-store'});
+          const data=await response.json().catch(()=>({}));
+          if(generation!==permissionGeneration.current||sequence!==loadSequence.current)return;
+          if(tab==='ai'&&aiRead!==aiReadSequence.current)return;
+          if(response.status===401||response.status===403){clearPrivateData();setAalLevel('aal1');setErrorMsg('管理权限或双重验证已失效，请重新验证身份');return;}
+          if(!response.ok)throw Error(data.error||'后台数据读取失败');
+          setters[tab](data);setUpdatedAt(prev=>({...prev,[tab]:new Date().toISOString()}));
+          setDataErrors(prev=>{const next={...prev};delete next[tab];return next;});
+        }catch(error){if(generation===permissionGeneration.current&&sequence===loadSequence.current&&(tab!=='ai'||aiRead===aiReadSequence.current))setDataErrors(prev=>({...prev,[tab]:error instanceof Error?error.message:'读取失败，请重试'}));}
       }));
-      if (generation !== permissionGeneration.current) return;
-      if (results.some(result => result.response?.status === 401 || result.response?.status === 403)) {
-        clearPrivateData(); setAalLevel('aal1');
-        setErrorMsg('管理权限或双重验证已失效，请重新验证身份');
-        return;
-      }
-      const setters = { overview: setOverviewData, users: setUsersData, ai: setAiData, f1: setF1Data };
-      const errors: Partial<Record<AdminTab, string>> = {};
-      for (const result of results) {
-        setters[result.tab](result.response?.ok ? result.data : null);
-        if (!result.response?.ok) errors[result.tab] = result.data.error || '后台数据读取失败';
-      }
-      setDataErrors(errors);
-    } catch (e: any) {
-      setErrorMsg(e.message || '加载后台数据失败');
-    } finally {
-      setLoading(false);
-    }
-  }, [isAdmin, aalLevel, clearPrivateData]);
+    }finally{if(sequence===loadSequence.current)setLoading(false);}
+  },[isAdmin,aalLevel,clearPrivateData]);
 
   useEffect(() => {
     if (isAdmin && aalLevel === 'aal2') {
@@ -213,22 +211,27 @@ export default function AdminPage() {
   }, [isAdmin, aalLevel, loadData]);
 
   const refreshAIMonitor = useCallback(async () => {
-    if (!isAdmin || aalLevel !== 'aal2') return;
+    if (!isAdmin || aalLevel !== 'aal2' || aiInFlight.current) return;
+    aiInFlight.current=true;
+    const sequence=++aiReadSequence.current;
     const generation = permissionGeneration.current;
     setAiRefreshing(true);
     try {
       const response = await fetch('/api/admin/ai', { cache: 'no-store' });
       const data = await response.json().catch(() => ({}));
       if (generation !== permissionGeneration.current) return;
+      if(sequence!==aiReadSequence.current)return;
       if (response.status === 401 || response.status === 403) {
         clearPrivateData(); setAalLevel('aal1');
         throw new Error('管理权限或双重验证已失效，请重新验证身份');
       }
-      if (!response.ok) { setAiData(null); throw new Error(data.error || 'AI 监控读取失败'); }
+      if (!response.ok) throw new Error(data.error || 'AI 监控读取失败');
       setAiData(data);
       setAiMonitorError(null);
-    } catch (error) { setAiMonitorError(error instanceof Error ? error.message : 'AI 监控读取失败'); }
-    finally { setAiRefreshing(false); }
+      setDataErrors(prev=>{const next={...prev};delete next.ai;return next;});
+      setUpdatedAt(prev=>({...prev,ai:new Date().toISOString()}));
+    } catch (error) { if(generation===permissionGeneration.current&&sequence===aiReadSequence.current)setAiMonitorError(error instanceof Error ? error.message : 'AI 监控读取失败'); }
+    finally { aiInFlight.current=false;setAiRefreshing(false); }
   }, [isAdmin, aalLevel, clearPrivateData]);
   useEffect(() => {
     if (!autoRefreshAI || currentTab !== 'ai' || !isAdmin || aalLevel !== 'aal2') return;
@@ -276,12 +279,13 @@ export default function AdminPage() {
 
   // 4. 手动同步 F1 数据
   const handleTriggerF1Sync = async () => {
+    if(syncInFlight.current)return;
     if (aalLevel !== 'aal2') {
       openTotpModal();
       return;
     }
 
-    setSyncing(true);
+    syncInFlight.current=true;setSyncing(true);
     setSyncResult(null);
 
     try {
@@ -306,7 +310,7 @@ export default function AdminPage() {
     } catch (err: any) {
       setSyncResult({ success: false, message: err.message || '请求失败' });
     } finally {
-      setSyncing(false);
+      syncInFlight.current=false;setSyncing(false);
     }
   };
 
@@ -318,6 +322,47 @@ export default function AdminPage() {
     }, 1000);
     return () => clearInterval(t);
   }, [cooldownSeconds]);
+
+  const selectTab=useCallback((tab:AdminTab,auditUserId?:string)=>{
+    setCurrentTab(tab);setSelectedAuditUserId(auditUserId);
+    const url=new URL(window.location.href);
+    if(url.searchParams.get('tab')!==tab){url.searchParams.set('tab',tab);history.pushState(null,'',url.pathname+url.search);}
+  },[]);
+  useEffect(()=>{
+    const restore=()=>{setCurrentTab(tabFromLocation());setSelectedAuditUserId('');};restore();
+    window.addEventListener('popstate',restore);return()=>window.removeEventListener('popstate',restore);
+  },[]);
+  useEffect(()=>{setUserPage(1);},[userSearch,userVerification]);
+  const filteredUsers=useMemo(()=>((usersData?.users||[]) as any[]).filter(user=>{
+    const matches=`${user.email||''} ${user.displayName||''} ${user.id||''}`.toLocaleLowerCase().includes(userSearch.trim().toLocaleLowerCase());
+    return matches&&(userVerification==='all'||(userVerification==='verified'?user.isVerified:!user.isVerified));
+  }),[usersData,userSearch,userVerification]);
+  const userPages=Math.max(1,Math.ceil(filteredUsers.length/20)),safeUserPage=Math.min(userPage,userPages);
+  const shownUsers=filteredUsers.slice((safeUserPage-1)*20,safeUserPage*20);
+  const activeTab=adminTabs.find(tab=>tab.id===currentTab)!;
+  const hasCurrentData={overview:overviewData,users:usersData,ai:aiData,f1:f1Data}[currentTab];
+  const onNavKey=(event:React.KeyboardEvent<HTMLElement>)=>{
+    const buttons=Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
+    const index=buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const next=event.key==='Home'?0:event.key==='End'?buttons.length-1:['ArrowRight','ArrowDown'].includes(event.key)?(index+1)%buttons.length:['ArrowLeft','ArrowUp'].includes(event.key)?(index+buttons.length-1)%buttons.length:-1;
+    if(next>=0){event.preventDefault();buttons[next].focus();buttons[next].click();}
+  };
+  useEffect(()=>{
+    if(!showTotpModal)return;
+    const previous=document.activeElement as HTMLElement|null,overflow=document.body.style.overflow;
+    document.body.style.overflow='hidden';modalRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
+    const keyboard=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'&&!totpBusy.current){event.preventDefault();setShowTotpModal(false);}
+      if(event.key!=='Tab')return;
+      const items=Array.from(modalRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),a[href]')||[]).filter(item=>item.getClientRects().length);
+      if(!items.length)return;
+      const first=items[0],last=items.at(-1)!;
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+    };
+    document.addEventListener('keydown',keyboard);
+    return()=>{document.body.style.overflow=overflow;document.removeEventListener('keydown',keyboard);if(previous?.isConnected)previous.focus();};
+  },[showTotpModal]);
 
   if (authError) return <div className="page-shell container" role="alert"><p>{authError}</p><button className="btn-primary" onClick={() => window.location.reload()}>重试连接</button></div>;
 
@@ -358,368 +403,45 @@ export default function AdminPage() {
       }}
       className="admin-page-container"
     >
-      {/* 顶部标题栏 */}
-      <header style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        background: 'var(--bg-primary)',
-        backdropFilter: 'none',
-        borderBottom: '1px solid var(--line-dark)',
-        padding: '14px 20px'
-      }}>
-        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontWeight: 900, fontSize: '18px', letterSpacing: '0.08em', color: 'var(--accent-red)' }}>
-              APEX CONTROL
-            </span>
-            <span style={{
-              fontSize: '10px',
-              fontWeight: 700,
-              padding: '2px 8px',
-              borderRadius: 'var(--radius-pill)',
-              background: aalLevel === 'aal2' ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 159, 10, 0.15)',
-              color: aalLevel === 'aal2' ? 'var(--status-good)' : 'var(--status-warning)',
-              border: `1px solid ${aalLevel === 'aal2' ? 'rgba(48, 209, 88, 0.4)' : 'rgba(255, 159, 10, 0.4)'}`
-            }}>
-              {aalLevel === 'aal2' ? '● AAL2 已授权' : '▲ AAL1 (需 TOTP)'}
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {aalLevel !== 'aal2' && (
-              <GlassButton variant="danger" size="sm" onClick={() => openTotpModal()}>
-                TOTP 绑定 / 验证
-              </GlassButton>
-            )}
-            <Link href="/" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              回前台 ↗
-            </Link>
-          </div>
+      <header className="admin-header" inert={showTotpModal}>
+        <Link href="/" className="admin-brand">APEX <span>管理后台</span></Link>
+        <div className="admin-header-actions"><span className="admin-access" data-verified={aalLevel==='aal2'}>{aalLevel==='aal2'?'已通过双重验证':'需要双重验证'}</span>
+          {aalLevel!=='aal2'&&<button className="admin-button primary" onClick={()=>openTotpModal()}>TOTP 绑定 / 验证</button>}
+          <Link href="/">返回网站 ↗</Link>
         </div>
       </header>
-
-      {/* 主体工作区 */}
-      <div className="container admin-workspace" style={{ flex: 1, padding: '24px 20px', maxWidth: '1000px' }}>
-        {/* AAL1 待绑定 / 验证横幅引导 */}
-        {aalLevel !== 'aal2' && (
-          <GlassCard style={{
-            padding: '16px 20px',
-            marginBottom: '24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '16px',
-            border: '1px solid rgba(255, 159, 10, 0.4)',
-            background: 'rgba(255, 159, 10, 0.08)',
-            borderRadius: '16px',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: '240px' }}>
-              <span style={{ fontSize: '24px' }}>🛡️</span>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--status-warning)' }}>
-                  TOTP 双重身份验证 (AAL2) 未就绪
-                </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.5 }}>
-                  您当前处于 AAL1 基础登录状态。为保障 APEX Control 私人管理安全，敏感操作需绑定并验证 6 位动态验证码。
-                </div>
-              </div>
-            </div>
-            <GlassButton variant="primary" size="sm" onClick={() => openTotpModal()} style={{ whiteSpace: 'nowrap' }}>
-              扫码绑定 / 验证
-            </GlassButton>
-          </GlassCard>
-        )}
-
-        {/* PC 标签导航 */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }} className="admin-tabs" aria-label="后台栏目">
-          <button
-            onClick={() => setCurrentTab('overview')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-pill)',
-              border: currentTab === 'overview' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
-              background: currentTab === 'overview' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'overview' ? 'var(--accent-red)' : 'var(--text-secondary)',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            网站概览
-          </button>
-          <button
-            onClick={() => setCurrentTab('users')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-pill)',
-              border: currentTab === 'users' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
-              background: currentTab === 'users' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'users' ? 'var(--accent-red)' : 'var(--text-secondary)',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            用户管理 ({usersData?.total ?? '--'})
-          </button>
-          <button
-            onClick={() => setCurrentTab('ai')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-pill)',
-              border: currentTab === 'ai' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
-              background: currentTab === 'ai' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'ai' ? 'var(--accent-red)' : 'var(--text-secondary)',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            AI 监控与对话审计
-          </button>
-          <button
-            onClick={() => setCurrentTab('f1')}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 'var(--radius-pill)',
-              border: currentTab === 'f1' ? '1px solid #ff453a' : '1px solid var(--line-dark)',
-              background: currentTab === 'f1' ? 'rgba(255, 45, 32, 0.15)' : 'rgba(255,255,255,0.04)',
-              color: currentTab === 'f1' ? 'var(--accent-red)' : 'var(--text-secondary)',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-          >
-            F1 数据调度
-          </button>
+      <div className="admin-layout" inert={showTotpModal}>
+        <aside className="admin-sidebar"><p>工作区</p><nav className="admin-tabs" aria-label="后台栏目" onKeyDown={onNavKey}>
+          {adminTabs.map((tab,index)=><button key={tab.id} onClick={()=>selectTab(tab.id)} aria-pressed={currentTab===tab.id}><span aria-hidden="true">{String(index+1).padStart(2,'0')}</span>{tab.label}</button>)}
+        </nav><div className="admin-account"><small>当前账号</small><span>{adminUser?.email||'管理员'}</span><Link href="/system">系统诊断 ↗</Link></div></aside>
+        <div className="admin-workspace">
+          <div className="admin-page-heading"><div><span className="admin-breadcrumb">管理后台 / {activeTab.short}</span><h1>{activeTab.label}</h1><p>{activeTab.description}</p></div>
+            {aalLevel==='aal2'&&currentTab!=='ai'&&<div className="admin-refresh"><small aria-live="polite">{updatedAt[currentTab]?`最近读取 ${formatBeijingDisplay(updatedAt[currentTab]!)}`:'尚未读取数据'}</small><button className="admin-button" onClick={()=>loadData(currentTab)} disabled={loading}>{loading?'正在读取…':'刷新当前栏目'}</button></div>}
+          </div>
+          {aalLevel!=='aal2'&&<section className="admin-notice" role="status"><strong>TOTP 双重身份验证 (AAL2) 未就绪</strong><p>完成验证后可查看管理数据。此页面不会自动绑定验证器。</p><button className="admin-button" onClick={()=>openTotpModal()}>扫码绑定 / 验证</button></section>}
+          {errorMsg&&<p role="alert" className="admin-notice error">{errorMsg}</p>}
+          {aalLevel==='aal2'&&dataErrors[currentTab]&&currentTab!=='ai'&&<div role="alert" className="admin-notice error"><strong>{dataErrors[currentTab]}</strong>{hasCurrentData&&<p>保留上次成功读取的数据，以下内容可能不是最新状态。</p>}<button className="admin-button" onClick={()=>loadData(currentTab)} disabled={loading}>重试读取</button></div>}
+          {aalLevel==='aal2'&&loading&&!hasCurrentData&&currentTab!=='ai'&&<div className="admin-panel admin-empty" role="status">正在读取{activeTab.short}数据…</div>}
+          {aalLevel==='aal2'&&currentTab==='overview'&&overviewData&&<>
+            <section className="admin-panel"><div className="admin-panel-heading"><h2>服务状态</h2><span className="admin-status" data-state={overviewData.health?.status||'unknown'}>{overviewData.health?.status==='healthy'?'服务全部正常':overviewData.health?.status==='offline'?'赛事数据不可用':overviewData.health?.status==='degraded'?'降级运行中':'状态未报告'}</span></div>
+              <dl className="admin-facts"><div><dt>存储引擎</dt><dd>{overviewData.health?.storageProvider||'未报告'}</dd></div><div><dt>存储连接</dt><dd>{overviewData.health?.storageConnected===true?'本次读取成功':overviewData.health?.storageConnected===false?'本次读取失败':'未报告'}</dd></div><div><dt>F1 数据同步时间</dt><dd>{overviewData.f1?.lastSyncTime?formatBeijingDisplay(overviewData.f1.lastSyncTime):'暂无数据'}</dd></div><div><dt>上游同步</dt><dd>{overviewData.f1?.upstreamSyncSuccess===true?'上游数据对齐正常':overviewData.f1?.upstreamSyncSuccess===false?'最近同步已降级':'上游状态未报告'}</dd></div></dl>
+              {overviewData.f1?.errorMessage&&<p className="admin-notice error" role="alert">数据告警：{overviewData.f1.errorMessage}</p>}
+            </section>
+            <section className="admin-panel"><div className="admin-panel-heading"><h2>当前部署版本</h2><Link href="/system">查看系统诊断 ↗</Link></div><dl className="admin-facts"><div><dt>Git SHA</dt><dd className="admin-mono">{overviewData.deployment?.buildId||'暂无数据'}</dd></div><div><dt>运行环境</dt><dd>{overviewData.deployment?.environment||'未报告'}{overviewData.deployment?.vercelEnv?` / ${overviewData.deployment.vercelEnv}`:''}</dd></div><div><dt>构建时间</dt><dd>{overviewData.deployment?.deployedAt?formatBeijingDisplay(overviewData.deployment.deployedAt):'未报告'}</dd></div></dl></section>
+          </>}
+          {aalLevel==='aal2'&&currentTab==='users'&&usersData&&<section className="admin-panel admin-users">
+            <div className="admin-panel-heading"><h2>注册用户 <span className="admin-count">{usersData.total??'—'}</span></h2><span>当前载入 {usersData.users?.length||0} 位</span></div>
+            <div className="admin-filter-bar"><label>搜索用户<input type="search" aria-label="搜索用户" value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="邮箱、名称或用户 ID"/></label><label>邮箱验证状态<select value={userVerification} onChange={e=>setUserVerification(e.target.value)}><option value="all">全部状态</option><option value="verified">已验证</option><option value="pending">待验证</option></select></label>{(userSearch||userVerification!=='all')&&<button className="admin-button" onClick={()=>{setUserSearch('');setUserVerification('all');}}>清除筛选</button>}</div>
+            <div className="admin-table-scroll" role="region" aria-label="用户列表，可横向滚动" tabIndex={0}><table><caption className="sr-only">注册用户及账号状态</caption><thead><tr>{['用户','角色','邮箱验证','登录来源','注册时间','操作'].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead><tbody>{shownUsers.map(user=><tr key={user.id}><th scope="row"><strong>{user.displayName||user.email}</strong>{user.displayName&&<span>{user.email}</span>}<small className="admin-mono">{user.id}</small></th><td>{user.role||'未报告'}</td><td><span className="admin-status" data-state={user.isVerified?'healthy':'pending'}>{user.isVerified?'已验证':'待激活'}</span></td><td>{user.provider||'未报告'}</td><td className="admin-date">{formatBeijingDisplay(user.createdAt)}</td><td><button className="admin-button" onClick={()=>selectTab('ai',user.id)} aria-label={`查看 ${user.email} 的 AI 对话`}>查看 AI 对话</button></td></tr>)}{!shownUsers.length&&<tr><td colSpan={6} className="admin-empty">{usersData.users?.length?'没有符合筛选条件的用户':'暂无注册用户'}</td></tr>}</tbody></table></div>
+            <div className="admin-pagination"><span>匹配 {filteredUsers.length} 位 · 第 {safeUserPage} / {userPages} 页</span><div><button className="admin-button" disabled={safeUserPage<=1} onClick={()=>setUserPage(safeUserPage-1)}>上一页</button><button className="admin-button" disabled={safeUserPage>=userPages} onClick={()=>setUserPage(safeUserPage+1)}>下一页</button></div></div>
+          </section>}
+          {aalLevel==='aal2'&&currentTab==='ai'&&<AdminAIMonitor data={aiData} loading={aiRefreshing||loading} error={aiMonitorError||dataErrors.ai||null} refresh={refreshAIMonitor} automatic={autoRefreshAI} setAutomatic={setAutoRefreshAI} users={usersData?.users} initialUserId={selectedAuditUserId} onUnauthorized={()=>{clearPrivateData();setAalLevel('aal1');setErrorMsg('管理权限或双重验证已失效，请重新验证身份');}}/>}
+          {aalLevel==='aal2'&&currentTab==='f1'&&f1Data&&<section className="admin-panel"><div className="admin-panel-heading"><div><h2>F1 赛事数据管理与手动调度</h2><p>重新获取赛历和积分数据。不会触发独立比赛提醒。</p></div></div><dl className="admin-facts"><div><dt>当前赛季</dt><dd>{f1Data.season?`${f1Data.season} 赛季`:'未报告'}</dd></div><div><dt>积分榜截止状态</dt><dd>{f1Data.cutoffDesc||'待核实'}{f1Data.cutoffVerified?' · 已核实':''}</dd></div></dl><div className="admin-sync-action"><div><strong>手动同步</strong><p>建议仅在发现数据未更新时执行。同步结果会显示在此处。</p></div><button className="admin-button primary" onClick={handleTriggerF1Sync} disabled={syncing||cooldownSeconds>0}>{syncing?'正在同步中...':cooldownSeconds>0?`冷却中 (${cooldownSeconds}s)`:'立即手动同步'}</button></div>{syncResult&&<p role={syncResult.success?'status':'alert'} className={`admin-notice ${syncResult.success?'':'error'}`}>{syncResult.message}</p>}</section>}
         </div>
-
-        {errorMsg && <p role="alert">{errorMsg}</p>}
-        {aalLevel === 'aal2' && loading && <p role="status">正在读取后台数据…</p>}
-        {aalLevel === 'aal2' && dataErrors[currentTab] && (
-          <GlassCard style={{ padding: '24px', textAlign: 'center', borderRadius: '16px', marginBottom: '20px' }}>
-            <p style={{ color: 'var(--accent-red)', marginBottom: '14px', fontSize: '14px', fontWeight: 600 }}>
-              {dataErrors[currentTab]}
-            </p>
-            <GlassButton variant="primary" size="sm" onClick={() => loadData()}>
-              重试读取
-            </GlassButton>
-          </GlassCard>
-        )}
-        {/* Tab 1: 网站概览 */}
-        {aalLevel === 'aal2' && currentTab === 'overview' && overviewData && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-              <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>系统健康状态</div>
-                <div style={{ fontSize: '20px', fontWeight: 800, color: overviewData?.health?.status === 'healthy' ? 'var(--status-good)' : 'var(--status-warning)' }}>
-                  ● {overviewData?.health?.status === 'healthy' ? '服务全部正常' : overviewData?.health?.status === 'offline' ? '赛事数据不可用' : '降级运行中'}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                  存储引擎：{overviewData?.health?.storageProvider || '未报告'}
-                  <br />存储连接：{overviewData?.health?.storageConnected ? '本次读取成功' : '本次读取失败'}
-                </div>
-              </GlassCard>
-
-              <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>当前部署版本 (Git SHA)</div>
-                <div className="tabular-nums" style={{ fontSize: '18px', fontWeight: 800, fontFamily: 'var(--font-mono)' }}>
-                  {overviewData?.deployment?.buildId || '暂无数据'}
-                </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                  部署环境：{overviewData?.deployment?.environment} ({overviewData?.deployment?.vercelEnv})
-                  <br />构建时间：{overviewData?.deployment?.deployedAt ? formatBeijingDisplay(overviewData.deployment.deployedAt) : '未报告'}
-                </div>
-              </GlassCard>
-
-              <GlassCard style={{ padding: '20px', borderRadius: '16px' }}>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px' }}>F1 数据同步时间</div>
-                <div className="tabular-nums" style={{ fontSize: '16px', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
-                  {overviewData?.f1?.lastSyncTime ? formatBeijingDisplay(overviewData.f1.lastSyncTime) : '暂无数据'}
-                </div>
-                <div style={{ fontSize: '11px', color: overviewData?.f1?.upstreamSyncSuccess === false ? 'var(--accent-red)' : 'var(--status-good)', marginTop: '6px' }}>
-                  {overviewData?.f1?.upstreamSyncSuccess === false ? '最近同步重试已降级' : overviewData?.f1?.upstreamSyncSuccess === true ? '✓ 上游数据对齐正常' : '上游状态未报告'}
-                </div>
-              </GlassCard>
-            </div>
-
-            {overviewData?.f1?.errorMessage && (
-              <div style={{ padding: '12px 16px', background: 'rgba(255, 45, 32, 0.1)', border: '1px solid rgba(255, 45, 32, 0.3)', borderRadius: '12px', color: 'var(--accent-red)', fontSize: '12px' }}>
-                <strong>数据告警：</strong> {overviewData.f1.errorMessage}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 2: 用户管理 */}
-        {aalLevel === 'aal2' && currentTab === 'users' && usersData && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700 }}>
-                真实注册用户 (共 {usersData.total} 位)
-              </div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                私人后台 · 权限固定单人管理
-              </span>
-            </div>
-
-            <GlassCard style={{ padding: '16px', borderRadius: '16px', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--line-dark)', color: 'var(--text-muted)', textAlign: 'left' }}>
-                    <th style={{ padding: '10px 12px' }}>用户邮箱</th>
-                    <th style={{ padding: '10px 12px' }}>角色</th>
-                    <th style={{ padding: '10px 12px' }}>邮箱验证</th>
-                    <th style={{ padding: '10px 12px' }}>登录来源</th>
-                    <th style={{ padding: '10px 12px' }}>注册时间</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'right' }}>操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(usersData?.users || []).map((u: any) => (
-                    <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: 600 }}>{u.displayName ? `${u.displayName} (${u.email})` : u.email}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{u.id}</div>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{
-                          padding: '2px 8px',
-                          borderRadius: 'var(--radius-pill)',
-                          fontSize: '11px',
-                          background: u.role === '专属管理员' ? 'rgba(255, 45, 32, 0.2)' : 'rgba(255,255,255,0.06)',
-                          color: u.role === '专属管理员' ? 'var(--accent-red)' : 'var(--text-secondary)'
-                        }}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ color: u.isVerified ? 'var(--status-good)' : 'var(--status-warning)' }}>
-                          {u.isVerified ? '✓ 已验证' : '○ 待激活'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px', textTransform: 'capitalize' }}>
-                        {u.provider}
-                      </td>
-                      <td className="tabular-nums" style={{ padding: '12px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
-                        {formatBeijingDisplay(u.createdAt)}
-                      </td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedAuditUserId(u.id);
-                            setCurrentTab('ai');
-                          }}
-                          style={{
-                            padding: '4px 10px',
-                            fontSize: '11px',
-                            borderRadius: '8px',
-                            border: '1px solid var(--line-dark)',
-                            background: 'rgba(255, 45, 32, 0.08)',
-                            color: 'var(--accent-red)',
-                            cursor: 'pointer',
-                            fontWeight: 700,
-                            whiteSpace: 'nowrap'
-                          }}
-                          title="查看该用户的完整 AI 对话记录与 IP"
-                        >
-                          查看 AI 对话
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {(!usersData?.users || usersData.users.length === 0) && (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                        暂无注册用户
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </GlassCard>
-          </div>
-        )}
-
-        {/* Tab 3: AI 运行监控与对话审计 */}
-        {aalLevel === 'aal2' && currentTab === 'ai' && (
-          <AdminAIMonitor
-            data={aiData}
-            loading={aiRefreshing || loading}
-            error={aiMonitorError || dataErrors.ai || null}
-            refresh={refreshAIMonitor}
-            automatic={autoRefreshAI}
-            setAutomatic={setAutoRefreshAI}
-            users={usersData?.users}
-            initialUserId={selectedAuditUserId}
-          />
-        )}
-
-        {/* Tab 4: F1 数据调度 */}
-        {aalLevel === 'aal2' && currentTab === 'f1' && f1Data && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <GlassCard style={{ padding: '24px', borderRadius: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px' }}>F1 赛事数据管理与手动调度</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-                    手动强制触发 Jolpica / Ergast 赛历、车手与车队积分榜实时同步
-                  </p>
-                </div>
-
-                <GlassButton
-                  variant="primary"
-                  onClick={handleTriggerF1Sync}
-                  disabled={syncing || cooldownSeconds > 0}
-                  style={{ opacity: syncing || cooldownSeconds > 0 ? 0.6 : 1 }}
-                >
-                  {syncing
-                    ? '正在同步中...'
-                    : cooldownSeconds > 0
-                    ? `冷却中 (${cooldownSeconds}s)`
-                    : '立即手动同步'}
-                </GlassButton>
-              </div>
-
-              {syncResult && (
-                <div style={{
-                  padding: '12px 16px',
-                  borderRadius: '12px',
-                  marginBottom: '16px',
-                  background: syncResult.success ? 'rgba(48, 209, 88, 0.1)' : 'rgba(255, 45, 32, 0.1)',
-                  border: `1px solid ${syncResult.success ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 45, 32, 0.3)'}`,
-                  color: syncResult.success ? 'var(--status-good)' : 'var(--accent-red)',
-                  fontSize: '13px'
-                }}>
-                  {syncResult.message}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line-dark)' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>当前赛季</span>
-                  <span style={{ fontWeight: 600 }}>{f1Data?.season || '2026'} 赛季</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line-dark)' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>积分榜截止状态</span>
-                  <span style={{ fontWeight: 600 }}>{f1Data?.cutoffDesc || '待核实'} {f1Data?.cutoffVerified && '✓'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line-dark)' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>飞书提醒隔离门禁</span>
-                  <span style={{ color: 'var(--status-good)', fontWeight: 600 }}>✓ 已彻底隔离 (绝不触发飞书提醒)</span>
-                </div>
-              </div>
-            </GlassCard>
-          </div>
-        )}
       </div>
-
       {/* TOTP 绑定与双重验证弹窗 (AAL2 提升) */}
       {showTotpModal && (
-        <div style={{
+        <div ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="admin-mfa-title" className="admin-mfa-overlay" style={{
           position: 'fixed',
           inset: 0,
           zIndex: 999,
@@ -740,7 +462,7 @@ export default function AdminPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                <h3 id="admin-mfa-title" style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   {enrollData?.verified ? 'TOTP 双重身份验证 (AAL2)' : '绑定 TOTP 双重验证器'}
                 </h3>
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>
@@ -752,6 +474,7 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setShowTotpModal(false)}
+                aria-label="关闭双重验证" disabled={totpSubmitting}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -998,90 +721,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* 手机端底部导航栏 (PWA iPhone 适配) */}
-      <nav style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: 'rgba(12, 12, 14, 0.98)',
-        backdropFilter: 'none',
-        borderTop: '1px solid var(--line-dark)',
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        padding: '10px 0 calc(10px + env(safe-area-inset-bottom, 12px))',
-        zIndex: 40
-      }} className="mobile-admin-bottom-nav">
-        <button
-          onClick={() => setCurrentTab('overview')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'overview' ? 'var(--accent-red)' : 'var(--text-muted)',
-            fontSize: '11px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>📊</span>
-          概览
-        </button>
-        <button
-          onClick={() => setCurrentTab('users')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'users' ? 'var(--accent-red)' : 'var(--text-muted)',
-            fontSize: '11px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>👥</span>
-          用户
-        </button>
-        <button
-          onClick={() => setCurrentTab('ai')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'ai' ? 'var(--accent-red)' : 'var(--text-muted)',
-            fontSize: '11px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>✦</span>
-          AI 监控
-        </button>
-        <button
-          onClick={() => setCurrentTab('f1')}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: currentTab === 'f1' ? 'var(--accent-red)' : 'var(--text-muted)',
-            fontSize: '11px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          <span style={{ fontSize: '18px' }}>🏎</span>
-          F1 调度
-        </button>
-      </nav>
+      <nav className="mobile-admin-bottom-nav" aria-label="后台移动导航" inert={showTotpModal} onKeyDown={onNavKey}>{adminTabs.map((tab,index)=><button key={tab.id} onClick={()=>selectTab(tab.id)} aria-pressed={currentTab===tab.id}><span aria-hidden="true">{String(index+1).padStart(2,'0')}</span>{tab.short}</button>)}</nav>
     </div>
   );
 }
