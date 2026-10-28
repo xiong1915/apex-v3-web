@@ -294,7 +294,7 @@ export default function ForgotPasswordPage() {
                     required
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="至少 6 位的新密码"
                     style={{
                       width: '100%',
                       padding: '11px 14px',
@@ -319,7 +319,7 @@ export default function ForgotPasswordPage() {
                     required
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="请再次输入新密码"
                     style={{
                       width: '100%',
                       padding: '11px 14px',
