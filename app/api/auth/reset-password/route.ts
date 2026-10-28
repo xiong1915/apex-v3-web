@@ -1,6 +1,6 @@
 // app/api/auth/reset-password/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { isSupabaseConfigured, isMockAuthAllowed } from '@/lib/auth/config';
+import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed } from '@/lib/auth/config';
 import { createSupabaseServerClient } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
 
@@ -19,10 +19,30 @@ export async function POST(req: NextRequest) {
     }
 
     if (isSupabaseConfigured()) {
-      const supabase = await createSupabaseServerClient();
-      const { error } = await supabase.auth.updateUser({ password });
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+      const client = await createSupabaseServerClient();
+      let updateError: any = null;
+
+      // 1. 优先尝试从常规服务端会话 Cookie 更新
+      const { error: sessionError } = await client.auth.updateUser({ password });
+      updateError = sessionError;
+
+      // 2. 若 Cookie 会话未就绪（例如来自 Hash 提取的 access_token），使用请求体中的 token 显式更新
+      if (updateError && token && typeof token === 'string' && token.length > 20) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js');
+          const tokenClient = createClient(AUTH_CONFIG.supabaseUrl, AUTH_CONFIG.supabaseAnonKey, {
+            auth: { persistSession: false },
+            global: { headers: { Authorization: `Bearer ${token}` } }
+          });
+          const { error: directError } = await tokenClient.auth.updateUser({ password });
+          updateError = directError;
+        } catch (e: any) {
+          console.warn('[ResetPassword Error] Direct token update failed:', e?.message);
+        }
+      }
+
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message || '密码重置失败，请重新申请链接' }, { status: 400 });
       }
       return NextResponse.json({ message: '密码重置成功，请重新登录' });
     }

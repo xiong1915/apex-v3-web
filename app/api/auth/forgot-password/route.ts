@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (isSupabaseConfigured()) {
       const supabase = await createSupabaseServerClient();
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/auth/confirm?type=recovery`
+        redirectTo: `${origin}/reset-password`
       });
 
       if (error) {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
               type: 'recovery',
               email,
               options: {
-                redirectTo: `${origin}/auth/confirm?type=recovery`
+                redirectTo: `${origin}/reset-password`
               }
             });
 

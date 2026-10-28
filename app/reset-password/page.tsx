@@ -2,7 +2,7 @@
 'use client';
 import { AuthIntro } from '@/components/auth-intro';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
@@ -11,13 +11,34 @@ import { apiResetPassword } from '@/lib/auth/client';
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token') || undefined;
+  const [token, setToken] = useState<string | undefined>(searchParams.get('token') || undefined);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    const queryToken = searchParams.get('token');
+    if (queryToken) {
+      setToken(queryToken);
+      return;
+    }
+
+    // 智能解析 Supabase 邮件重定向携带的 Hash Fragment (#access_token=...&type=recovery)
+    if (typeof window !== 'undefined' && window.location.hash) {
+      try {
+        const hash = window.location.hash.replace(/^#/, '');
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+          setToken(accessToken);
+          document.cookie = `apex_auth_token=${accessToken}; path=/; max-age=3600; SameSite=Lax`;
+        }
+      } catch (_) {}
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
