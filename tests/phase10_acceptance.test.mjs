@@ -159,9 +159,10 @@ test('Phase 10 专项验收与严谨性核验', async (t) => {
     assert.ok(systemSource.includes('系统可用性与服务检查'), '仅保留健康检查展示');
   });
 
-  await t.test('7. 表单组件可访问名称审查', () => {
-    const simSource = fs.readFileSync('components/title_simulator.tsx', 'utf8');
-    assert.ok(simSource.includes('aria-label={`${leader.name} 冲刺赛完赛名次`}') || simSource.includes('aria-label='), 'select 包含明确 aria-label');
-    assert.ok(simSource.includes('htmlFor="leader-race-select"'), '包含明确关联 label');
+  await t.test('7. 下线积分试算工具并保留活动表单可访问名称', () => {
+    assert.equal(fs.existsSync('components/title_simulator.tsx'), false, '用户要求移除专用试算界面');
+    assert.equal(fs.existsSync('components/lazy_simulator.tsx'), false, '用户要求移除专用试算入口');
+    const aiSource = fs.readFileSync('app/ai/page.tsx', 'utf8');
+    assert.ok(aiSource.includes('aria-label="向 APEX AI 提问"'), '保留 AI 输入框的明确可访问名称');
   });
 });
