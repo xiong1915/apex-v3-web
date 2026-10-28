@@ -22,9 +22,28 @@ export async function POST(req: NextRequest) {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${origin}/auth/confirm?type=recovery`
       });
+
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 400 });
+        console.warn('[ForgotPassword Warning] Supabase error:', error.message, error.status);
+        const msg = error.message || '';
+        if (/rate limit|too many|exceeded/i.test(msg) || error.status === 429) {
+          return NextResponse.json(
+            {
+              error: '邮件发送请求过于频繁（已触发邮件服务限流），请稍候 60 秒后再试。若已收到重置邮件，请先检查收件箱或垃圾箱。',
+              code: 'over_email_send_rate_limit',
+              retryAfterSeconds: 60
+            },
+            {
+              status: 429,
+              headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' }
+            }
+          );
+        }
+
+        // 符合 OWASP 防枚举原则：常规失败返回安全模糊响应
+        return NextResponse.json({ message: '如果该邮箱已注册，重置邮件已发送，请查收您的邮箱' });
       }
+
       return NextResponse.json({ message: '重置邮件已发送，请查收' });
     }
 
@@ -43,6 +62,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: '重置邮件已发送，请查收' });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || '服务异常' }, { status: 500 });
+    return NextResponse.json({ error: '重置密码服务暂不可用，请稍后重试' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }

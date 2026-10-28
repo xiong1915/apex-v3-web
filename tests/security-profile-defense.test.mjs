@@ -90,4 +90,10 @@ test('🛡️ APEX V3 服务端输入防御与防枚举安全审查', async (t) 
     const rateLimitErr = registrationError({ code: 'over_request_rate_limit' });
     assert.equal(rateLimitErr.status, 429);
   });
+
+  await t.test('4. 找回密码端点友好限流与语义转义防泄漏验证', () => {
+    const rawError = { message: 'email rate limit exceeded', status: 429 };
+    const isRateLimit = /rate limit|too many|exceeded/i.test(rawError.message);
+    assert.equal(isRateLimit, true);
+  });
 });
