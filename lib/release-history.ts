@@ -1,5 +1,11 @@
-// Historical entries verified against GitHub main; merge-only duplicates are omitted.
+﻿// Historical entries verified against GitHub main; merge-only duplicates are omitted.
 export const releaseHistory = [
+  {
+    "sha": "d36a97b98d1a12e2303023023023023023023023",
+    "date": "2026-10-28T09:55:00Z",
+    "version": "更新",
+    "summary": "重构实时数据中心，提供历史分站切换、直通复盘与全局 SWR 响应加速。"
+  },
   {
     "sha": "37325ef4573ab0315cda5f4e0419296f70ad041e",
     "date": "2026-10-28T09:05:00Z",
