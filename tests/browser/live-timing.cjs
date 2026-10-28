@@ -33,6 +33,7 @@ fs.mkdirSync(output,{recursive:true});
   });
   await page.goto(base+'/live?season=2026&round=18&legacySession=historic-test',{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'完整实时圈速尚不可公开提供'}).waitFor();
+  const liveSummary=page.locator('summary').filter({hasText:'计时与赛况面板'});assert.equal(await page.getByRole('region',{name:'实时计时表，可横向滚动'}).isVisible(),false,'empty timing panel starts collapsed');await liveSummary.focus();await liveSummary.press('Enter');await page.getByRole('region',{name:'实时计时表，可横向滚动'}).waitFor();await liveSummary.press('Enter');
   assert.equal(await page.getByRole('note').innerText(),'旧回放已升级，请选择分站和节次；历史回放编号不代表当前直播。');
   assert.equal(await page.locator('tbody tr').count(),0,'blocked permission never renders a mistakenly supplied timing snapshot');
   for(const width of [320,375,390,768,1440,1920]){
