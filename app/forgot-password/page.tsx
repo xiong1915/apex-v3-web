@@ -276,7 +276,7 @@ export default function ForgotPasswordPage() {
                   </label>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input
-                      type="text" id="auth-code" name="code" maxLength={6}
+                      type="text" id="auth-code" name="emailVerificationCode" autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*" maxLength={6}
                       required
                       value={code}
                       onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
