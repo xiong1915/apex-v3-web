@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
-import { mockAuthManager } from '../lib/auth/mock';
+import { mockAuthManager, DEFAULT_MOCK_ADMIN_PASS, DEFAULT_MOCK_USER_PASS } from '../lib/auth/mock';
 import { AUTH_CONFIG } from '../lib/auth/config';
 import { GET as getProfileRoute, PATCH as patchProfileRoute } from '../app/api/profile/route';
 import { POST as postAvatarRoute, DELETE as deleteAvatarRoute } from '../app/api/profile/avatar/route';
@@ -45,15 +45,15 @@ test('APEX ID 个人中心 API 鉴权、持久化与多用户数据隔离测试'
   const user1Email = 'driver_alonso@f1.com';
   const user2Email = 'driver_leclerc@f1.com';
 
-  mockAuthManager.register(user1Email, 'Formula1Pass2026!');
+  mockAuthManager.register(user1Email, DEFAULT_MOCK_USER_PASS);
   mockAuthManager.verifyEmail(mockAuthManager.sentEmails.find(e => e.to === user1Email)!.token);
-  const login1 = mockAuthManager.login(user1Email, 'Formula1Pass2026!');
+  const login1 = mockAuthManager.login(user1Email, DEFAULT_MOCK_USER_PASS);
   const tokenUser1 = login1.session!.access_token;
   const user1Id = login1.user.id;
 
-  mockAuthManager.register(user2Email, 'Formula1Pass2026!');
+  mockAuthManager.register(user2Email, DEFAULT_MOCK_USER_PASS);
   mockAuthManager.verifyEmail(mockAuthManager.sentEmails.find(e => e.to === user2Email)!.token);
-  const login2 = mockAuthManager.login(user2Email, 'Formula1Pass2026!');
+  const login2 = mockAuthManager.login(user2Email, DEFAULT_MOCK_USER_PASS);
   const tokenUser2 = login2.session!.access_token;
   const user2Id = login2.user.id;
 

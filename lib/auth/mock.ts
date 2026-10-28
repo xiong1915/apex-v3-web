@@ -18,6 +18,9 @@ interface StoredSession {
   session: Session;
 }
 
+export const DEFAULT_MOCK_ADMIN_PASS = process.env.MOCK_ADMIN_PASSWORD || 'apex-test-admin-secpass';
+export const DEFAULT_MOCK_USER_PASS = process.env.MOCK_TESTER_PASSWORD || 'apex-test-user-secpass';
+
 function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(`apex_salt_${password}`).digest('hex');
 }
@@ -58,7 +61,7 @@ class MockAuthManager {
           app_metadata: { role: 'admin', providers: ['email'], aal: 'aal1' },
           created_at: '2026-01-01T00:00:00.000Z'
         },
-        passwordHash: hashPassword('ApexAdmin2026!'),
+        passwordHash: hashPassword(DEFAULT_MOCK_ADMIN_PASS),
         totpSecret: 'JBSWY3DPEHPK3PXP'
       });
     }
@@ -75,7 +78,7 @@ class MockAuthManager {
         app_metadata: { role: 'authenticated', providers: ['email'], aal: 'aal1' },
         created_at: '2026-01-01T00:00:00.000Z'
       },
-      passwordHash: hashPassword('Formula1Pass2026!')
+      passwordHash: hashPassword(DEFAULT_MOCK_USER_PASS)
     });
   }
 
@@ -91,7 +94,7 @@ class MockAuthManager {
       return { user: null as any, session: null, error: { message: '密码长度至少为 6 位字符', status: 400 } };
     }
     if (this.users.has(normalized)) {
-      return { user: null as any, session: null, error: { message: '该邮箱已被注册', status: 400 } };
+      return { user: null as any, session: null, error: { message: '注册未完成，请检查邮箱或稍后再试', status: 400 } };
     }
 
     const userId = `usr_${crypto.randomBytes(8).toString('hex')}`;

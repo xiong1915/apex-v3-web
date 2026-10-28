@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { mockAuthManager } from '../lib/auth/mock.ts';
+import { mockAuthManager, DEFAULT_MOCK_ADMIN_PASS, DEFAULT_MOCK_USER_PASS } from '../lib/auth/mock.ts';
 import { AUTH_CONFIG } from '../lib/auth/config.ts';
 import { getAdminOverview, getAdminUsers, getAdminAIMetrics, executeAdminF1Sync } from '../lib/admin/service.ts';
 
@@ -35,7 +35,7 @@ test('APEX Control 权限安全与管理后台功能测试', async (t) => {
 
   await t.test('2. 管理员身份隔离验证 (401 / 403 严格门禁)', () => {
     // 普通用户会话
-    const regularUserRes = mockAuthManager.login('tester@apex-f1.com', 'Formula1Pass2026!');
+    const regularUserRes = mockAuthManager.login('tester@apex-f1.com', DEFAULT_MOCK_USER_PASS);
     assert.ok(regularUserRes.session);
     const regSession = regularUserRes.session;
 
@@ -47,7 +47,7 @@ test('APEX Control 权限安全与管理后台功能测试', async (t) => {
     assert.equal(isRegularAdmin, false, '普通用户绝不能被识别为管理员');
 
     // 管理员账号登录
-    const adminUserRes = mockAuthManager.login(AUTH_CONFIG.adminEmail, 'ApexAdmin2026!');
+    const adminUserRes = mockAuthManager.login(AUTH_CONFIG.adminEmail, DEFAULT_MOCK_ADMIN_PASS);
     assert.ok(adminUserRes.session);
     const adminSession = adminUserRes.session;
 
@@ -59,7 +59,7 @@ test('APEX Control 权限安全与管理后台功能测试', async (t) => {
   });
 
   await t.test('3. TOTP MFA 与 AAL2 提权保护', () => {
-    const adminUserRes = mockAuthManager.login(AUTH_CONFIG.adminEmail, 'ApexAdmin2026!');
+    const adminUserRes = mockAuthManager.login(AUTH_CONFIG.adminEmail, DEFAULT_MOCK_ADMIN_PASS);
     const token = adminUserRes.session.access_token;
 
     // 初始会话为 aal1

@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { NextRequest } from 'next/server';
 import { AUTH_CONFIG, isProduction, isValidUuid, isMockAuthAllowed, isSupabaseConfigured } from '../lib/auth/config.ts';
-import { mockAuthManager } from '../lib/auth/mock.ts';
+import { mockAuthManager, DEFAULT_MOCK_ADMIN_PASS, DEFAULT_MOCK_USER_PASS } from '../lib/auth/mock.ts';
 import { verifyAdminAccess, getServerSession } from '../lib/auth/server.ts';
 import { RedisRateLimitStore } from '../lib/storage/redis/index.ts';
 import { POST as loginHandler } from '../app/api/auth/login/route.ts';
@@ -39,7 +39,7 @@ test('APEX V3 紧急认证安全修复全面审查', async (t) => {
       assert.equal(isMockAuthAllowed(), false, '生产环境无论如何禁止 Mock');
 
       // 1.1 Mock 管理单例直接阻断
-      const mockLoginRes = mockAuthManager.login('admin@apex-f1.com', 'ApexAdmin2026!');
+      const mockLoginRes = mockAuthManager.login('admin@apex-f1.com', DEFAULT_MOCK_ADMIN_PASS);
       assert.ok(mockLoginRes.error, '生产环境 Mock 登录必须被阻断');
       assert.equal(mockLoginRes.error.status, 403);
 
@@ -59,7 +59,7 @@ test('APEX V3 紧急认证安全修复全面审查', async (t) => {
       const reqLogin = new NextRequest('https://f1.tike69.cc.cd/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'admin@apex-f1.com', password: 'ApexAdmin2026!' })
+        body: JSON.stringify({ email: 'admin@apex-f1.com', password: DEFAULT_MOCK_ADMIN_PASS })
       });
       const resLogin = await loginHandler(reqLogin);
       assert.equal(resLogin.status, 503, '未配置 Supabase 生产模式必须拒绝登录 (503)');
@@ -245,7 +245,7 @@ test('APEX V3 紧急认证安全修复全面审查', async (t) => {
     const reqLogin = new NextRequest('https://f1.tike69.cc.cd/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'tester@apex-f1.com', password: 'Formula1Pass2026!' })
+      body: JSON.stringify({ email: 'tester@apex-f1.com', password: DEFAULT_MOCK_USER_PASS })
     });
     const resLogin = await loginHandler(reqLogin);
     assert.equal(resLogin.status, 200);

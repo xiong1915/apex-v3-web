@@ -1,0 +1,6 @@
+Contact: mailto:security@tike69.cc.cd
+Expires: 2027-12-31T23:59:59.000Z
+Preferred-Languages: zh, en
+Canonical: https://f1.tike69.cc.cd/.well-known/security.txt
+Policy: https://f1.tike69.cc.cd/security
+Acknowledgments: https://f1.tike69.cc.cd/security#hall-of-fame
