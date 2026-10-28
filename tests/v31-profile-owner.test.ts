@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {NextRequest} from 'next/server';
-import {mockAuthManager} from '../lib/auth/mock';
+import { mockAuthManager, DEFAULT_MOCK_ADMIN_PASS, DEFAULT_MOCK_USER_PASS} from '../lib/auth/mock';
 import {AUTH_CONFIG} from '../lib/auth/config';
 import {PATCH} from '../app/api/profile/route';
 import {POST,DELETE} from '../app/api/profile/avatar/route';
@@ -9,7 +9,7 @@ import {getUserProfile,resetMemoryProfileStore,updateUserProfile,uploadUserAvata
 
 test('stale account A form cannot mutate account B after cookie changes',async()=>{
  mockAuthManager.reset();resetMemoryProfileStore();
- const signIn=(email:string)=>{mockAuthManager.register(email,'Formula1Pass2026!');mockAuthManager.verifyEmail(mockAuthManager.sentEmails.find(row=>row.to===email)!.token);return mockAuthManager.login(email,'Formula1Pass2026!');};
+ const signIn=(email:string)=>{mockAuthManager.register(email,DEFAULT_MOCK_USER_PASS);mockAuthManager.verifyEmail(mockAuthManager.sentEmails.find(row=>row.to===email)!.token);return mockAuthManager.login(email,DEFAULT_MOCK_USER_PASS);};
  const a=signIn('owner-a@example.test'),b=signIn('owner-b@example.test');
  await updateUserProfile(b.user,{display_name:'B 原始资料',favorite_team_ids:['ferrari']});
  // Existing valid PNG fixture, same minimal magic signature used by profile validation.
