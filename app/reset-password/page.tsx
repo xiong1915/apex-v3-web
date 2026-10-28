@@ -160,7 +160,7 @@ function ResetPasswordForm() {
                     required
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="至少 6 位的新密码"
                     style={{
                       width: '100%',
                       padding: '12px 14px',
@@ -184,7 +184,7 @@ function ResetPasswordForm() {
                     required
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="请再次输入新密码"
                     style={{
                       width: '100%',
                       padding: '12px 14px',

@@ -193,7 +193,7 @@ function RegisterForm() {
                     required
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="请设置密码（至少 6 位）"
                     style={{
                       width: '100%',
                       padding: '12px 14px',
@@ -217,7 +217,7 @@ function RegisterForm() {
                     required
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="请再次输入密码"
                     style={{
                       width: '100%',
                       padding: '12px 14px',

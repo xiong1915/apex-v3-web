@@ -38,7 +38,11 @@ function LoginForm() {
     setLoading(false);
 
     if (res.error) {
-      setError(res.error.message);
+      const raw = res.error.message || '';
+      const friendlyMsg = /invalid login credentials/i.test(raw)
+        ? '邮箱或密码错误，请核对后重试'
+        : (/email not confirmed/i.test(raw) ? '注册邮箱尚未完成验证，请先查收验证邮件' : raw);
+      setError(friendlyMsg);
       return;
     }
 
@@ -146,7 +150,7 @@ function LoginForm() {
                 required
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="请输入登录密码"
                 style={{
                   width: '100%',
                   padding: '12px 14px',
