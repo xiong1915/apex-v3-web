@@ -63,15 +63,17 @@ export async function fetchCurrentSession(): Promise<{ user: User | null; sessio
 }
 
 async function readCurrentSession(): Promise<{ user: User | null; session: Session | null; error?: string }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
   try {
-    const res = await fetch('/api/auth/session', { cache: 'no-store' });
+    const res = await fetch('/api/auth/session', { cache: 'no-store', signal: controller.signal });
     if (res.status === 401) return {user:null,session:null};
     if (!res.ok) return {user:null,session:null,error:'身份服务暂不可用，请重试'};
     const data = await res.json();
     return { user: data.user || null, session: data.session || null };
   } catch (_) {
-    return { user: null, session: null, error:'身份服务暂不可用，请重试' };
-  }
+    return { user: null, session: null, error:controller.signal.aborted?'登录验证超时，请重试':'身份服务暂不可用，请重试' };
+  } finally { clearTimeout(timer); }
 }
 
 export async function apiLogin(email: string, password: string): Promise<AuthResponse<{ user: User; session: Session }>> {

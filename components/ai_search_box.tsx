@@ -1,5 +1,5 @@
 // components/ai_search_box.tsx
-// 首页 AI 交互入口：采用 Liquid Glass 输入组件，通过 sessionStorage 传递 prompt 自动跳转 /ai 提交
+// 首页 AI 交互入口：采用 Liquid Glass 输入组件，通过 URL 传递用户主动提交的问题
 
 'use client';
 
@@ -42,10 +42,7 @@ export function AISearchBox({ defaultLight = false }: { defaultLight?: boolean }
     const q = (textToSubmit || query).trim();
     if (!q) return;
 
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('apex_ai_prompt', q);
-    }
-    router.push('/ai');
+    router.push('/ai?q=' + encodeURIComponent(q));
   };
 
   const isLight = defaultLight;
