@@ -35,7 +35,7 @@ fs.mkdirSync(output,{recursive:true});
   await page.getByRole('heading',{name:'完整实时圈速尚不可公开提供'}).waitFor();
   const liveSummary=page.locator('summary').filter({hasText:'计时与赛况面板'});assert.equal(await page.getByRole('region',{name:'实时计时表，可横向滚动'}).isVisible(),false,'empty timing panel starts collapsed');await liveSummary.focus();await liveSummary.press('Enter');await page.getByRole('region',{name:'实时计时表，可横向滚动'}).waitFor();await liveSummary.press('Enter');
   assert.equal(await page.getByRole('note').innerText(),'旧回放已升级，请选择分站和节次；历史回放编号不代表当前直播。');
-  assert.equal(await page.locator('tbody tr').count(),0,'blocked permission never renders a mistakenly supplied timing snapshot');
+  assert.equal(await page.locator('[aria-label="实时计时表，可横向滚动"] tbody tr').count(),0,'blocked permission never renders a mistakenly supplied timing snapshot');
   for(const width of [320,375,390,768,1440,1920]){
    await page.setViewportSize({width,height:width<768?844:1000});
    await page.waitForTimeout(80);
@@ -59,7 +59,7 @@ fs.mkdirSync(output,{recursive:true});
   // No refresh or selection: automatic snapshot polling changes the phase.
   await page.locator('[data-phase="LIVE"]').first().waitFor({timeout:12000});
   await page.getByText(/来源时间距当前约 \d+ 秒/).waitFor();
-  assert.equal(await page.locator('tbody tr').count(),2);
+  assert.equal(await page.locator('[aria-label="实时计时表，可横向滚动"] tbody tr').count(),2);
   const timingTable=page.getByRole('region',{name:'实时计时表，可横向滚动'});
   for(const width of [320,375,390,768,1440,1920]){
    await page.setViewportSize({width,height:width<768?844:1000});
