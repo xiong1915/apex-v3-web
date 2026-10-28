@@ -15,14 +15,14 @@ if(!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))throw Error('Localho
  if(await cards.count()){assert.ok(await cards.first().getAttribute('style').then(style=>style.includes('--team-color')));}
  await p.goto(base+'/standings');const rows=p.locator('.driver-standings tbody tr');
  if(await rows.count()){
-  assert.equal(await p.locator('.podium-ribbon>div').count(),3);
+  assert.equal(await p.locator('.podium-ribbon>div').count(),3);if(await rows.count()>=10){const tenth=await rows.nth(9).boundingBox();assert.ok(tenth&&tenth.y+tenth.height<=1000,'desktop first viewport includes ten rankings');}
   assert.equal(await rows.first().getAttribute('data-podium'),'true');
   assert.notEqual(await rows.first().evaluate(e=>getComputedStyle(e.firstElementChild).borderLeftColor),'rgba(0, 0, 0, 0)');
  }
  for(const width of [320,375,390,768,1440,1920]){await p.setViewportSize({width,height:1000});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));}
  await p.goto(base+'/');await p.locator('.home-loading').waitFor({state:'detached'});
  const number=p.locator('.countdown-number').first();
- if(await number.count()){const before=await number.boundingBox();await p.waitForTimeout(10500);const after=await number.boundingBox();assert.ok(Math.abs(before.width-after.width)<.1&&Math.abs(before.x-after.x)<.1,'countdown maintains fixed geometry');}
+ if(await number.count()){await number.waitFor({state:'visible'});const before=await number.boundingBox();await p.waitForTimeout(10500);await number.waitFor({state:'visible'});const after=await number.boundingBox();assert.ok(Math.abs(before.width-after.width)<.1&&Math.abs(before.x-after.x)<.1,'countdown maintains fixed geometry');}
  await p.emulateMedia({reducedMotion:'reduce'});
  assert.equal(await p.locator('.btn-primary').first().evaluate(e=>getComputedStyle(e).transitionDuration),'0s');
  console.log('PASS visual system: immediate AI skeleton, disabled pending input, login handoff, shared accents when data exists, podium, 6 widths, 10-second countdown stability, reduced motion');

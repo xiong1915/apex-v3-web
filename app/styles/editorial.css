@@ -232,22 +232,22 @@
   border-radius:var(--radius-md)
 }
 .championship-context h2 {
-  font-size:36px;
-  margin-top:16px
+  font-size:32px;
+  margin-top:8px
 }
 .championship-context{display:grid;grid-template-columns:1fr auto;column-gap:24px;align-items:center}.championship-context .eyebrow,.championship-context>p,.championship-context>h2{grid-column:1}.championship-context>.text-link{grid-column:2;grid-row:2/4;align-self:center}
 .championship-context>p {
   font-size:13px;
   line-height:1.9;
   color:var(--text-dark-secondary);
-  margin-top:24px;
+  margin-top:12px;
   max-width:65ch
 }
 .championship-context>.text-link {
   margin-top:24px
 }
 .championship-context .data-note {
-  margin-top:32px
+  margin-top:16px
 }
 .season-preview {
   display:grid;

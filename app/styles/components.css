@@ -552,7 +552,7 @@
   grid-template-columns:32px minmax(0,1fr) 72px;
   gap:16px;
   align-items:center;
-  padding:20px 0;
+  padding:14px 0;
   border-bottom:1px solid var(--line-light)
 }
 .battle-rank {
