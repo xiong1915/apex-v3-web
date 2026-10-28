@@ -14,7 +14,9 @@
     "test": "node ./node_modules/tsx/dist/cli.mjs --test tests/*.test.*",
     "check:copy": "node scripts/check-copy.mjs",
     "check:dates": "node ./node_modules/tsx/dist/cli.mjs --test tests/date-rules.test.mjs",
-    "quality": "npm run check:copy && npm run check:dates && npm run typecheck && npm run test && npm run build"
+    "quality": "npm run lint && npm run check:copy && npm run check:dates && npm run typecheck && npm run test && npm run build",
+    "lint": "eslint components/ui/liquid-glass.tsx lib/glass/refraction.ts components/glass/GlassSurface.tsx components/race-cover.tsx --max-warnings 0",
+    "test:glass": "node tests/browser/liquid-glass.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -31,7 +33,12 @@
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^10.13.0",
+    "eslint-config-next": "^16.4.1",
+    "lighthouse": "^13.6.0",
+    "playwright": "^1.62.1",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
   }
 }
