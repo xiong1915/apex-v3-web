@@ -16,11 +16,14 @@ function LoginForm() {
   const returnUrl = searchParams.get('returnUrl') || searchParams.get('next') || '/';
   const verified = searchParams.get('verified');
   const urlError = searchParams.get('error');
+  const initialError = urlError
+    ? (/invalid login credentials/i.test(urlError) ? '邮箱或密码错误，请核对后重试' : urlError)
+    : null;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(urlError);
+  const [error, setError] = useState<string | null>(initialError);
   const [successMsg, setSuccessMsg] = useState<string | null>(
     verified ? '邮箱验证成功！您现在可以登录账号。' : null
   );

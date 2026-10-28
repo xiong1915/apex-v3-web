@@ -53,3 +53,16 @@ html[data-wallpaper=on] .liquid-glass[data-glass-mode=refracted]{-webkit-backdro
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html[data-wallpaper=on] :is(.liquid-glass,.glass-surface,.race-cover){background:rgba(255,255,255,.96)}}
 @media(prefers-reduced-transparency:reduce){html[data-wallpaper=on] .liquid-glass{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}}
 @media(forced-colors:active){html[data-wallpaper=on] .liquid-glass{background:Canvas;color:CanvasText;-webkit-backdrop-filter:none;backdrop-filter:none}.site-wallpaper{display:none}}
+
+/* Mobile navigation drawer must always remain fully opaque regardless of wallpaper state */
+html[data-wallpaper=on] .mobile-menu {
+  background: #f4f3ef !important;
+  background: rgba(244, 243, 239, 0.98) !important;
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+  z-index: 99999 !important;
+}
+html[data-wallpaper=on] .site-header.menu-open {
+  z-index: 99999 !important;
+  background: #f4f3effa !important;
+}
