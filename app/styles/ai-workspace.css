@@ -24,6 +24,7 @@
 .history-toggle,.history-close { display:none; }
 .history-save-status { flex-shrink:0; padding:8px 24px; text-align:center; font-size:11px; color:var(--text-secondary); overflow-wrap:anywhere; }
 .history-save-status:has(button) { color:#a3231f; background:#e1060008; }
+.ai-response-mode { display:inline-block; margin-right:12px; }
 .history-save-status button { margin-left:12px; border:0; background:transparent; text-decoration:underline; padding:8px; color:inherit; }
 .history-backdrop { position:fixed; inset:var(--nav-height) 0 0; z-index:130; background:#17191d50; }
 .ai-monitor-panel { display:flex; flex-direction:column; gap:24px; }

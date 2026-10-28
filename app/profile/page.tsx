@@ -426,10 +426,10 @@ export default function ProfilePage() {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
-            APEX ID · 极速身份凭证
+            APEX ID · 账号设置
           </div>
-          <h1 className="profile-hero-title">个人控制中心</h1>
-          <p className="profile-hero-subtitle">定制专属赛车头像、昵称身份与心仪制造商阵容。</p>
+          <h1 className="profile-hero-title">个人资料</h1>
+          <p className="profile-hero-subtitle">管理头像、昵称和关注车队。</p>
         </header>
 
         {/* 核心网格布局 */}
@@ -442,7 +442,7 @@ export default function ProfilePage() {
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-                APEX ID 身份卡
+                账号资料
               </h2>
               <span className="mono" style={{ fontSize: '11px', color: '#6C707C' }}>ID #{user?.id?.slice(0, 8)}</span>
             </div>
@@ -608,7 +608,7 @@ export default function ProfilePage() {
                   </svg>
                   已收藏的车队 ({favoriteTeamsList.length})
                 </h2>
-                <span className="data-note" style={{ fontSize: '12px' }}>点击进入车队专属档案</span>
+                <span className="data-note" style={{ fontSize: '12px' }}>查看车队档案</span>
               </div>
 
               {favoriteTeamsList.length > 0 ? (

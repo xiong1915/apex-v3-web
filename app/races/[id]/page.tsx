@@ -48,14 +48,14 @@ export default async function RaceDetailPage({
     <div className="page-shell page-race-detail"><div className="container">
       <Link href={`/races?season=${season}`} className="breadcrumb">← {season} 赛季日历</Link>
       <div className="race-detail-cover"><div><PageHeading category={`第 ${race.round} 站 / 共 ${calendar.length} 站 · ${season} 赛季`} title={race.nameZh||race.name} description={`${circuitMeta?.nameZh||race.circuitName} · ${race.locality} / ${race.country}`}/>
-       <div className="race-detail-tags">{race.isSprintWeekend&&<span className="badge-pill badge-red">冲刺周末</span>}{circuitMeta&&<><span className="badge-pill">{circuitMeta.lengthKm} 公里</span><span className="badge-pill">{circuitMeta.turns} 弯角</span>{circuitMeta.drsZones>0&&<span className="badge-pill">{circuitMeta.drsZones} 个 DRS 区</span>}</>}</div>
+       <div className="race-detail-tags">{race.isSprintWeekend&&<span className="badge-pill badge-red">冲刺周末</span>}{circuitMeta&&<><span className="badge-pill">{circuitMeta.lengthKm} 公里</span><span className="badge-pill">{circuitMeta.turns} 弯角</span>{Number(season)<2026&&circuitMeta.drsZones>0&&<span className="badge-pill">{circuitMeta.drsZones} 个 DRS 区</span>}</>}</div>
        <Link href={`/live?season=${season}&round=${race.round}`} className="btn-primary">进入本分站实时数据 ↗</Link>
-      </div><figure className="race-detail-map"><CircuitTrace circuitId={race.circuitId} season={season} meetingName={race.name}/><figcaption>{circuitMeta?.nameZh||race.circuitName} · {season} 构型</figcaption></figure></div>
+      </div><figure className="race-detail-map"><CircuitTrace circuitId={race.circuitId} season={season} meetingName={race.name}/><figcaption>{circuitMeta?.nameZh||race.circuitName} · {season} 构型</figcaption></figure></div><nav className="section-jumps" aria-label="分站内容">{hasRaceResults&&<a href="#race-results">正赛成绩</a>}{hasSprintResults&&<a href="#sprint-results">冲刺成绩</a>}<a href="#qualifying-results">排位成绩</a>{!isHistorical&&race.sessions?.length>0&&<a href="#weekend-schedule">周末时间表</a>}</nav>
         {/* 正赛官方赛果列表 */}
         {hasRaceResults && (
-          <div style={{ marginBottom: '64px' }}>
+          <div className="race-data-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 800 }}>正赛成绩</h2>
+              <h2 id="race-results">正赛成绩</h2>
               <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>共 {raceResults.length} 位完赛/退赛车手</span>
             </div>
 
@@ -125,9 +125,9 @@ export default async function RaceDetailPage({
 
         {/* 冲刺赛赛果 (若有) */}
         {hasSprintResults && (
-          <div style={{ marginBottom: '64px' }}>
+          <div className="race-data-section">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '24px', fontWeight: 800 }}>冲刺赛成绩</h2>
+              <h2 id="sprint-results">冲刺赛成绩</h2>
               <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>冲刺赛前 8 名计入世界锦标赛积分</span>
             </div>
 
@@ -184,9 +184,9 @@ export default async function RaceDetailPage({
         )}
 
         {/* 排位赛官方成绩 */}
-        <div style={{ marginBottom: '64px' }}>
+        <div className="race-data-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 800 }}>排位赛成绩</h2>
+            <h2 id="qualifying-results">排位赛成绩</h2>
             <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
               {hasQualiResults ? `杆位：${qualiResults[0]?.driverName} (${qualiResults[0]?.q3 || qualiResults[0]?.q2 || qualiResults[0]?.q1 || ''})` : '历史档案记录'}
             </span>
@@ -244,15 +244,15 @@ export default async function RaceDetailPage({
               </div>
             </div>
           ) : (
-            <div className="card-dark" style={{ padding: '36px 28px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px dashed var(--line-dark)' }}>
-              <div style={{ fontSize: '24px', marginBottom: '8px' }}>⏱️</div>
+            <div className="race-empty-note">
+
               <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>
                 {isHistorical ? '该历史分站未收录详细排位圈速数据' : '排位赛数据暂未生成'}
               </div>
               <p style={{ color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '520px', margin: '0 auto', lineHeight: 1.6 }}>
                 {isHistorical
                   ? '早期 F1 赛事（如 1950 年代）官方统计档案仅保存了正赛发车格位 (Starting Grid)，未收录各阶段逐圈时间。系统实事求是展示正赛发车位，严禁虚构圈速。'
-                  : '排位赛尚未开赛或官方节点正处于同步窗口。'}
+                  : '排位成绩尚未收录，请核对赛程与官方信息。'}
               </p>
             </div>
           )}
@@ -260,25 +260,16 @@ export default async function RaceDetailPage({
 
         {/* Sessions Schedule (练习赛与时间表) */}
         {!isHistorical && race.sessions && race.sessions.length > 0 && (
-          <div style={{ marginBottom: '64px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: '24px' }}>各节练习与排位/正赛赛程 (北京时间 UTC+8)</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="race-data-section">
+            <h2 id="weekend-schedule">周末时间表 · 北京时间</h2>
+            <div className="detail-schedule">
               {race.sessions.map((s, idx) => (
                 <div
                   key={s.id || idx}
-                  className="card-dark detail-session"
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '20px 28px',
-                    borderLeft: s.type === 'race' ? '1px solid var(--line-dark)' : '1px solid var(--line-dark)'
-                  }}
+                  className="detail-session"
                 >
                   <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: s.type === 'race' ? 'var(--accent-red)' : 'var(--text-muted)', textTransform: 'uppercase' }}>
-                      {s.nameEn}
-                    </div>
+
                     <div style={{ fontSize: '17px', fontWeight: 700, marginTop: '2px' }}>
                       {s.name}
                     </div>
@@ -289,7 +280,7 @@ export default async function RaceDetailPage({
                       {formatBeijingDisplay(s.startTimeUTC)}
                     </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      时长 {s.durationMinutes} 分钟
+                      预计 {s.durationMinutes} 分钟
                     </div>
                   </div>
                 </div>

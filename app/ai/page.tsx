@@ -410,14 +410,6 @@ export default function AIPage() {
       <div style={{ flexShrink: 0, borderBottom: '1px solid var(--line-dark)', padding: '14px 0', background: 'var(--bg-secondary)', backdropFilter: 'none', zIndex: 10 }}>
         <div className="container" style={{ maxWidth: '880px', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <span className="badge-pill badge-red" style={{ fontSize: '11px', padding: '2px 8px' }}>
-                官方赛历与积分
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                深度赛车策略 · 2026 赛季
-              </span>
-            </div>
             <h1 style={{ fontSize: 'clamp(20px, 3.5vw, 26px)', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
               APEX AI · 赛事助手
             </h1>
@@ -437,8 +429,7 @@ export default function AIPage() {
         </div>
       </div>
 
-      <div role="status" style={{fontSize:'12px',color:'var(--text-muted)',padding:'6px 16px'}}>{responseMode}</div>
-      <div className="history-save-status" role="status">{history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</div>
+      <div className="history-save-status" role="status">{responseMode&&<span className="ai-response-mode">{responseMode}</span>}<span>{history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</span></div>
 
       {/* 消息滚动区 (Scrollable Messages Stream) */}
       <div
@@ -457,7 +448,7 @@ export default function AIPage() {
               <div className="ai-welcome-mark" aria-hidden="true">A</div>
               <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>今天想了解哪场比赛？</h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '480px', margin: '0 auto 20px', lineHeight: 1.6 }}>
-                支持 2026 赛季赛历换算、分站正赛时间、车手与车队积分榜、争冠数学模型以及空气动力学战术推演。
+                查询赛程与积分，或讨论赛车技术和比赛策略。
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
                 {PROMPT_SUGGESTIONS.map((s, idx) => (
