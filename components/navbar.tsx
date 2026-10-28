@@ -108,15 +108,23 @@ export function Navbar() {
   const [identityStatus, setIdentityStatus] = useState<'loading'|'ready'|'error'>('loading');
   const identityRequest = useRef(0);
   const activeUserId = useRef<string|null>(null);
+  const identityResolved = useRef(false);
 
   useEffect(() => {
     let mounted = true;
-    const load = () => {
+    const load = (event?: Event) => {
       const request = ++identityRequest.current;
-      setIdentityStatus('loading');
+      const background = (event as CustomEvent<{reason?:string}> | undefined)?.detail?.reason === 'focus' && identityResolved.current;
+      if (!background) {
+        identityResolved.current = false;
+        activeUserId.current = null;
+        setUser(null); setProfile(null); setUserDropdownOpen(false);
+        setIdentityStatus('loading');
+      }
       fetchAccountProfile().then(({user, profile, error}) => {
         if (!mounted || request !== identityRequest.current) return;
         if (error && !user) { setIdentityStatus('error'); return; }
+        identityResolved.current = true;
         activeUserId.current = user?.id || null;
         setUser(user); setProfile(profile); setIdentityStatus('ready');
       });
@@ -135,7 +143,7 @@ export function Navbar() {
       window.removeEventListener('apex:identity-changed', load);
       window.removeEventListener('apex:profile-updated', onProfileUpdated as EventListener);
     };
-  }, [pathname]);
+  }, []);
 
   const handleLogout = async () => {
     if (loggingOut) return;
