@@ -57,7 +57,7 @@ export const AUTH_CONFIG = {
     return process.env.RESEND_API_KEY || '';
   },
   get smtpFrom(): string {
-    return process.env.SMTP_FROM || 'APEX V3 <noreply@tike69.cc.cd>';
+    return process.env.SMTP_FROM || 'APEX V3 <onboarding@resend.dev>';
   }
 };
 
