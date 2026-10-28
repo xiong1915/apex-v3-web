@@ -13,7 +13,7 @@
   --line-dark:#17191d18;
   --line-light:#17191d20;
   --accent-red:#E10600;
-  --accent-red-hover:#C90500;
+  --accent-red-hover:#A80400;
   --accent-action:#C90500;
   --accent-cyan:#62656D;
   --status-good:#28764E;
@@ -21,6 +21,8 @@
   --font-sans:Arial,'PingFang SC','Microsoft YaHei',sans-serif;
   --font-display:'Bahnschrift','Arial', 'PingFang SC','Microsoft YaHei',sans-serif;
   --font-mono:'SFMono-Regular',Consolas,'Liberation Mono',monospace;
+  --space-half:4px;
+  --space-one-half:12px;
   --space-1:8px;
   --space-2:16px;
   --space-3:24px;
@@ -30,12 +32,17 @@
   --space-8:64px;
   --space-10:80px;
   --radius-sm:12px;
-  --radius-md:20px;
-  --radius-lg:28px;
+  --radius-md:24px;
+  --radius-lg:24px;
   --radius-pill:999px;
   --content-width:1280px;
   --nav-height:72px;
+  --text-h1:clamp(32px,3.8vw,52px);
+  --text-h2:clamp(24px,2.6vw,34px);
+  --text-body:16px;
+  --text-small:12px;
+  --shadow-hover:0 8px 24px #17191d0c;
   --ease:cubic-bezier(.2,.7,.2,1);
   --motion-fast:180ms;
-  --motion-base:280ms;
+  --motion-base:220ms;
 }

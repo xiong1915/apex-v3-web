@@ -244,16 +244,9 @@ export default async function RaceDetailPage({
               </div>
             </div>
           ) : (
-            <div className="race-empty-note">
-
-              <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>
-                {isHistorical ? '该历史分站未收录详细排位圈速数据' : '排位赛数据暂未生成'}
-              </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '520px', margin: '0 auto', lineHeight: 1.6 }}>
-                {isHistorical
-                  ? '早期 F1 赛事（如 1950 年代）官方统计档案仅保存了正赛发车格位 (Starting Grid)，未收录各阶段逐圈时间。系统实事求是展示正赛发车位，严禁虚构圈速。'
-                  : '排位成绩尚未收录，请核对赛程与官方信息。'}
-              </p>
+            <div className="race-empty-note race-preview">
+              <div className="race-preview-map" aria-hidden="true"><CircuitTrace circuitId={race.circuitId} season={season} meetingName={race.name}/></div>
+              <div><span className="eyebrow">{isHistorical?'赛事档案':'节次预告'}</span><h3>{isHistorical?'详细排位成绩尚未收录':'等待排位成绩'}</h3><p>{isHistorical?'当前档案暂未提供详细圈速，不推测缺失成绩。':'成绩以实际发布为准，计划时间不代表赛事已结束。'}</p>{race.sessions.find(s=>s.type==='qualifying')&&<time dateTime={race.sessions.find(s=>s.type==='qualifying')!.startTimeUTC}>北京时间 · {formatBeijingDisplay(race.sessions.find(s=>s.type==='qualifying')!.startTimeUTC)}</time>}<Link className="text-link" href={`/live?season=${season}&round=${race.round}`}>查看节次状态 ↗</Link></div>
             </div>
           )}
         </div>
