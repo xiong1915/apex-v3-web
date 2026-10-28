@@ -108,6 +108,12 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw Error('Local
   const bRecords=await service.list('v31-account-b'); assert.equal(bRecords.length,1);
   const bConversation=await service.read('v31-account-b',bRecords[0].id);
   assert.deepEqual(bConversation.messages.filter(m=>m.role==='user').map(m=>m.content),['账号B独立问题']);
-  console.log('PASS v31 AI: auto prompt once/reload, synchronous duplicate submission, delayed draft save, retry without duplicate user turn, same-account focus and cross-account isolation');
+  const previousRequests=requests;
+  const nextQuestion=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/ai/chat');
+  await page.evaluate(()=>history.pushState(null,'','/ai?q='+encodeURIComponent('同页面的新问题')));
+  await nextQuestion;
+  assert.equal(requests,previousRequests+1,'same-page q handoff sends exactly once');
+  assert.equal(chatRequests.at(-1).messages.at(-1).content,'同页面的新问题');
+  console.log('PASS v31 AI: auto prompt once/reload and same-page handoff, synchronous duplicate submission, delayed draft save, retry without duplicate user turn, same-account focus and cross-account isolation');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
