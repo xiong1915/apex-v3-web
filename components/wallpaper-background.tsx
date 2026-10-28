@@ -3,7 +3,7 @@
 import {useEffect,useRef,useState} from 'react';
 
 const preferenceKey='apex:wallpaper';
-const poster='/wallpapers/nachoneko-poster.jpg';
+const poster='/wallpapers/nachoneko-hd-poster.jpg';
 type Connection=EventTarget & {saveData?:boolean;effectiveType?:string};
 
 // Mounted once in the root layout: route changes never recreate the decoder.
@@ -59,8 +59,8 @@ export function WallpaperBackground(){
  return <>
   {active&&<div className="site-wallpaper" aria-hidden="true" data-playing={playing}>
    {/* Decorative local poster is intentionally independent of video loading. */}
-   <img className="wallpaper-poster" src={poster} alt="" width={1280} height={720} decoding="async"/>
-   {motionAllowed&&!failed&&<video ref={videoRef} className="wallpaper-video" src={compact?'/wallpapers/nachoneko-360.mp4':'/wallpapers/nachoneko-720.mp4'} poster={poster} autoPlay muted loop playsInline preload="metadata" width={1280} height={720} tabIndex={-1} disablePictureInPicture onPlaying={()=>{if(document.hidden){videoRef.current?.pause();return;}setPlaying(true);}} onError={()=>{setPlaying(false);setFailed(true);}}/>}
+   <img className="wallpaper-poster" src={poster} alt="" width={2560} height={1440} decoding="async"/>
+   {motionAllowed&&!failed&&<video ref={videoRef} className="wallpaper-video" src={compact?'/wallpapers/nachoneko-portrait-720.mp4':'/wallpapers/nachoneko-1440.mp4'} poster={poster} autoPlay muted loop playsInline preload="metadata" width={2560} height={1440} tabIndex={-1} disablePictureInPicture onPlaying={()=>{if(document.hidden){videoRef.current?.pause();return;}setPlaying(true);}} onError={()=>{setPlaying(false);setFailed(true);}}/>}
   </div>}
   <button type="button" className="wallpaper-toggle" aria-label="壁纸背景" aria-pressed={active} disabled={!ready} onClick={toggle} title={!active?'开启壁纸背景':motionAllowed&&!failed?'关闭动态壁纸，恢复原背景':'关闭静态壁纸，恢复原背景'}>
    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="4"/><circle cx="8" cy="9" r="1.4"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>
