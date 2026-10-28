@@ -18,7 +18,7 @@ export function RaceCover({ overview, seasonEnded }: { overview: Pick<F1Overview
     <p className="race-cover-subtitle">{meeting.circuitName} · {meeting.locality} {meeting.country && `/ ${meeting.country}`}</p>
     <div className="race-cover-date"><span>{nextSession?.session?.startTimeUTC ? formatBeijingDisplay(nextSession.session.startTimeUTC) : '下一节时间待同步'}</span><small>北京时间 UTC+8</small></div>
     <div className="cover-countdown"><div className="cover-countdown-label"><span>{nextSession?.session?.name || '赛程状态'}</span><span>{nextSession?.status === 'IN_PROGRESS' ? '计划时段剩余时间' : '距离开赛'}</span></div>
-     {hasTime ? <Countdown targetUtcMs={target} serverTimeMs={Date.now()} isInProgress={nextSession?.status === 'IN_PROGRESS'}/> : <p className="data-note">{seasonEnded ? '本赛季赛程已结束' : '开赛时间暂不可用，请稍后重试。'}</p>}
+     {hasTime ? <Countdown targetUtcMs={target} isInProgress={nextSession?.status === 'IN_PROGRESS'}/> : <p className="data-note">{seasonEnded ? '本赛季赛程已结束' : '开赛时间暂不可用，请稍后重试。'}</p>}
     </div>
     <div className="cover-actions"><Link className="btn-primary" href={meeting.round ? `/races/${meeting.round}` : '/races'}>分站详情 <span aria-hidden="true">↗</span></Link><a className="text-link" href="#weekend">周末赛程 ↓</a><Link className="text-link" href="/live">实时数据 ↗</Link></div>
    </div>

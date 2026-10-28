@@ -203,9 +203,11 @@
 .subscription-options :is(a,button,summary):focus-visible{outline:2px solid var(--accent-red);outline-offset:4px;border-radius:4px}
 @media(max-width:600px){.calendar-subscription{padding:20px}.subscription-heading{align-items:flex-start;flex-direction:column;gap:12px}.subscription-actions .btn-secondary{width:100%}}
 .section-jumps{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px}
-.section-jumps a{display:inline-flex;align-items:center;min-height:40px;padding:8px 16px;border:1px solid var(--line-dark);border-radius:999px;font-size:12px;text-decoration:none;color:inherit;background:var(--bg-secondary)}
-.section-jumps a:hover{background:var(--bg-primary)}
-.section-jumps a:focus-visible{outline:2px solid var(--accent-red);outline-offset:3px}
+.section-jumps :is(a,button){display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 16px;border:1px solid var(--line-dark);border-radius:999px;font-size:12px;font-family:inherit;font-weight:600;text-decoration:none;color:var(--text-secondary);background:var(--bg-secondary);cursor:pointer;transition:all .15s ease}
+.section-jumps :is(a,button):hover{background:var(--bg-primary);color:var(--text-primary)}
+.section-jumps :is(a,button)[aria-selected="true"],
+.section-jumps :is(a,button).active{background:var(--accent-red);border-color:var(--accent-red);color:#ffffff;font-weight:700}
+.section-jumps :is(a,button):focus-visible{outline:2px solid var(--accent-red);outline-offset:3px}
 .race-data-section{margin-bottom:36px;scroll-margin-top:100px}
 .race-data-section h2{font-size:22px;font-weight:650;scroll-margin-top:100px;margin-bottom:20px}
 .race-empty-note{padding:20px 24px;background:var(--bg-secondary);border:1px solid var(--line-dark);border-radius:16px}

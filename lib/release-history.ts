@@ -1,5 +1,6 @@
 // Historical entries verified against GitHub main; merge-only duplicates are omitted.
 export const releaseHistory = [
+  {sha:'735e772b12ebf4682cbb6da824128f73b6caad41',date:'2026-10-28T16:50:00Z',version:'更新',summary:'支持密码明暗文切换：上线密码眼睛显示与隐藏按钮，全站认证表单统一接入。'},
   {sha:'a33e7b4aa998a14c064e894e95d63950ce39cc01',date:'2026-10-28T12:11:48Z',version:'更新',summary:'整理实时数据页信息层次和移动端布局，移除历史成绩中来源未提供的遥测、天气与赛会消息。'},
   {
     "sha": "1c04106eb829249a26c8df572861357dd3fc6ced",
