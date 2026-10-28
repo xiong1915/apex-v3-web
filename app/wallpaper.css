@@ -46,3 +46,10 @@ html[data-wallpaper=on] :is(.admin-header,.admin-sidebar,.admin-panel,.conversat
 /* A separate optical layer leaves the tablet menu's fixed positioning intact. */
 @media(max-width:1100px){html[data-wallpaper=on] .site-header{background:transparent}html[data-wallpaper=on] .site-header::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:rgba(244,243,239,.68);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}}
 @media(max-width:767px){html[data-wallpaper=on] .site-footer{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}}
+
+/* Refraction is limited to small visible Chromium surfaces, with one displacement pass. */
+html[data-wallpaper=on] .liquid-glass[data-glass-mode=refracted]{-webkit-backdrop-filter:var(--glass-refraction);backdrop-filter:var(--glass-refraction)}
+/* No URL-filter dependency in Safari/Firefox; their shared frosted material stays visible. */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html[data-wallpaper=on] :is(.liquid-glass,.glass-surface,.race-cover){background:rgba(255,255,255,.96)}}
+@media(prefers-reduced-transparency:reduce){html[data-wallpaper=on] .liquid-glass{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media(forced-colors:active){html[data-wallpaper=on] .liquid-glass{background:Canvas;color:CanvasText;-webkit-backdrop-filter:none;backdrop-filter:none}.site-wallpaper{display:none}}
