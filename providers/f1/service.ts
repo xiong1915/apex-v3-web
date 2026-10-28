@@ -47,6 +47,8 @@ export interface StandingsReconciliationEvidence {
   round?: number;
 }
 
+
+
 export function determineStandingsCutoff(
   driverStandings: DriverStanding[] = [],
   constructorStandings: ConstructorStanding[] = [],
@@ -321,7 +323,7 @@ export class F1Service {
     await this.cache.set(key, {dataCacheVersion: 1, result}, ttl);
     return result;
   }
-  async getCalendarResult(season = '2026', force = false): Promise<DataFetchResult<F1Meeting[]>> {
+    async getCalendarResult(season = '2026', force = false): Promise<DataFetchResult<F1Meeting[]>> {
     return this.loadDomain(season, 'calendar', `f1:v3:calendar:${season}`, 3600, FRESHNESS_THRESHOLDS.calendar,
       () => fetchJolpicaCalendar(season), data => Array.isArray(data) && data.length > 0, force);
   }
@@ -351,7 +353,7 @@ export class F1Service {
     return seasons;
   }
 
-  async getRaceResult(season: string, round: number | string): Promise<DetailedRaceResultItem[]> {
+    async getRaceResult(season: string, round: number | string): Promise<DetailedRaceResultItem[]> {
     const cacheKey = `f1:v3:results:race:${season}:${round}`;
     const cached = await this.cache.get<DetailedRaceResultItem[]>(cacheKey);
     if (cached && Array.isArray(cached) && cached.length > 0) return cached;
@@ -359,11 +361,16 @@ export class F1Service {
       const results = await fetchJolpicaRaceResult(season, round);
       if (results && results.length > 0) {
         await this.cache.set(cacheKey, results, 86400);
+        await this.lkg.save(`results:race:${round}`, results, 'jolpica', season);
+        return results;
       }
-      return results;
-    } catch {
-      return [];
+    } catch {}
+    const fallback = await this.lkg.get<DetailedRaceResultItem[]>(`results:race:${round}`, FRESHNESS_THRESHOLDS.lastResult, season);
+    if (fallback.available && fallback.data && fallback.data.length > 0) {
+      await this.cache.set(cacheKey, fallback.data, 3600);
+      return fallback.data;
     }
+    return [];
   }
 
   async getQualifyingResult(season: string, round: number | string): Promise<DetailedQualifyingResultItem[]> {
@@ -374,11 +381,16 @@ export class F1Service {
       const results = await fetchJolpicaQualifyingResult(season, round);
       if (results && results.length > 0) {
         await this.cache.set(cacheKey, results, 86400);
+        await this.lkg.save(`results:quali:${round}`, results, 'jolpica', season);
+        return results;
       }
-      return results;
-    } catch {
-      return [];
+    } catch {}
+    const fallback = await this.lkg.get<DetailedQualifyingResultItem[]>(`results:quali:${round}`, FRESHNESS_THRESHOLDS.lastResult, season);
+    if (fallback.available && fallback.data && fallback.data.length > 0) {
+      await this.cache.set(cacheKey, fallback.data, 3600);
+      return fallback.data;
     }
+    return [];
   }
 
   async getSprintResult(season: string, round: number | string): Promise<DetailedSprintResultItem[]> {
@@ -389,13 +401,17 @@ export class F1Service {
       const results = await fetchJolpicaSprintResult(season, round);
       if (results && results.length > 0) {
         await this.cache.set(cacheKey, results, 86400);
+        await this.lkg.save(`results:sprint:${round}`, results, 'jolpica', season);
+        return results;
       }
-      return results;
-    } catch {
-      return [];
+    } catch {}
+    const fallback = await this.lkg.get<DetailedSprintResultItem[]>(`results:sprint:${round}`, FRESHNESS_THRESHOLDS.lastResult, season);
+    if (fallback.available && fallback.data && fallback.data.length > 0) {
+      await this.cache.set(cacheKey, fallback.data, 3600);
+      return fallback.data;
     }
+    return [];
   }
-
   async getRaceCover(season = String(new Date().getUTCFullYear())) {
     const result = await this.getCalendarResult(season);
     const calendar = result.data;

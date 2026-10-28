@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const overview = await defaultF1Service.getOverview(season);
     return NextResponse.json(overview, {
       headers: {
-        'Cache-Control': 'no-store'
+        'Cache-Control': 'public, max-age=5, s-maxage=15, stale-while-revalidate=30'
       }
     });
   } catch (err: any) {
