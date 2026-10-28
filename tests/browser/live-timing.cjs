@@ -33,14 +33,14 @@ fs.mkdirSync(output,{recursive:true});
   });
   await page.goto(base+'/live?season=2026&round=18&legacySession=historic-test',{waitUntil:'domcontentloaded'});
   await page.getByRole('heading',{name:'完整实时圈速尚不可公开提供'}).waitFor();
-  const liveSummary=page.locator('summary').filter({hasText:'计时与赛况面板'});assert.equal(await page.getByRole('region',{name:'实时计时表，可横向滚动'}).isVisible(),false,'empty timing panel starts collapsed');await liveSummary.focus();await liveSummary.press('Enter');await page.getByRole('region',{name:'实时计时表，可横向滚动'}).waitFor();await liveSummary.press('Enter');
+  const liveSummary=page.locator('summary').filter({hasText:'计时与赛况'});assert.equal(await page.getByRole('region',{name:'实时计时表，可横向滚动'}).isVisible(),false,'empty timing panel starts collapsed');await liveSummary.focus();await liveSummary.press('Enter');await page.getByRole('region',{name:'实时计时表，可横向滚动'}).waitFor();await liveSummary.press('Enter');
   assert.equal(await page.getByRole('note').innerText(),'旧回放已升级，请选择分站和节次；历史回放编号不代表当前直播。');
   assert.equal(await page.locator('[aria-label="实时计时表，可横向滚动"] tbody tr').count(),0,'blocked permission never renders a mistakenly supplied timing snapshot');
   for(const width of [320,375,390,768,1440,1920]){
    await page.setViewportSize({width,height:width<768?844:1000});
    await page.waitForTimeout(80);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),`no document overflow at ${width}`);
-   await page.screenshot({path:path.join(output,`live-${width}.png`),fullPage:width===1440});
+   await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(output,`live-${width}.png`),fullPage:width===1440});
   }
   await page.setViewportSize({width:1440,height:1000});
   await page.waitForTimeout(1700);
@@ -117,6 +117,19 @@ fs.mkdirSync(output,{recursive:true});
   phase='UPCOMING';const nextLoaded=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/f1/live/snapshot'&&new URL(response.url()).searchParams.get('session')==='race');await page.getByRole('button',{name:'查看下一节倒计时 ↗',exact:true}).click();await nextLoaded;await page.locator('[data-phase="UPCOMING"]').first().waitFor();
   await page.emulateMedia({reducedMotion:'reduce'});
   const transition=await page.getByRole('button',{name:'取消关注 HAM',exact:true}).evaluate(button=>getComputedStyle(button).transitionDuration);assert.equal(transition,'0s');
+  const archive=await page.evaluate(async()=>await(await fetch('/api/f1/live/snapshot')).json());
+  archive.availability.timingPublic=false;archive.snapshot=null;archive.resultStatus='confirmed';
+  archive.results=[{position:1,number:'1',code:'VER',name:'本地归档车手',team:'协议验收车队',laps:51,time:'1:40:00.000',status:'Finished',points:25}];
+  await page.route('**/api/f1/live/snapshot*',route=>route.fulfill({json:archive}));
+  await page.reload();await page.getByRole('heading',{name:'已确认成绩',exact:true}).waitFor();
+  assert.equal(await page.getByRole('region',{name:'已确认成绩，可横向滚动'}).locator('tbody tr').count(),1);
+  assert.equal(await timingTable.locator('tbody tr').count(),0,'historical classification must not fabricate telemetry');
+  assert.equal(await liveSummary.locator('xpath=..').getAttribute('open'),null,'historical telemetry stays collapsed');
+  await liveSummary.click();
+  const weather=page.getByRole('heading',{name:'赛道环境',exact:true}).locator('xpath=..');
+  assert.equal(await weather.locator('dd').allTextContents().then(values=>values.every(value=>value==='暂不可用')),true);
+  assert.equal(await page.locator('[class*="messages"] li').count(),0,'historical results cannot invent race control events');
+  for(const width of [320,390,768,1440,1920]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(output,`live-archive-${width}.png`),fullPage:true,style:'.site-header,.skip-link{visibility:hidden!important}'});}
   assert.deepEqual(errors,[]);
   await context.close();
   console.log(`PASS live timing: permission gate, 6 widths, scheduled WAITING, automatic LIVE, pause/resume, stale/failed/recovery, hidden/foreground, 80 refresh bounded heap delta=${heapAfter-heapBefore}, all session kinds and Q/SQ stages, filtering/favorites, provisional finish, reduced motion; synthetic local fixtures only`);
