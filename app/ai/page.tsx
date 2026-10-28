@@ -436,7 +436,7 @@ function AIWorkspace() {
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
-        background: 'var(--bg-primary)'
+        background: 'var(--wallpaper-page-surface,var(--bg-primary))'
       }}
     >
       {/* 顶部固定标题栏 (Pinned Header，绝不随滚动消失) */}
