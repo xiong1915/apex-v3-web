@@ -5,10 +5,17 @@ import { chatFingerprint } from './chat-context';
 
 async function request(owner: string, path: string, method = 'GET', body?: unknown) {
  if (!owner) throw new Error('请重新验证登录状态');
- const response = await fetch('/api/ai/conversations' + path, { method, cache: 'no-store', headers: { 'x-apex-history-owner': owner, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
- const data = await response.json();
- if (!response.ok) throw new Error(data.error || '云端历史操作失败');
- return data;
+ const controller = new AbortController();
+ const timer = method === 'GET' ? setTimeout(() => controller.abort(), 12000) : null;
+ try {
+  const response = await fetch('/api/ai/conversations' + path, { method, cache: 'no-store', headers: { 'x-apex-history-owner': owner, ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined, ...(timer ? {signal: controller.signal} : {}) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || '云端历史操作失败');
+  return data;
+ } catch (error) {
+  if (controller.signal.aborted) throw new Error('历史对话读取超时，请重试；当前输入已保留');
+  throw error;
+ } finally { if (timer) clearTimeout(timer); }
 }
 export function useConversationHistory(enabled: boolean, messages: ChatTurn[], setMessages: (messages: ChatTurn[]) => void, generating: boolean, generationLock?: { current: boolean }, owner = '') {
  const currentOwner = useRef(owner); currentOwner.current = owner;

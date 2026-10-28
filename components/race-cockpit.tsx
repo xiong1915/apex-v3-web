@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
+import {AILink} from './ai-link';
 import type {F1Meeting,DetailedRaceResultItem,DetailedQualifyingResultItem,DetailedSprintResultItem} from '@/lib/f1/types';
 import {RaceStateService} from '@/lib/f1/race-state';
 import {formatBeijingDisplay} from '@/lib/f1/time';
@@ -37,6 +38,6 @@ export function RaceCockpit({meeting,race,qualifying,sprint}:{meeting:F1Meeting;
     })}</ol>:<p className={styles.muted}>分站场次时间待公布。</p>}
    </div>
   </div>
-  <div className={styles.footer}><details className={styles.note}><summary>赛程与成绩说明</summary><p>倒计时依据赛程，不代表实际开赛；实际开始、结束及成绩以官方公布为准。</p><p>成绩来自已收录数据，可能为缓存快照；未收录成绩不代表比赛尚未结束。</p></details><nav className={styles.links} aria-label="比赛周快捷入口"><Link href={`/races?season=${meeting.season}`}>赛历与订阅 ↗</Link><Link href="/ai">AI 赛事分析 ↗</Link></nav></div>
+  <div className={styles.footer}><details className={styles.note}><summary>赛程与成绩说明</summary><p>倒计时依据赛程，不代表实际开赛；实际开始、结束及成绩以官方公布为准。</p><p>成绩来自已收录数据，可能为缓存快照；未收录成绩不代表比赛尚未结束。</p></details><nav className={styles.links} aria-label="比赛周快捷入口"><Link href={`/races?season=${meeting.season}`}>赛历与订阅 ↗</Link><AILink question={`请分析 ${meeting.season} 赛季第 ${meeting.round} 站 ${meeting.nameZh||meeting.name} 的赛程、赛道特点与比赛看点，并区分已确认事实和预测。`}>AI 赛事分析 ↗</AILink></nav></div>
  </div></section>;
 }
