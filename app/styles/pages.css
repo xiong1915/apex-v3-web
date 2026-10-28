@@ -724,40 +724,49 @@ body:has(.ai-chat-console) {
   overflow:hidden
 }
 .ai-chat-console>div:first-child {
-  border-bottom:0!important;
+  border-bottom:1px solid var(--line-dark)!important;
   background:var(--bg-primary)!important;
-  padding-block:24px!important
+  padding-block:14px 12px!important
 }
 .ai-chat-console h1 {
-  font-size:24px!important;
+  font-size:22px!important;
   font-weight:650!important
 }
 .ai-chat-console .glass-composer {
   background:#fff;
   border:1px solid var(--line-dark);
-  border-radius:24px;
-  box-shadow:0 8px 32px #17191d06
+  border-radius:20px;
+  box-shadow:0 4px 20px #17191d08;
+  padding:8px 12px 8px 16px;
+  transition:border-color var(--motion-fast),box-shadow var(--motion-fast)
+}
+.ai-chat-console .glass-composer.is-focused {
+  border-color:#8b929e;
+  box-shadow:0 6px 24px #17191d0d
 }
 .ai-chat-console textarea {
-  font-size:16px!important;
-  line-height:1.8!important;
-  min-height:56px
+  font-size:15px!important;
+  line-height:1.5!important;
+  min-height:24px!important
 }
 .ai-welcome {
   background:#fff!important;
-  border:0!important;
-  border-radius:28px!important;
-  padding:40px 24px!important
+  border:1px solid var(--line-dark)!important;
+  border-radius:24px!important;
+  padding:32px 24px!important;
+  max-width:680px!important;
+  margin:16px auto!important;
+  box-shadow:0 4px 24px #17191d05!important
 }
 .ai-welcome-mark {
-  width:64px;
-  height:64px;
-  border-radius:22px;
+  width:52px;
+  height:52px;
+  border-radius:18px;
   background:#f0efea;
-  margin:0 auto 24px;
+  margin:0 auto 16px;
   display:grid;
   place-items:center;
-  font-size:32px;
+  font-size:26px;
   font-weight:700;
   color:#7d838a
 }
@@ -769,7 +778,7 @@ body:has(.ai-chat-console) {
 }
 .ai-chat-console .glass-surface p {
   font-size:15px;
-  line-height:1.9
+  line-height:1.7
 }
 .ai-chat-console .glass-button {
   min-height:44px
@@ -917,19 +926,35 @@ body:has(.ai-chat-console) {
     gap:16px
   }
   .ai-chat-console h1 {
-    font-size:20px!important
+    font-size:18px!important
   }
   .ai-chat-console .badge-pill {
     font-size:9px!important
   }
   .ai-chat-console .ai-welcome {
-    padding:32px 20px!important
+    padding:20px 16px!important;
+    border-radius:18px!important;
+    margin:8px auto!important
+  }
+  .ai-welcome-mark {
+    width:42px;
+    height:42px;
+    font-size:20px;
+    margin-bottom:10px
   }
   .ai-chat-console textarea {
-    font-size:16px!important
+    font-size:15px!important;
+    line-height:1.45!important;
+    min-height:22px!important
   }
   .ai-chat-console .glass-composer {
-    padding:12px!important
+    padding:6px 8px 6px 14px!important;
+    border-radius:18px!important
+  }
+  .ai-chat-console .glass-button {
+    min-height:36px!important;
+    padding:6px 14px!important;
+    font-size:13px!important
   }
   .system-layout {
     grid-template-columns:1fr;

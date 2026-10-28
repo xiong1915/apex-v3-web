@@ -83,3 +83,6 @@
  .monitor-events li { grid-template-columns:minmax(0,1fr) 64px 56px; gap:8px; font-size:10px; }
  .monitor-outcome { padding:4px 8px; }
 }
+
+.desktop-hint { display:inline; }
+@media(max-width:767px) { .desktop-hint { display:none; } }

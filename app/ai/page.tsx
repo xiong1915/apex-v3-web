@@ -160,6 +160,15 @@ function AIWorkspace() {
     }
   }, [messages, streamingContent]);
 
+  // 输入框高度随输入内容自适应（支持 1 至多行平滑过渡，最高 160px）
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const nextHeight = Math.min(el.scrollHeight, 160);
+    el.style.height = `${Math.max(nextHeight, 24)}px`;
+  }, [input]);
+
   // 中断当前流式请求
   const handleStop = useCallback(() => {
     if (abortControllerRef.current) {
@@ -454,7 +463,16 @@ function AIWorkspace() {
         </div>
       </div>
 
-      <div className="history-save-status" role="status">{responseMode&&<span className="ai-response-mode">{responseMode}</span>}<span>{history.loading ? '正在读取历史对话，问题可以先编辑…' : history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</span></div>
+      {/* 状态与保存提示条 (Slim Responsive Status Bar) */}
+      <div style={{ flexShrink: 0, padding: '4px 0', borderBottom: '1px solid rgba(0,0,0,0.04)', background: 'var(--bg-primary)' }}>
+        <div className="container" style={{ maxWidth: '880px', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '11px', color: 'var(--text-muted)' }}>
+          <div role="status" style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: isGenerating ? 'var(--accent-red)' : 'var(--status-good, #28764e)' }} />
+            <span className="ai-response-mode">{responseMode}</span>
+          </div>
+          <div className="history-save-status" role="status" style={{ padding: '2px 0' }}>{history.loading ? '正在读取历史对话，问题可以先编辑…' : history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</div>
+        </div>
+      </div>
 
       {/* 消息滚动区 (Scrollable Messages Stream) */}
       <div
@@ -512,7 +530,7 @@ function AIWorkspace() {
                 <div
                   style={{
                     width: '100%',
-                    maxWidth: '88%',
+                    maxWidth: '100%',
                     background: 'rgba(255, 45, 32, 0.05)',
                     border: '1px solid rgba(255, 45, 32, 0.25)',
                     borderRadius: '16px',
@@ -544,16 +562,18 @@ function AIWorkspace() {
               {m.content && (
                 <div
                   style={{
-                    maxWidth: '88%',
-                    padding: '14px 18px',
-                    borderRadius: '20px',
+                    maxWidth: m.role === 'user' ? '82%' : '100%',
+                    width: m.role === 'user' ? 'auto' : '100%',
+                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                    padding: m.role === 'user' ? '12px 18px' : '16px 20px',
+                    borderRadius: m.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
                     background: m.role === 'user' ? 'var(--accent-red)' : 'var(--bg-secondary)',
                     color: m.role === 'user' ? '#ffffff' : 'var(--text-primary)',
                     border: m.role === 'user' ? 'none' : '1px solid var(--line-dark)',
                     lineHeight: 1.65,
                     fontSize: '15px',
                     wordBreak: 'break-word',
-                    boxShadow: 'none'
+                    boxShadow: m.role === 'user' ? 'none' : '0 2px 12px rgba(23, 25, 29, 0.03)'
                   }}
                 >
                   {m.role === 'user' ? (
@@ -565,7 +585,7 @@ function AIWorkspace() {
               )}
 
               {m.sources && m.sources.length > 0 && (
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', maxWidth: '88%', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px', maxWidth: '100%', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
                   <span style={{ fontWeight: 700 }}>数据溯源:</span>
                   {m.sources.map((s, sIdx) => (
                     <span key={sIdx} style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '4px' }}>
@@ -586,7 +606,7 @@ function AIWorkspace() {
                 <div
                   style={{
                     width: '100%',
-                    maxWidth: '88%',
+                    maxWidth: '100%',
                     background: 'rgba(255, 45, 32, 0.05)',
                     border: '1px solid rgba(255, 45, 32, 0.25)',
                     borderRadius: '16px',
@@ -617,14 +637,15 @@ function AIWorkspace() {
 
               <div
                 style={{
-                  maxWidth: '88%',
-                  padding: '14px 18px',
-                  borderRadius: '20px',
+                  width: '100%',
+                  padding: '16px 20px',
+                  borderRadius: '20px 20px 20px 4px',
                   background: 'var(--bg-secondary)',
                   border: '1px solid var(--line-dark)',
                   lineHeight: 1.65,
                   fontSize: '15px',
-                  wordBreak: 'break-word'
+                  wordBreak: 'break-word',
+                  boxShadow: '0 2px 12px rgba(23, 25, 29, 0.03)'
                 }}
               >
                 {streamingContent ? (
@@ -686,10 +707,10 @@ function AIWorkspace() {
       </div>
 
       {/* 底部固定输入框 (Pinned Bottom Composer) */}
-      <div style={{ flexShrink: 0, padding: '12px 0 env(safe-area-inset-bottom, 16px)', background: 'var(--bg-secondary)', borderTop: '1px solid var(--line-dark)', zIndex: 10 }}>
+      <div style={{ flexShrink: 0, padding: '10px 0 max(10px, env(safe-area-inset-bottom, 14px))', background: 'var(--bg-primary)', borderTop: '1px solid var(--line-dark)', zIndex: 10 }}>
         <div className="container" style={{ maxWidth: '880px', width: '100%' }}>
-          <GlassComposer isFocused={isFocused} style={{ padding: '8px 12px 8px 16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <GlassComposer isFocused={isFocused} style={{ padding: '8px 10px 8px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
               <textarea aria-label="向 APEX AI 提问" name="message"
                 ref={textareaRef}
                 rows={1}
@@ -709,7 +730,7 @@ function AIWorkspace() {
                   isComposingRef.current = false;
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="输入 F1 问题（Enter 发送，Shift+Enter 换行）..."
+                placeholder="向 APEX AI 提问 F1 赛程、积分或规则..."
                 disabled={isGenerating || history.saving}
                 style={{
                   flex: 1,
@@ -719,15 +740,17 @@ function AIWorkspace() {
                   fontSize: '15px',
                   color: 'var(--text-primary)',
                   resize: 'none',
-                  maxHeight: '120px',
-                  lineHeight: 1.4,
-                  padding: '6px 0',
+                  minHeight: '24px',
+                  maxHeight: '160px',
+                  lineHeight: 1.5,
+                  padding: '4px 0',
+                  margin: '4px 0',
                   fontFamily: 'inherit'
                 }}
               />
 
               {isGenerating ? (
-                <GlassButton variant="danger" size="md" onClick={handleStop}>
+                <GlassButton variant="danger" size="md" onClick={handleStop} style={{ flexShrink: 0, alignSelf: 'flex-end', minHeight: '38px', padding: '8px 18px' }}>
                   停止
                 </GlassButton>
               ) : (
@@ -736,7 +759,7 @@ function AIWorkspace() {
                   size="md"
                   onClick={() => sendMessage()}
                   disabled={!input.trim() || history.saving || history.loading}
-                  style={{ opacity: !input.trim() ? 0.5 : 1, cursor: !input.trim() ? 'not-allowed' : 'pointer' }}
+                  style={{ flexShrink: 0, alignSelf: 'flex-end', minHeight: '38px', padding: '8px 18px', opacity: !input.trim() ? 0.5 : 1, cursor: !input.trim() ? 'not-allowed' : 'pointer' }}
                 >
                   发送
                 </GlassButton>
@@ -744,7 +767,8 @@ function AIWorkspace() {
             </div>
           </GlassComposer>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', textAlign: 'center', marginTop: '6px' }}>
-            AI 回答可能有误，请以所附官方来源为准
+            <span>AI 回答可能有误，请以所附官方来源为准</span>
+            <span className="desktop-hint"> · Enter 发送，Shift+Enter 换行</span>
           </div>
         </div>
       </div>

@@ -56,7 +56,7 @@ export function AISearchBox({ defaultLight = false }: { defaultLight?: boolean }
           background: isLight ? 'rgba(255, 255, 255, 0.92)' : undefined,
           border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : undefined,
           boxShadow: isLight ? '0 8px 30px rgba(0, 0, 0, 0.08)' : undefined,
-          padding: '8px 8px 8px 24px'
+          padding: '6px 8px 6px 18px'
         }}
       >
         <form
@@ -100,7 +100,9 @@ export function AISearchBox({ defaultLight = false }: { defaultLight?: boolean }
             disabled={!query.trim()}
             style={{
               opacity: !query.trim() ? 0.6 : 1,
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              minHeight: '38px',
+              padding: '6px 16px'
             }}
           >
             <span>询问 AI</span>
