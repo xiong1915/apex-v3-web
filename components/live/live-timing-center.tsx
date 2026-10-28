@@ -17,52 +17,6 @@ const value=(item:unknown)=>item==null||item===''?unavailable:String(item);
 function safeExternal(url:string){try{const parsed=new URL(url);return parsed.protocol==='https:'?parsed.href:null;}catch{return null;}}
 function dataDate(date:string|null){return date&&Number.isFinite(Date.parse(date))?new Intl.DateTimeFormat('zh-CN',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).format(new Date(date)):'尚未收到数据';}
 
-function getTeamColor(team:string):string{
- const t=team.toLowerCase();
- if(t.includes('mercedes')||t.includes('梅赛德斯'))return '#00D2BE';
- if(t.includes('ferrari')||t.includes('法拉利'))return '#E80020';
- if(t.includes('mclaren')||t.includes('迈凯伦'))return '#FF8000';
- if(t.includes('red bull')||t.includes('红牛'))return '#3671C6';
- if(t.includes('aston martin')||t.includes('阿斯顿马丁'))return '#229971';
- if(t.includes('alpine')||t.includes('阿尔派'))return '#0093CC';
- if(t.includes('williams')||t.includes('威廉姆斯'))return '#64C4FF';
- if(t.includes('haas')||t.includes('哈斯'))return '#B6BABD';
- if(t.includes('sauber')||t.includes('索伯')||t.includes('kick'))return '#52E252';
- if(t.includes('racing bulls')||t.includes('rb')||t.includes('小红牛'))return '#6692FF';
- return '#8c929b';
-}
-
-function projectResultsToDrivers(results:LiveResult[],serverTime:string,sessionType?:string):LiveDriver[]{
- const isQuali=sessionType==='qualifying'||sessionType==='sprint_qualifying';
- return results.map((r,i)=>{
-  const bestLap=isQuali?(r.q3||r.q2||r.q1||unavailable):(r.time||unavailable);
-  const isLeader=r.position===1;
-  const isRet=Boolean(r.status&&/ret|dnf|colli|accid|engine|damage|withdr/i.test(r.status));
-  return {
-   number:r.number||String(i+1),
-   code:r.code||(r.name?r.name.slice(0,3).toUpperCase():`#${r.position}`),
-   name:r.name,
-   team:r.team,
-   teamColour:getTeamColor(r.team),
-   position:r.position,
-   lastLap:isQuali?(r.q3||r.q2||r.q1||unavailable):(r.time||r.status||unavailable),
-   bestLap,
-   sectors:['-','-','-'],
-   completedLaps:r.laps??(isLeader?56:null),
-   gapLeader:isLeader?'LEADER':(r.time||r.status||unavailable),
-   gapAhead:isLeader?'-':(r.time||'-'),
-   compound:isQuali?'SOFT':'HARD',
-   tyreAge:isQuali?3:18,
-   pitCount:isRet?0:2,
-   inPit:false,
-   retired:isRet,
-   updatedAt:serverTime,
-   sectorPersonalBest:[false,false,false],
-   sectorOverallBest:[false,false,false]
-  };
- });
-}
-
 const DriverRow=memo(function DriverRow({driver,favorite,toggle}:{driver:LiveDriver;favorite:boolean;signature:string;toggle:(number:string)=>void}){
  const color=driver.teamColour&&/^#?[a-f\d]{6}$/i.test(driver.teamColour)?`#${driver.teamColour.replace('#','')}`:'#8c929b';
  return <tr className={favorite?styles.followed:''}><td className={styles.rank}>{value(driver.position)}</td><th scope="row" className={styles.stickyDriver}><div className={styles.driver}><span style={{background:color}} className={styles.teamLine}/><div><strong>{driver.code||driver.name||`#${driver.number}`}</strong><small>#{driver.number} · {driver.name||unavailable}</small><small>{driver.team||unavailable}</small></div><button aria-label={`${favorite?'取消关注':'关注'} ${driver.code||driver.number}`} aria-pressed={favorite} onClick={()=>toggle(driver.number)} className={styles.star}>{favorite?'★':'☆'}</button></div></th><td>{value(driver.lastLap)}</td><td className={styles.best}>{value(driver.bestLap)}</td>{[0,1,2].map(index=><td key={index} className={driver.sectorOverallBest?.[index]?styles.purple:driver.sectorPersonalBest?.[index]?styles.green:''}>{value(driver.sectors[index])}{driver.sectorOverallBest?.[index]?<small>全场最快</small>:driver.sectorPersonalBest?.[index]?<small>个人最快</small>:null}</td>)}<td>{value(driver.gapLeader)}</td><td>{value(driver.gapAhead)}</td><td>{value(driver.completedLaps)}</td><td>{value(driver.compound)}<small>胎龄 {value(driver.tyreAge)}</small></td><td>{value(driver.pitCount)}<small>{driver.retired===true?'退赛':driver.inPit===true?'维修区':driver.inPit===false?'赛道上':unavailable}</small></td><td className={styles.timeCell}>{driver.updatedAt?formatTime(driver.updatedAt):unavailable}</td></tr>;
@@ -113,7 +67,6 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
  const isCurrentReplay=!rawSnapshot&&hasCurrentResults;
  const isRecapMode=!rawSnapshot&&!hasCurrentResults&&Boolean(data?.recapResults&&data.recapResults.length>0);
  const isReplayMode=isCurrentReplay||isRecapMode;
- const activeResults=hasCurrentResults?(data?.results||[]):(isRecapMode?(data?.recapResults||[]):[]);
  const recapTitle=data?.latestFinishedMeeting?`第 ${data.latestFinishedMeeting.round} 站 ${data.latestFinishedMeeting.nameZh||data.latestFinishedMeeting.name}`:'最近完赛分站';
  const sourceAge=rawSnapshot?.sourceTimestamp&&now!==null?now-Date.parse(rawSnapshot.sourceTimestamp):null;
  const selected=data?.sessions.find(item=>item.session.id===session?.id);
@@ -121,11 +74,7 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
  const connection=rawSnapshot?connectionForDisplay(rawSnapshot.connection,rawSnapshot.sourceTimestamp,now??Date.now(),!!error):isReplayMode?'FINISHED':'UNAVAILABLE';
  const parts=session&&now!==null?countdownParts(session.startTimeUTC,now):null;
 
- const driversList=useMemo(()=>{
-  if(rawSnapshot?.drivers&&rawSnapshot.drivers.length>0)return rawSnapshot.drivers;
-  if(isReplayMode&&activeResults.length>0)return projectResultsToDrivers(activeResults,data?.serverTime||new Date().toISOString(),isRecapMode?'race':session?.type);
-  return [];
- },[rawSnapshot?.drivers,isReplayMode,activeResults,data?.serverTime,isRecapMode,session?.type]);
+ const driversList=rawSnapshot?.drivers||[];
 
  const rows=useMemo(()=>sortLiveDrivers(driversList,order).filter(driver=>(!onlyFavorites||favorites.includes(driver.number))&&(!filter||`${driver.number} ${driver.code} ${driver.name} ${driver.team}`.toLocaleLowerCase().includes(filter.toLocaleLowerCase()))),[driversList,order,filter,onlyFavorites,favorites]);
 
@@ -137,40 +86,37 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
  const nextParts=nextSession&&now!==null?countdownParts(nextSession.startTimeUTC,now):null;
  const nextIsOtherMeeting=!!(data?.nextMeeting&&nextSession&&!data.meeting?.sessions.some(item=>item.id===nextSession.id&&item.startTimeUTC===nextSession.startTimeUTC));
 
- const messages=rawSnapshot?.messages&&rawSnapshot.messages.length>0?rawSnapshot.messages:(isReplayMode?[
-  {id:'chequered-1',text:`方格旗 CHEQUERED FLAG · ${isRecapMode?`${recapTitle} 正赛`: '当前节次'}结束，各车手已完成比赛并进入封闭停机坪，官方成绩已核准。`,date:data?.serverTime||''},
-  {id:'track-clear-1',text:'赛道安全绿旗 · 真实圈速时序已收录，经 FIA / Jolpica 官方核准。',date:data?.serverTime||''}
- ]:[]);
-
- const airTemp=rawSnapshot?.weather?.airTemperature??(isReplayMode?26.5:null);
- const trackTemp=rawSnapshot?.weather?.trackTemperature??(isReplayMode?32.8:null);
- const rainfall=rawSnapshot?.weather?.rainfall??(isReplayMode?false:null);
+ const messages=rawSnapshot?.messages||[];
+ const airTemp=rawSnapshot?.weather?.airTemperature??null;
+ const trackTemp=rawSnapshot?.weather?.trackTemperature??null;
+ const rainfall=rawSnapshot?.weather?.rainfall??null;
 
  return <div className={styles.shell}><div className="container">
-  <header className={styles.heading}><div><span className="eyebrow">APEX · 赛事数据中心</span><h1>APEX <span>LIVE TIMING</span></h1><p>赛程倒计时、实时遥测与官方已核准圈速时序看板。</p></div><Link className="text-link" href="/races">全季赛历与订阅 ↗</Link></header>
+  <header className={styles.heading}><div><span className="eyebrow">APEX · 赛事数据中心</span><h1>APEX <span>LIVE TIMING</span></h1><p>赛程、节次状态与已收录成绩，一处查看。</p></div><Link className="text-link" href="/races">全季赛历与订阅 ↗</Link></header>
   {params.has('legacySession')?<p className={styles.source} role="note">旧回放已升级，请选择分站和节次；历史回放编号不代表当前直播。</p>:null}
   
-  {data?.availableMeetings&&data.availableMeetings.length>0?<div className={styles.roundSelectorBar}><label htmlFor="round-select">切换大奖赛分站：</label><select id="round-select" value={data.meeting?.round||''} onChange={e=>pickMeeting(Number(e.target.value))}>{data.availableMeetings.map(m=><option key={m.round} value={m.round}>第 {m.round} 站 · {m.nameZh||m.name} {m.status==='finished'?'(已完赛)':m.status==='next'?'(即将开赛)':''}</option>)}</select></div>:null}
+  {data?.availableMeetings&&data.availableMeetings.length>0?<div className={styles.roundSelectorBar}><label htmlFor="round-select">大奖赛</label><select id="round-select" value={data.meeting?.round||''} onChange={e=>pickMeeting(Number(e.target.value))}>{data.availableMeetings.map(m=><option key={m.round} value={m.round}>第 {m.round} 站 · {m.nameZh||m.name} {m.status==='finished'?'(已完赛)':m.status==='next'?'(即将开赛)':''}</option>)}</select></div>:null}
 
   {loading&&!data?<div className={styles.loading} role="status">正在读取赛程与可信赛事状态…</div>:null}
   {error?<div className={styles.error} role="alert"><div><strong>{data?'连接中断，正在恢复':'赛事数据暂不可用'}</strong><p>{error}{data?'。已保留最后一份数据，请留意更新时间。':''}</p>{!data&&official?<a href={official} target="_blank" rel="noopener noreferrer">F1 官方实时计时 ↗</a>:null}</div><button type="button" onClick={()=>refreshRef.current()}>重新连接</button></div>:null}
   {data?<>
-  <section className={styles.hero} aria-labelledby="meeting-title"><div className={styles.heroCopy}><div className={styles.heroStatus}><span className={styles.phase} data-phase={phase}>{phase==='LIVE'&&connection!=='LIVE'?'最后已知：比赛进行中':phaseLabels[phase]}</span><span className={styles.season}>{data.season} · {data.meeting?`第 ${data.meeting.round} 站`:'等待赛程'}</span></div><h2 id="meeting-title">{data.meeting?.nameZh||data.meeting?.name||'本赛季赛事'}</h2><p>{data.meeting?.circuitName||'赛道待公布'}{data.meeting?` · ${data.meeting.locality} / ${data.meeting.country}`:''}</p><div className={styles.sessionTitle}><strong>{session?.name||'等待官方节次安排'}</strong>{rawSnapshot?.segment?<span className={styles.segment}>{rawSnapshot.segment}</span>:isReplayMode?<span className={styles.replayBadge}>{isRecapMode?`${recapTitle} 正赛时序`:'官方已完赛时序'}</span>:null}</div><p className={styles.startTime}>{session?formatBeijingDisplay(session.startTimeUTC):'开赛时间待公布'} <span>北京时间 UTC+8</span></p>
+  <section className={styles.hero} aria-labelledby="meeting-title"><div className={styles.heroCopy}><div className={styles.heroStatus}><span className={styles.phase} data-phase={phase}>{phase==='LIVE'&&connection!=='LIVE'?'最后已知：比赛进行中':phaseLabels[phase]}</span><span className={styles.season}>{data.season} · {data.meeting?`第 ${data.meeting.round} 站`:'等待赛程'}</span></div><h2 id="meeting-title">{data.meeting?.nameZh||data.meeting?.name||'本赛季赛事'}</h2><p>{data.meeting?.circuitName||'赛道待公布'}{data.meeting?` · ${data.meeting.locality} / ${data.meeting.country}`:''}</p><div className={styles.sessionTitle}><strong>{session?.name||'等待官方节次安排'}</strong>{rawSnapshot?.segment?<span className={styles.segment}>{rawSnapshot.segment}</span>:isReplayMode?<span className={styles.replayBadge}>{isRecapMode?`${recapTitle} · 已收录成绩`:'已收录成绩'}</span>:null}</div><p className={styles.startTime}>{session?formatBeijingDisplay(session.startTimeUTC):'开赛时间待公布'} <span>北京时间 UTC+8</span></p>
   {(phase==='UPCOMING'||phase==='WAITING'||phase==='DELAYED')&&parts?<div className={styles.countdown} aria-label="距离赛程开赛时间">{parts.map((part,index)=><div key={index}><strong>{String(part).padStart(2,'0')}</strong><span>{['天','小时','分钟','秒'][index]}</span></div>)}</div>:null}
   
-  {(phase==='UPCOMING'||phase==='WAITING')&&!data.results.length&&data.latestFinishedMeeting?<div className={styles.recapBanner} role="region" aria-label="已完赛分站直通推荐"><div className={styles.recapInfo}><span className={styles.recapTag}>围场休整中</span><p>下一场<strong>{data.meeting?.nameZh||data.meeting?.name}</strong>尚未开赛。下方时序看板已自动载入<strong>{recapTitle}</strong>全量 22 位车手圈速排行榜与赛况复盘。新分站正赛绿旗挥动后将自动切换至实时推流。</p></div><button type="button" className={styles.recapBtn} onClick={()=>pickMeeting(data.latestFinishedMeeting!.round)}>切换至第 {data.latestFinishedMeeting.round} 站专属节次面板 ↗</button></div>:null}
+  {(phase==='UPCOMING'||phase==='WAITING')&&!data.results.length&&data.latestFinishedMeeting?<div className={styles.recapBanner} role="region" aria-label="已完赛分站直通推荐"><div className={styles.recapInfo}><span className={styles.recapTag}>围场休整中</span><p>当前尚未开赛，下方可查看<strong>{recapTitle}</strong>的已收录成绩。</p></div><button type="button" className={styles.recapBtn} onClick={()=>pickMeeting(data.latestFinishedMeeting!.round)}>查看该分站 ↗</button></div>:null}
 
   {phase==='WAITING'?<p className={styles.statusNote}>计划时间已到，实际节次状态待确认；不能仅凭赛程判断开赛或完赛。</p>:phase==='SUSPENDED'?<p className={styles.statusNote}>{rawSnapshot?.reason||'节次暂停，当前计时表已保留，等待恢复。'}</p>:phase==='CANCELLED'||phase==='DELAYED'?<p className={styles.statusNote}>{rawSnapshot?.reason||selected?.reason||'请关注赛会时间调整。'}</p>:phase==='FINISHED'?<p className={styles.statusNote}>{classifications[data.resultStatus]} · {rawSnapshot?.reason||'查看本节次已收录的真实成绩。'}</p>:<p className={styles.statusNote}>赛程时间不代表实际开赛；延期、暂停与完赛以可信赛事信息为准。</p>}
   <div className={styles.heroLinks}>{official?<a href={official} target="_blank" rel="noopener noreferrer" className={styles.official}>F1 官方实时计时 ↗</a>:null}{data.meeting?<Link href={`/races/${data.meeting.round}?season=${data.season}`}>分站资料 ↗</Link>:null}</div></div><aside className={styles.weekend}><div className={styles.weekendTitle}><h3>本周末节次</h3><span>{data.meeting?.isSprintWeekend?'冲刺周末':'大奖赛周末'}</span></div><div className={styles.sessionList}>{data.sessions.map(item=><button key={item.session.id} type="button" onClick={()=>pickSession(item.session.id)} aria-pressed={item.session.id===session?.id} className={item.session.id===session?.id?styles.selectedSession:''}><span><strong>{item.session.name}</strong><small>{formatBeijingDisplay(item.session.startTimeUTC)}</small></span><span className={styles.sessionState}>{phaseLabels[phaseForDisplay(item.phase,item.session.startTimeUTC,now??0)]}</span></button>)}</div>{!data.sessions.length?<p>当前没有可显示的节次安排。</p>:null}</aside></section>
   
-  {!data.availability.timingPublic&&!isReplayMode?<section className={styles.permission}><div className={styles.permissionIcon} aria-hidden="true">i</div><div><h2>完整实时圈速尚不可公开提供</h2><p>{data.availability.reason}</p><p>这里提供真实赛程、倒计时与已确认成绩。查看比赛期间完整计时，请使用 F1 官方入口。</p></div></section>:null}
+  {!data.availability.timingPublic?<section className={styles.permission}><div className={styles.permissionIcon} aria-hidden="true">i</div><div><h2>完整实时圈速尚不可公开提供</h2><p>{data.availability.reason}</p><p>这里提供真实赛程、倒计时与已确认成绩。查看比赛期间完整计时，请使用 F1 官方入口。</p></div></section>:null}
   
-  <details className={styles.livePanels} open={Boolean(rawSnapshot)||isReplayMode||rows.length>0}><summary>计时与赛况面板 <span>{rawSnapshot?'实时遥测推流中':isRecapMode?`官方圈速时序看板（${recapTitle} 全量成绩）`:isReplayMode?'官方圈速时序看板（已收录全量成绩）':'暂无可公开展示的快照'}</span></summary><section className={styles.timingSection} aria-labelledby="timing-title"><div className={styles.sectionHead}><div><span className="eyebrow">{isRecapMode?`${recapTitle} · 正赛全量复盘`:session?.type==='practice'?'练习赛 · 最快圈与分段':session?.type==='qualifying'||session?.type==='sprint_qualifying'?'排位赛 · 阶段与有效圈速':'比赛 · 排名与策略'}</span><h2 id="timing-title">{isRecapMode?`官方圈速时序看板 · ${recapTitle}复盘`:isReplayMode?'官方圈速时序看板':'计时排行榜'}</h2></div><span className={styles.connection} role="status" data-connection={connection}>{isRecapMode?`OFFICIAL REPLAY · ${recapTitle}`:isReplayMode?'OFFICIAL REPLAY · 官方核准时序':<>{data.isStale||connection==='DELAYED'||connection==='RECONNECTING'?'STALE · ':''}{connectionLabels[connection]}</>}</span></div>
-  <div className={styles.timingMeta}><span>当前圈数 <strong>{rawSnapshot?`${value(rawSnapshot.currentLap)} / ${value(rawSnapshot.totalLaps)}`:isReplayMode?'56 / 56':unavailable}</strong></span><span>旗语 <strong>{rawSnapshot?value(rawSnapshot.flag):isReplayMode?'CHEQUERED (方格旗已完赛)':unavailable}</strong></span><span>阶段 <strong>{rawSnapshot?value(rawSnapshot.segment):isRecapMode?`${recapTitle} 官方核准成绩`:isReplayMode?'OFFICIAL FINAL (官方核准成绩)':unavailable}</strong></span><span>阶段剩余时间 <strong>{rawSnapshot?.remainingSeconds!=null?`${Math.floor(rawSnapshot.remainingSeconds/60)}:${String(Math.floor(rawSnapshot.remainingSeconds%60)).padStart(2,'0')}`:isReplayMode?'00:00 (已完赛)':unavailable}</strong></span></div>
+  {!rawSnapshot||data.results.length>0?<section className={styles.results}><div className={styles.sectionHead}><div><span className="eyebrow">{isRecapMode?'完赛分站 · 真实成绩归档':'当前节次 · 真实成绩'}</span><h2>{isRecapMode?`${recapTitle} · 正赛成绩`:classifications[data.resultStatus]}</h2></div>{session?<span>{session.name}</span>:null}</div>{data.results.length?<ResultTable results={data.results} type={session?.type||''}/>:isRecapMode&&data.recapResults?.length?<ResultTable results={data.recapResults} type="race"/>:<p className={styles.empty}>本节次成绩尚未收录。排期已过不等于赛事已经结束，暂无数据不等于没有成绩。</p>}<div className={styles.resultSources}>{data.resultSourceUrls.map(url=>{const safe=safeExternal(url);return safe?<a key={url} href={safe} target="_blank" rel="noopener noreferrer">核对成绩来源 ↗</a>:null;})}</div></section>:null}
+  <details className={styles.livePanels} open={Boolean(rawSnapshot)}><summary>计时与赛况 <span>{rawSnapshot?connectionLabels[connection]:'完整实时计时尚不可用 · 查看详情'}</span></summary><section className={styles.timingSection} aria-labelledby="timing-title"><div className={styles.sectionHead}><div><span className="eyebrow">{session?.type==='practice'?'练习赛 · 最快圈与分段':session?.type==='qualifying'||session?.type==='sprint_qualifying'?'排位赛 · 阶段与有效圈速':'比赛 · 排名与策略'}</span><h2 id="timing-title">计时排行榜</h2></div><span className={styles.connection} role="status" data-connection={connection}>{data.isStale||connection==='DELAYED'||connection==='RECONNECTING'?'STALE · ':''}{rawSnapshot?connectionLabels[connection]:'实时来源不可用'}</span></div>
+  <div className={styles.timingMeta}><span>当前圈数 <strong>{rawSnapshot?`${value(rawSnapshot.currentLap)} / ${value(rawSnapshot.totalLaps)}`:unavailable}</strong></span><span>旗语 <strong>{rawSnapshot?value(rawSnapshot.flag):unavailable}</strong></span><span>阶段 <strong>{rawSnapshot?value(rawSnapshot.segment):unavailable}</strong></span><span>阶段剩余时间 <strong>{rawSnapshot?.remainingSeconds!=null?`${Math.floor(rawSnapshot.remainingSeconds/60)}:${String(Math.floor(rawSnapshot.remainingSeconds%60)).padStart(2,'0')}`:unavailable}</strong></span></div>
   <div className={styles.toolbar}><label>筛选车手或车队<input value={filter} onChange={event=>setFilter(event.target.value)} placeholder="姓名、缩写、车号或车队" maxLength={80}/></label><label>查看顺序<select value={order} onChange={event=>setOrder(event.target.value)}><option value="position">排名</option><option value="best">最快单圈</option></select></label><label className={styles.checkbox}><input type="checkbox" checked={onlyFavorites} onChange={event=>setOnlyFavorites(event.target.checked)}/>只看关注车手</label></div>
-  <div className={styles.tableScroll} tabIndex={0} role="region" aria-label="实时计时表，可横向滚动"><table className={styles.timingTable}><caption className="sr-only">当前节次实时计时，未提供的数据明确标为暂不可用</caption><thead><tr>{['名次','车手 / 车队','最新圈速','最快圈','S1','S2','S3','领先差距','前车差距','圈数','轮胎 / 胎龄','进站 / 状态','数据时间'].map(column=><th key={column} scope="col">{column}</th>)}</tr></thead><tbody>{rows.map(driver=><DriverRow key={driver.number} driver={driver} signature={JSON.stringify(driver)} favorite={favorites.includes(driver.number)} toggle={toggle}/>)}</tbody></table>{!rows.length?<div className={styles.noTiming}>{driversList.length?'没有符合筛选条件的车手':'当前节次尚未开赛，缺少数据时不模拟圈速、排名或比赛事件。'}<small>缺少数据时不模拟圈速、排名或比赛事件。</small></div>:null}</div><p className={styles.source}>来源：{rawSnapshot?.source||(isReplayMode?`FIA / Jolpica 官方核准成绩 (${isRecapMode?recapTitle:'本站成绩'})`:data.availability.source)} · 最后有效数据：{dataDate(rawSnapshot?.sourceTimestamp||(isReplayMode?data.serverTime:null))}{sourceAge!==null&&Number.isFinite(sourceAge)?sourceAge < -5000?' · 来源时钟异常':` · 来源时间距当前约 ${Math.max(0,Math.round(sourceAge/1000))} 秒`:''}{error?' · 连接恢复前请勿将此表视为实时':''}</p></section>
-  <div className={styles.lowerGrid}><section className={styles.panel}><div className={styles.sectionHead}><h2>赛会消息与旗语</h2><span>{rawSnapshot?value(rawSnapshot.flag):isReplayMode?'CHEQUERED (方格旗)':unavailable}</span></div>{messages.length?<ol className={styles.messages}>{messages.slice(-40).reverse().map(message=><li key={message.id}><time dateTime={message.date}>{formatTime(message.date)}</time><p>{message.text}</p></li>)}</ol>:<p className={styles.empty}>赛会消息暂不可用。未收到消息不代表赛道处于绿旗状态。</p>}</section><section className={styles.panel}><h2>赛道环境</h2><dl className={styles.weather}><div><dt>气温</dt><dd>{airTemp==null?unavailable:`${airTemp} °C`}</dd></div><div><dt>赛道温度</dt><dd>{trackTemp==null?unavailable:`${trackTemp} °C`}</dd></div><div><dt>降雨</dt><dd>{rainfall===true?'有降雨':rainfall===false?'未报告降雨':unavailable}</dd></div></dl><p className={styles.source}>仅显示来源提供的天气，不推测赛道湿度或抓地力。</p></section></div>
-  </details><section className={styles.results}><div className={styles.sectionHead}><div><span className="eyebrow">{isRecapMode?'完赛分站 · 真实成绩归档':'当前节次 · 真实成绩'}</span><h2>{isRecapMode?`${recapTitle} 正赛核准成绩`:classifications[data.resultStatus]}</h2></div>{session?<span>{session.name}</span>:null}</div>{data.results.length?<ResultTable results={data.results} type={session?.type||''}/>:isRecapMode&&data.recapResults?.length?<ResultTable results={data.recapResults} type="race"/>:<p className={styles.empty}>本节次成绩尚未收录。排期已过不等于赛事已经结束，暂无数据不等于没有成绩。</p>}<div className={styles.resultSources}>{data.resultSourceUrls.map(url=>{const safe=safeExternal(url);return safe?<a key={url} href={safe} target="_blank" rel="noopener noreferrer">核对成绩来源 ↗</a>:null;})}</div></section>
+  <div className={styles.tableScroll} tabIndex={0} role="region" aria-label="实时计时表，可横向滚动"><table className={styles.timingTable}><caption className="sr-only">当前节次实时计时，未提供的数据明确标为暂不可用</caption><thead><tr>{['名次','车手 / 车队','最新圈速','最快圈','S1','S2','S3','领先差距','前车差距','圈数','轮胎 / 胎龄','进站 / 状态','数据时间'].map(column=><th key={column} scope="col">{column}</th>)}</tr></thead><tbody>{rows.map(driver=><DriverRow key={driver.number} driver={driver} signature={JSON.stringify(driver)} favorite={favorites.includes(driver.number)} toggle={toggle}/>)}</tbody></table>{!rows.length?<div className={styles.noTiming}>{driversList.length?'没有符合筛选条件的车手':'暂无可公开展示的实时计时'}<small>有数据后自动更新，无需刷新。</small></div>:null}</div><p className={styles.source}>来源：{rawSnapshot?.source||data.availability.source} · 最后有效数据：{dataDate(rawSnapshot?.sourceTimestamp||null)}{sourceAge!==null&&Number.isFinite(sourceAge)?sourceAge < -5000?' · 来源时钟异常':` · 来源时间距当前约 ${Math.max(0,Math.round(sourceAge/1000))} 秒`:''}{error?' · 连接恢复前请勿将此表视为实时':''}</p></section>
+  <div className={styles.lowerGrid}><section className={styles.panel}><div className={styles.sectionHead}><h2>赛会消息与旗语</h2><span>{rawSnapshot?value(rawSnapshot.flag):unavailable}</span></div>{messages.length?<ol className={styles.messages}>{messages.slice(-40).reverse().map(message=><li key={message.id}><time dateTime={message.date}>{formatTime(message.date)}</time><p>{message.text}</p></li>)}</ol>:<p className={styles.empty}>赛会消息暂不可用。未收到消息不代表赛道处于绿旗状态。</p>}</section><section className={styles.panel}><h2>赛道环境</h2><dl className={styles.weather}><div><dt>气温</dt><dd>{airTemp==null?unavailable:`${airTemp} °C`}</dd></div><div><dt>赛道温度</dt><dd>{trackTemp==null?unavailable:`${trackTemp} °C`}</dd></div><div><dt>降雨</dt><dd>{rainfall===true?'有降雨':rainfall===false?'未报告降雨':unavailable}</dd></div></dl><p className={styles.source}>仅显示来源提供的天气，不推测赛道湿度或抓地力。</p></section></div>
+  </details>
   {nextSession&&(nextIsOtherMeeting||nextSession.id!==session?.id)?<section className={styles.next}><div><span className="eyebrow">下一节比赛</span><h2>{nextSession.name}</h2><p>{formatBeijingDisplay(nextSession.startTimeUTC)} · 北京时间</p>{nextParts?<p>{nextParts[0]} 天 {nextParts[1]} 小时 {nextParts[2]} 分 {nextParts[3]} 秒</p>:null}</div><button type="button" onClick={()=>pickSession(nextSession.id,nextIsOtherMeeting)}>查看下一节倒计时 ↗</button></section>:null}
   <footer className={styles.provenance}><p>赛程来源：{data.calendarSource} · 数据更新时间：{dataDate(data.calendarUpdatedAt)}{data.isStale?' · 当前为较旧快照，请核对官方赛程':''}</p><p>所有时间均为北京时间。页面自动检查状态；连接异常时保留最后可信数据，不把历史记录或演示标为直播。</p><details><summary>数据频道与可用范围</summary><ul>{data.availability.channels.map(channel=><li key={channel.name}><strong>{channel.name}</strong><span>{channel.status} · {channel.note}</span></li>)}</ul></details></footer>
   </>:!loading&&!error?<section className={styles.empty}><h2>暂时无法读取赛事</h2><p>请稍后重试，或前往官方实时计时。</p>{official?<a className="text-link" href={official} target="_blank" rel="noopener noreferrer">F1 官方实时计时 ↗</a>:null}</section>:null}
