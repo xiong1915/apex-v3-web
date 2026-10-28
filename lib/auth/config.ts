@@ -66,10 +66,10 @@ export const AUTH_CONFIG = {
     return parseInt(process.env.SMTP_PORT || '465', 10);
   },
   get smtpUser(): string {
-    return process.env.SMTP_USER || '';
+    return process.env.SMTP_USER || 'tikef1@qq.com';
   },
   get smtpPass(): string {
-    return process.env.SMTP_PASS || '';
+    return process.env.SMTP_PASS || 'eehoyictyisohdch';
   },
   get smtpSecure(): boolean {
     return process.env.SMTP_SECURE !== 'false';

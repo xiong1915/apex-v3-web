@@ -218,7 +218,7 @@ export function Navbar() {
   const displayName = profile?.display_name || user?.user_metadata?.name || user?.email?.split('@')[0] || '我的账户';
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || null;
 
-  return <header className="site-header">
+  return <header className={`site-header ${menuOpen ? 'menu-open' : ''}`}>
    <div className="container nav-inner">
     <Link href="/" className="nav-brand" aria-label="APEX 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19L11 4h6l4 15h-5l-1-4H9l-2 4zM11 11h3l-1-4z" fill="currentColor"/></svg><span>APEX</span></Link>
     <nav className="nav-links desktop-nav" aria-label="主导航" style={{'--nav-index':Math.max(0,currentIndex),'--nav-active':currentIndex<0?0:1} as React.CSSProperties}>
