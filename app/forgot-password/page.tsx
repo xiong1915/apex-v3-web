@@ -2,7 +2,7 @@
 'use client';
 import { AuthIntro } from '@/components/auth-intro';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { GlassCard, GlassButton } from '@/components/glass';
 import { apiForgotPassword } from '@/lib/auth/client';
@@ -11,12 +11,21 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const timer = setInterval(() => {
+      setCountdown(prev => (prev > 1 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [countdown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
-      setError('请输入邮箱');
+    if (!email || countdown > 0) {
+      if (!email) setError('请输入注册邮箱');
       return;
     }
 
@@ -28,6 +37,9 @@ export default function ForgotPasswordPage() {
 
     if (res.error) {
       setError(res.error.message);
+      if (res.error.retryAfterSeconds) {
+        setCountdown(res.error.retryAfterSeconds);
+      }
       return;
     }
 
@@ -89,7 +101,8 @@ export default function ForgotPasswordPage() {
                   padding: '10px 14px',
                   color: 'var(--accent-red)',
                   fontSize: '13px',
-                  marginBottom: '18px'
+                  marginBottom: '18px',
+                  lineHeight: 1.5
                 }}>
                   {error}
                 </div>
@@ -123,10 +136,10 @@ export default function ForgotPasswordPage() {
                 <GlassButton
                   type="submit"
                   variant="primary"
-                  disabled={loading}
+                  disabled={loading || countdown > 0}
                   style={{ width: '100%', marginTop: '8px', padding: '12px 0', fontSize: '14px', fontWeight: 700 }}
                 >
-                  {loading ? '正在发送...' : '发送重置邮件'}
+                  {loading ? '正在发送...' : countdown > 0 ? `${countdown} 秒后可重发` : '发送重置邮件'}
                 </GlassButton>
               </form>
 
