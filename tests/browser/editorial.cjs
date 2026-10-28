@@ -8,7 +8,7 @@ if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(base)) throw new Error('L
 const out = process.env.QA_ARTIFACT_DIR || path.join(require('node:os').tmpdir(), 'apex-editorial');
 fs.mkdirSync(out, { recursive: true });
 const results = { routes: [], checks: [], errors: [] };
-const widths = [375, 390, 768, 1440, 1920];
+const widths = [320, 375, 390, 768, 1440, 1920];
 (async () => {
  const browser = await chromium.launch({ headless: true, channel: 'chrome' });
  try {
@@ -29,6 +29,7 @@ const widths = [375, 390, 768, 1440, 1920];
      assert.equal(await page.locator('.auth-frame').evaluate(e => getComputedStyle(e).display), 'grid');
      assert.equal(await page.locator('.auth-intro').isVisible(), width >= 768);
     }
+    if(name==='races'){const options=page.locator('.subscription-options');assert.equal(await options.getAttribute('open'),null);await options.locator('summary').focus();await page.keyboard.press('Enter');await options.getByRole('button',{name:'复制订阅地址',exact:true}).waitFor();assert.ok((await options.getByRole('link',{name:'在日历中订阅',exact:true}).getAttribute('href')).startsWith('webcal:'));await options.locator('summary').press('Enter');}
     if (name === 'system') assert.equal(await page.locator('.system-layout').evaluate(e => getComputedStyle(e).display), 'grid');
     if ([390, 1440].includes(width) || name === 'home') {
      await page.screenshot({ path: path.join(out, `${name}-${width}.png`) });
