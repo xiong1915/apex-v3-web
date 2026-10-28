@@ -10,9 +10,10 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
  await p.goto(base+'/login');await p.keyboard.press('Tab');assert.equal(await p.evaluate(()=>document.activeElement?.classList.contains('skip-link')),true,'original skip link stays first in keyboard order');const toggle=p.getByRole('button',{name:'壁纸背景',exact:true});await toggle.waitFor();
  await p.waitForFunction(()=>document.querySelector('.wallpaper-video')?.readyState>=2&&document.querySelector('.wallpaper-video')?.currentTime>.3);
  assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.match(await p.locator('.auth-frame>.glass-surface').evaluate(e=>getComputedStyle(e).backdropFilter),/blur\(12px\)/,'compiled desktop glass filter must really apply');
+ for(const selector of ['.site-header','.site-footer']){const alpha=await p.locator(selector).evaluate(e=>Number(getComputedStyle(e).backgroundColor.split(',')[3]?.replace(')','')));assert.ok(alpha>0&&alpha<.75,selector+' must reveal the wallpaper');}
  const video=p.locator('.wallpaper-video');
  const media=await video.evaluate(v=>({muted:v.muted,loop:v.loop,inline:v.playsInline,duration:v.duration,time:v.currentTime,width:v.videoWidth,source:v.currentSrc}));
- assert.ok(media.muted&&media.loop&&media.inline&&media.duration>15);assert.ok(media.source.endsWith('nachoneko-720.mp4'));assert.equal(media.width,1280);
+ assert.ok(media.muted&&media.loop&&media.inline&&media.duration>15);assert.ok(media.source.endsWith('nachoneko-1440.mp4'));assert.equal(media.width,2560);
  assert.equal(await p.locator('.site-wallpaper').evaluate(e=>getComputedStyle(e).pointerEvents),'none');
  const layout=()=>p.locator('main').evaluate(e=>({text:e.innerText,headings:[...e.querySelectorAll('h1,h2,p,input,button')].map(n=>{const r=n.getBoundingClientRect();return [n.tagName,r.x,r.y,r.width,r.height,getComputedStyle(n).fontFamily,getComputedStyle(n).fontSize]})}));
  await p.screenshot({path:path.join(out,'after-desktop.png'),fullPage:true});await p.evaluate(()=>document.fonts.ready);await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));const on=await layout();
@@ -32,11 +33,11 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
  await p.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,value:false});document.dispatchEvent(new Event('visibilitychange'));});
  await p.waitForFunction(()=>!document.querySelector('.wallpaper-video').paused);
  const fixed=await p.locator('.site-wallpaper').boundingBox();await p.evaluate(()=>scrollTo(0,600));assert.deepEqual(await p.locator('.site-wallpaper').boundingBox(),fixed);
- const range=await p.request.get(base+'/wallpapers/nachoneko-720.mp4',{headers:{Range:'bytes=0-1023'}});assert.equal(range.status(),206);
+ const range=await p.request.get(base+'/wallpapers/nachoneko-1440.mp4',{headers:{Range:'bytes=0-1023'}});assert.equal(range.status(),206);
  const perf=await c.newCDPSession(p);await perf.send('Performance.enable');
  const metric=async()=>Object.fromEntries((await perf.send('Performance.getMetrics')).metrics.map(m=>[m.name,m.value]));
  const start=await metric();await p.waitForTimeout(5000);const end=await metric();const quality=await video.evaluate(v=>{const q=v.getVideoPlaybackQuality();return {total:q.totalVideoFrames,dropped:q.droppedVideoFrames};});
- const performance={desktopBytes:fs.statSync(path.join(process.cwd(),'public/wallpapers/nachoneko-720.mp4')).size,mobileBytes:fs.statSync(path.join(process.cwd(),'public/wallpapers/nachoneko-360.mp4')).size,seconds:5,rendererTaskSeconds:end.TaskDuration-start.TaskDuration,heapDelta:end.JSHeapUsedSize-start.JSHeapUsedSize,video:quality};
+ const performance={desktopBytes:fs.statSync(path.join(process.cwd(),'public/wallpapers/nachoneko-1440.mp4')).size,mobileBytes:fs.statSync(path.join(process.cwd(),'public/wallpapers/nachoneko-portrait-720.mp4')).size,seconds:5,rendererTaskSeconds:end.TaskDuration-start.TaskDuration,heapDelta:end.JSHeapUsedSize-start.JSHeapUsedSize,video:quality};
  assert.ok(performance.heapDelta<16*1024*1024,'background cannot accumulate unbounded JS state');await toggle.click();const offStart=await metric();await p.waitForTimeout(5000);const offEnd=await metric();performance.disabledRendererTaskSeconds=offEnd.TaskDuration-offStart.TaskDuration;
  await c.close();
  for(const mode of ['mobile','reduced','saved-off','failure','autoplay-blocked','save-data']){
@@ -47,10 +48,10 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
   if(mode==='failure')await context.route('**/wallpapers/*.mp4',r=>r.abort());
   const page=await context.newPage(),mediaRequests=[];page.on('request',r=>{if(r.url().endsWith('.mp4'))mediaRequests.push(r.url());});
   await page.goto(base+'/login');await page.getByRole('button',{name:'壁纸背景',exact:true}).waitFor();
-  if(mode==='mobile'){assert.equal(await page.locator('.auth-frame>.glass-surface').evaluate(e=>getComputedStyle(e).backdropFilter),'none','mobile avoids multiple GPU blur surfaces');
+  if(mode==='mobile'){assert.match(await page.locator('.auth-frame>.glass-surface').evaluate(e=>getComputedStyle(e).backdropFilter),/blur\(6px\)/,'mobile uses lightweight real glass rather than an opaque fallback');
    await page.waitForFunction(()=>document.querySelector('.wallpaper-video')?.currentTime>.2);
-   assert.ok(await page.locator('.wallpaper-video').evaluate(v=>v.currentSrc.endsWith('nachoneko-360.mp4')));
-   assert.ok(!mediaRequests.some(url=>url.includes('-720.mp4')));assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+   assert.ok(await page.locator('.wallpaper-video').evaluate(v=>v.currentSrc.endsWith('nachoneko-portrait-720.mp4')));
+   assert.ok(!mediaRequests.some(url=>url.includes('-1440.mp4')));assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
    await page.screenshot({path:path.join(out,'after-mobile.png'),fullPage:true});
    await page.getByRole('button',{name:'壁纸背景',exact:true}).click();await page.waitForFunction(()=>!document.documentElement.dataset.wallpaper);
    await page.screenshot({path:path.join(out,'before-mobile.png'),fullPage:true});
@@ -61,6 +62,17 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
    assert.equal(await page.locator('.wallpaper-poster').evaluate(e=>e.complete&&e.naturalWidth>0),true);
    if(mode==='reduced'||mode==='save-data')assert.equal(mediaRequests.length,0);
   }
+  await context.close();
+ }
+ for(const width of [390,768,1440]){
+  const context=await b.newContext({viewport:{width,height:1000}}),page=await context.newPage();
+  await page.goto(base+'/',{timeout:90000});await page.locator('.race-cover').waitFor({timeout:60000});
+  await page.waitForFunction(()=>document.documentElement.dataset.wallpaper==='on');
+  const cover=page.locator('.race-cover');const material=await cover.evaluate(e=>({bg:getComputedStyle(e).backgroundColor,ink:getComputedStyle(e).color,filter:getComputedStyle(e).backdropFilter}));
+  assert.match(material.bg,/rgba\(255, 255, 255,/,'home hero uses translucent light material');assert.equal(material.ink,'rgb(23, 25, 29)','light glass must not retain white hero text');
+  assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+  await page.screenshot({path:path.join(out,'home-glass-'+width+'.png'),fullPage:true});
+  await page.locator('.site-footer').evaluate(e=>e.scrollIntoView({behavior:'instant',block:'end'}));await page.waitForTimeout(250);await page.screenshot({path:path.join(out,'footer-glass-'+width+'.png')});
   await context.close();
  }
  const ai=await b.newContext();

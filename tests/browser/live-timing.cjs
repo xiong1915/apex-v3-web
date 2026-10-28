@@ -52,6 +52,8 @@ fs.mkdirSync(output,{recursive:true});
   const minutePoll=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/f1/live/snapshot');
   await page.clock.fastForward(30000);await minutePoll;
   assert.equal(calls.length,deniedCalls+1,'public calendar/results use a 60-second polling interval');
+  // The user closed this persistent section earlier; reopen it before checking visible timing states.
+  await liveSummary.focus();await liveSummary.press('Enter');
   allowed=true;
   const refresh=()=>page.evaluate(()=>document.dispatchEvent(new Event('visibilitychange')));
   await refresh();await page.locator('[data-connection="LIVE"]').waitFor();
@@ -121,6 +123,8 @@ fs.mkdirSync(output,{recursive:true});
   archive.availability.timingPublic=false;archive.snapshot=null;archive.resultStatus='confirmed';
   archive.results=[{position:1,number:'1',code:'VER',name:'本地归档车手',team:'协议验收车队',laps:51,time:'1:40:00.000',status:'Finished',points:25}];
   await page.route('**/api/f1/live/snapshot*',route=>route.fulfill({json:archive}));
+  // Check the archive's default state without the preceding scenario's saved expansion.
+  await page.evaluate(()=>sessionStorage.removeItem('apex:details:live-timing-panels'));
   await page.reload();await page.getByRole('heading',{name:'已确认成绩',exact:true}).waitFor();
   assert.equal(await page.getByRole('region',{name:'已确认成绩，可横向滚动'}).locator('tbody tr').count(),1);
   assert.equal(await timingTable.locator('tbody tr').count(),0,'historical classification must not fabricate telemetry');
