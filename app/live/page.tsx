@@ -19,7 +19,7 @@ export default async function LivePage({searchParams}: PageProps){
    if (typeof value === 'string') params.set(key, value);
   }
   const query = parseLiveQuery(params);
-  const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 1500));
+  const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 2500));
   initialData = await Promise.race([
    getPublicLiveService().getSnapshot(query).catch(() => null),
    timeoutPromise

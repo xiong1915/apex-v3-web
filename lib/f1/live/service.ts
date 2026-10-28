@@ -149,7 +149,14 @@ export class LivePublicService {
    return Number.isFinite(raceTime)&&raceTime+12*3600000<now;
   }).sort((a,b)=>b.round-a.round);
   const latestFinishedMeeting=finishedMeetings[0]?{round:finishedMeetings[0].round,name:finishedMeetings[0].name,nameZh:finishedMeetings[0].nameZh,session:'race'}:null;
-  return {version:'3.3.0',serverTime:new Date(now).toISOString(),season:query.season,meeting,session,nextSession:afterSelection||(nextMeeting?sortedSessions(nextMeeting).find(s=>start(s)>now)||null:null),nextMeeting,availableMeetings,latestFinishedMeeting,
+  let recapResults: LiveResult[] | undefined;
+  if(!results.length&&latestFinishedMeeting){
+   try{
+    const recapRecords=await this.deps.race(query.season,latestFinishedMeeting.round);
+    if(recapRecords.length)recapResults=recapRecords.filter(item=>Number.isInteger(item.position)&&item.position>0&&item.driverId&&item.driverName).map(row);
+   }catch{}
+  }
+  return {version:'3.3.0',serverTime:new Date(now).toISOString(),season:query.season,meeting,session,nextSession:afterSelection||(nextMeeting?sortedSessions(nextMeeting).find(s=>start(s)>now)||null:null),nextMeeting,availableMeetings,latestFinishedMeeting,recapResults,
    calendarUpdatedAt:calendar.fetchedAt||null,calendarSource:calendar.source,isStale:calendar.isStale,
    availability:{...LIVE_PUBLIC_POLICY,channels:PUBLIC_LIVE_CHANNELS.map(c=>({...c}))},sessions:states,snapshot:null,results,resultStatus:selected?.classification||'unavailable',
    resultSourceUrls:results.length?[`https://api.jolpi.ca/ergast/f1/${query.season}/${meeting.round}/${session?.type==='qualifying'?'qualifying':session?.type==='sprint'?'sprint':'results'}.json`]:[]};

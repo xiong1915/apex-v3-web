@@ -17,6 +17,7 @@ export interface PublicLiveResponse {
  session: F1Session | null; nextSession: F1Session | null; nextMeeting?: F1Meeting | null;
  availableMeetings?: PublicLiveMeetingSummary[];
  latestFinishedMeeting?: { round: number; name: string; nameZh: string; session: string } | null;
+ recapResults?: LiveResult[];
  calendarUpdatedAt: string | null; calendarSource: string; isStale: boolean;
  availability: {timingPublic: boolean; reason: string; source: string; officialUrl: string; channels: {name: string; status: string; note: string}[]};
  sessions: {session: F1Session; phase: LivePhase; classification: ResultStatus; reason: string}[];
