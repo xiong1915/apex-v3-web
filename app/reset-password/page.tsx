@@ -34,7 +34,7 @@ function ResetPasswordForm() {
         const accessToken = params.get('access_token');
         if (accessToken) {
           setToken(accessToken);
-          document.cookie = `apex_auth_token=${accessToken}; path=/; max-age=3600; SameSite=Lax`;
+          document.cookie = `apex_session_token=${accessToken}; path=/; max-age=3600; SameSite=Lax`;
         }
       } catch (_) {}
     }
@@ -126,12 +126,27 @@ function ResetPasswordForm() {
                   background: '#e1060008',
                   border: '1px solid rgba(255, 45, 32, 0.3)',
                   borderRadius: '12px',
-                  padding: '10px 14px',
+                  padding: '12px 14px',
                   color: 'var(--accent-red)',
                   fontSize: '13px',
-                  marginBottom: '18px'
+                  marginBottom: '18px',
+                  lineHeight: 1.5
                 }}>
-                  {error}
+                  {error.includes('Auth session missing') ? (
+                    <div>
+                      <div style={{ fontWeight: 700, marginBottom: '6px' }}>尚未检测到有效重置授权</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '10px' }}>
+                        由于邮件通道受限，无需苦等邮件！请前往找回密码页面输入您的注册邮箱，系统将为您即时建立重置凭证：
+                      </div>
+                      <Link href="/forgot-password" style={{ textDecoration: 'none' }}>
+                        <GlassButton variant="primary" style={{ width: '100%', padding: '8px 0', fontSize: '13px', fontWeight: 700 }}>
+                          前往找回密码一键获取授权 ↗
+                        </GlassButton>
+                      </Link>
+                    </div>
+                  ) : (
+                    error
+                  )}
                 </div>
               )}
 
