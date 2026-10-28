@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
+import { PasswordInput } from '@/components/password-input';
 import { apiRegister } from '@/lib/auth/client';
 
 function RegisterForm() {
@@ -188,23 +189,14 @@ function RegisterForm() {
                   <label htmlFor="auth-password" style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
                     设置密码 (至少 6 位)
                   </label>
-                  <input
-                    type="password" id="auth-password" name="password" autoComplete="new-password"
+                  <PasswordInput
+                    id="auth-password"
+                    name="password"
+                    autoComplete="new-password"
                     required
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="请设置密码（至少 6 位）"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--line-dark)',
-                      borderRadius: '12px',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
                   />
                 </div>
 
@@ -212,23 +204,14 @@ function RegisterForm() {
                   <label htmlFor="auth-confirm" style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
                     确认密码
                   </label>
-                  <input
-                    type="password" id="auth-confirm" name="confirmPassword" autoComplete="new-password"
+                  <PasswordInput
+                    id="auth-confirm"
+                    name="confirmPassword"
+                    autoComplete="new-password"
                     required
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     placeholder="请再次输入密码"
-                    style={{
-                      width: '100%',
-                      padding: '12px 14px',
-                      background: 'var(--bg-primary)',
-                      border: '1px solid var(--line-dark)',
-                      borderRadius: '12px',
-                      color: 'var(--text-primary)',
-                      fontSize: '14px',
-                      outline: 'none',
-                      boxSizing: 'border-box'
-                    }}
                   />
                 </div>
 
