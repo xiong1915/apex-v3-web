@@ -57,10 +57,10 @@ export const AUTH_CONFIG = {
     return process.env.RESEND_API_KEY || '';
   },
   get smtpFrom(): string {
-    return process.env.SMTP_FROM || 'APEX V3 <onboarding@resend.dev>';
+    return process.env.SMTP_FROM || 'APEX V3 <tikef1@qq.com>';
   },
   get smtpHost(): string {
-    return process.env.SMTP_HOST || '';
+    return process.env.SMTP_HOST || 'smtp.qq.com';
   },
   get smtpPort(): number {
     return parseInt(process.env.SMTP_PORT || '465', 10);
