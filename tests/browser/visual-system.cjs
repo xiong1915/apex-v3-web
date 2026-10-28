@@ -15,7 +15,7 @@ if(!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))throw Error('Localho
  if(await cards.count()){assert.ok(await cards.first().getAttribute('style').then(style=>style.includes('--team-color')));}
  await p.goto(base+'/standings');const rows=p.locator('.driver-standings tbody tr');
  if(await rows.count()){
-  assert.equal(await p.locator('.podium-ribbon>div').count(),3);if(await rows.count()>=10){const tenth=await rows.nth(9).boundingBox();assert.ok(tenth&&tenth.y+tenth.height<=1000,'desktop first viewport includes ten rankings');}
+  assert.equal(await p.locator('.podium-ribbon>div').count(),3);if(await rows.count()>=10){await rows.nth(9).waitFor({state:'visible'});const tenth=await rows.nth(9).boundingBox();assert.ok(tenth&&tenth.y+tenth.height<=1000,'desktop first viewport includes ten rankings');}
   assert.equal(await rows.first().getAttribute('data-podium'),'true');
   assert.notEqual(await rows.first().evaluate(e=>getComputedStyle(e.firstElementChild).borderLeftColor),'rgba(0, 0, 0, 0)');
  }

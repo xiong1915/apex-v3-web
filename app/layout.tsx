@@ -1,6 +1,8 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './wallpaper.css';
+import {WallpaperBackground} from '@/components/wallpaper-background';
 
 import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
@@ -39,6 +41,7 @@ export default function RootLayout({
         <Navbar />
         <main id="main-content" tabIndex={-1}>{children}</main>
         <Footer />
+        <WallpaperBackground />
       </body>
     </html>
   );
