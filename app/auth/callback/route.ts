@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const origin = getTrustedPublicOrigin(req);
   const next = searchParams.get('next');
-  const safeRedirectUrl = getSafeRedirectUrl(next, origin);
+  const type = searchParams.get('type');
+  const safeRedirectUrl = type === 'recovery' ? ${origin}/reset-password : getSafeRedirectUrl(next, origin);
 
   // 1. 处理第三方授权取消或错误回调（提供友好、可恢复的提示）
   const errorParam = searchParams.get('error');
