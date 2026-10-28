@@ -1,6 +1,7 @@
 // lib/auth/email.ts
 // APEX V3 邮件服务接入 (优先 Resend Free API，支持通用 SMTP，无外网凭据时安全落盘与 Mock 收集)
 
+import nodemailer from 'nodemailer';
 import { AUTH_CONFIG } from './config';
 import { mockAuthManager } from './mock';
 
@@ -19,7 +20,34 @@ export async function sendEmail({
   subject: string;
   htmlText: string;
 }): Promise<EmailSendResult> {
-  // 1. 如果配置了 Resend Free API
+  // 1. 如果配置了通用 SMTP (如 QQ 邮箱、163 邮箱、企业邮)
+  if (AUTH_CONFIG.smtpHost && AUTH_CONFIG.smtpUser && AUTH_CONFIG.smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: AUTH_CONFIG.smtpHost,
+        port: AUTH_CONFIG.smtpPort,
+        secure: AUTH_CONFIG.smtpSecure,
+        auth: {
+          user: AUTH_CONFIG.smtpUser,
+          pass: AUTH_CONFIG.smtpPass
+        }
+      });
+
+      const info = await transporter.sendMail({
+        from: AUTH_CONFIG.smtpFrom || AUTH_CONFIG.smtpUser,
+        to,
+        subject,
+        html: htmlText
+      });
+
+      return { success: true, messageId: info.messageId };
+    } catch (e: any) {
+      console.warn('[Email] SMTP error:', e);
+      return { success: false, error: e.message || 'SMTP 发信失败' };
+    }
+  }
+
+  // 2. 如果配置了 Resend API
   if (AUTH_CONFIG.resendApiKey) {
     try {
       const res = await fetch('https://api.resend.com/emails', {

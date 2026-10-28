@@ -58,6 +58,21 @@ export const AUTH_CONFIG = {
   },
   get smtpFrom(): string {
     return process.env.SMTP_FROM || 'APEX V3 <onboarding@resend.dev>';
+  },
+  get smtpHost(): string {
+    return process.env.SMTP_HOST || '';
+  },
+  get smtpPort(): number {
+    return parseInt(process.env.SMTP_PORT || '465', 10);
+  },
+  get smtpUser(): string {
+    return process.env.SMTP_USER || '';
+  },
+  get smtpPass(): string {
+    return process.env.SMTP_PASS || '';
+  },
+  get smtpSecure(): boolean {
+    return process.env.SMTP_SECURE !== 'false';
   }
 };
 
