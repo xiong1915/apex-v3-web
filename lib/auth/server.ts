@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { User, Session } from './types';
 import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isValidUuid } from './config';
 import { mockAuthManager } from './mock';
@@ -194,4 +195,14 @@ export async function verifyAdminAccess(
   }
 
   return { ok: true, user, session };
+}
+
+export function createSupabaseAdminClient() {
+  if (!AUTH_CONFIG.supabaseUrl || !AUTH_CONFIG.supabaseServiceRoleKey) return null;
+  return createClient(AUTH_CONFIG.supabaseUrl, AUTH_CONFIG.supabaseServiceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
 }

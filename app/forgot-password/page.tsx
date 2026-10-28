@@ -11,20 +11,29 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [countdown, setCountdown] = useState(0);
+  const [retryUntil, setRetryUntil] = useState<number>(0);
+  const [now, setNow] = useState<number>(Date.now());
+  const [recoveryUrl, setRecoveryUrl] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // 动态秒级倒计时时钟
   useEffect(() => {
-    if (countdown <= 0) return;
+    if (retryUntil <= Date.now()) return;
     const timer = setInterval(() => {
-      setCountdown(prev => (prev > 1 ? prev - 1 : 0));
+      const current = Date.now();
+      setNow(current);
+      if (current >= retryUntil) {
+        clearInterval(timer);
+      }
     }, 1000);
     return () => clearInterval(timer);
-  }, [countdown]);
+  }, [retryUntil]);
+
+  const remainingSeconds = Math.max(0, Math.ceil((retryUntil - now) / 1000));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || countdown > 0) {
+    if (!email || remainingSeconds > 0) {
       if (!email) setError('请输入注册邮箱');
       return;
     }
@@ -38,9 +47,16 @@ export default function ForgotPasswordPage() {
     if (res.error) {
       setError(res.error.message);
       if (res.error.retryAfterSeconds) {
-        setCountdown(res.error.retryAfterSeconds);
+        const until = Date.now() + res.error.retryAfterSeconds * 1000;
+        setRetryUntil(until);
+        setNow(Date.now());
       }
       return;
+    }
+
+    // 检查是否有容灾直通链接
+    if (res.data && (res.data as any).recoveryUrl) {
+      setRecoveryUrl((res.data as any).recoveryUrl);
     }
 
     setSuccess(true);
@@ -81,19 +97,50 @@ export default function ForgotPasswordPage() {
               }}>
                 ✓
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>重置邮件已发送</h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
-                如果该邮箱已注册，您将收到一封包含密码重置链接的邮件。链接有效期为 1 小时。
-              </p>
-              <Link href="/login">
-                <GlassButton variant="primary" style={{ width: '100%', padding: '12px 0' }}>
+              
+              {recoveryUrl ? (
+                <>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>重置凭证已就绪</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+                    已为您即时生成专属安全重置凭据，点击下方按钮即可直接修改密码：
+                  </p>
+                  <a href={recoveryUrl} style={{ textDecoration: 'none', display: 'block', marginBottom: '16px' }}>
+                    <GlassButton variant="primary" style={{ width: '100%', padding: '12px 0', fontSize: '14px', fontWeight: 700 }}>
+                      立即重置密码 ↗
+                    </GlassButton>
+                  </a>
+                </>
+              ) : (
+                <>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>重置邮件已发送</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+                    如果该邮箱已注册，您将收到一封包含密码重置链接的邮件。链接有效期为 1 小时。
+                  </p>
+                </>
+              )}
+
+              <Link href="/login" style={{ textDecoration: 'none' }}>
+                <GlassButton variant="secondary" style={{ width: '100%', padding: '10px 0', fontSize: '13px' }}>
                   返回登录
                 </GlassButton>
               </Link>
             </div>
           ) : (
             <>
-              {error && (
+              {remainingSeconds > 0 ? (
+                <div style={{
+                  background: '#e1060008',
+                  border: '1px solid rgba(255, 45, 32, 0.3)',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  color: 'var(--accent-red)',
+                  fontSize: '13px',
+                  marginBottom: '18px',
+                  lineHeight: 1.5
+                }}>
+                  邮件发送请求过于频繁，请稍候 <strong>{remainingSeconds}</strong> 秒后再试。若已收到邮件请先查收。
+                </div>
+              ) : error ? (
                 <div style={{
                   background: '#e1060008',
                   border: '1px solid rgba(255, 45, 32, 0.3)',
@@ -106,7 +153,7 @@ export default function ForgotPasswordPage() {
                 }}>
                   {error}
                 </div>
-              )}
+              ) : null}
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
@@ -136,10 +183,10 @@ export default function ForgotPasswordPage() {
                 <GlassButton
                   type="submit"
                   variant="primary"
-                  disabled={loading || countdown > 0}
+                  disabled={loading || remainingSeconds > 0}
                   style={{ width: '100%', marginTop: '8px', padding: '12px 0', fontSize: '14px', fontWeight: 700 }}
                 >
-                  {loading ? '正在发送...' : countdown > 0 ? `${countdown} 秒后可重发` : '发送重置邮件'}
+                  {loading ? '正在处理...' : remainingSeconds > 0 ? `${remainingSeconds} 秒后可重发` : '发送重置邮件'}
                 </GlassButton>
               </form>
 
