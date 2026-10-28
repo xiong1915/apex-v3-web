@@ -494,6 +494,121 @@
 .profile-stats dd {
   font:32px var(--font-mono)
 }
+
+/* Profile Bio Section */
+.profile-bio-section {
+  margin-top: 32px;
+}
+.bio-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 36px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.bio-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line-light, rgba(23,25,29,0.08));
+}
+.bio-kicker {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--accent-red, #e10600);
+  margin-bottom: 6px;
+  display: block;
+}
+.bio-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary, #17191d);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.bio-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.bio-tag {
+  background: var(--bg-primary, #f4f3ef);
+  color: var(--text-secondary, #62656d);
+  padding: 6px 14px;
+  border-radius: var(--radius-pill, 999px);
+  font-size: 12px;
+  font-weight: 600;
+}
+.bio-content-grid {
+  display: grid;
+  grid-template-columns: 1.8fr 1.2fr;
+  gap: 36px;
+  align-items: start;
+}
+.bio-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.bio-block h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  color: var(--text-primary, #17191d);
+}
+.bio-block p {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text-dark-secondary, #5a5d64);
+  margin: 0;
+}
+.bio-meta-card {
+  background: var(--bg-primary, #f4f3ef);
+  border-radius: 20px;
+  padding: 24px;
+}
+.bio-meta-card h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary, #17191d);
+  margin: 0 0 16px 0;
+}
+.bio-meta-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 20px 0;
+}
+.bio-meta-list dt {
+  font-size: 11px;
+  color: var(--text-secondary, #62656d);
+  margin-bottom: 2px;
+}
+.bio-meta-list dd {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #17191d);
+  margin: 0;
+}
+.bio-highlights h5 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary, #62656d);
+  margin: 0 0 10px 0;
+}
+.bio-highlights ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-dark-secondary, #5a5d64);
+}
+
 .profile-links {
   display:flex;
   gap:32px;
@@ -597,6 +712,19 @@
   .profile-stats dt {
     font-size:10px
   }
+  
+  .bio-card {
+    padding: 24px;
+  }
+  .bio-content-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .bio-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
   .profile-links {
     flex-wrap:wrap;
     gap:16px

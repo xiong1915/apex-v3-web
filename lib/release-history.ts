@@ -1,6 +1,19 @@
 // Historical entries verified against GitHub main; merge-only duplicates are omitted.
 export const releaseHistory = [
   {
+    "sha": "a42473fcb61e972e8837ecbdbc9bccd4c82b1b3f",
+    "date": "2026-10-28T08:37:11Z",
+    "version": "更新",
+    "summary": "优化 AI 对话聊天框、消息气泡及首页提问框的自适应比例与视觉布局。"
+  },
+  {
+    "sha": "9229fc34ff484e6f926f08ce1e3788ad6182209a",
+    "date": "2026-10-28T07:56:28Z",
+    "version": "更新",
+    "summary": "新增完整升级历史表，追溯首次建仓以来的升级；移除首页本周末积分试算工具。"
+  },
+
+  {
     "sha": "e8968bff4f55dc69caf425ecd91a31a19cc06000",
     "date": "2026-10-28T07:36:59Z",
     "version": "更新",
