@@ -25,6 +25,7 @@
 .history-save-status { flex-shrink:0; padding:8px 24px; text-align:center; font-size:11px; color:var(--text-secondary); overflow-wrap:anywhere; }
 .history-save-status:has(button) { color:#a3231f; background:#e1060008; }
 .ai-response-mode { display:inline-block; margin-right:12px; }
+.navigation-feedback{position:fixed;top:calc(var(--nav-height,72px) + 12px);right:24px;z-index:160;padding:10px 16px;border:1px solid var(--line-dark);border-radius:12px;background:var(--bg-secondary);color:var(--text-primary);font-size:12px;font-weight:500;box-shadow:0 4px 20px #17191d10;pointer-events:none}
 .history-save-status button { margin-left:12px; border:0; background:transparent; text-decoration:underline; padding:8px; color:inherit; }
 .history-backdrop { position:fixed; inset:var(--nav-height) 0 0; z-index:130; background:#17191d50; }
 .ai-monitor-panel { display:flex; flex-direction:column; gap:24px; }

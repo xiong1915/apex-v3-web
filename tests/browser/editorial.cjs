@@ -81,7 +81,7 @@ const widths = [320, 375, 390, 768, 1440, 1920];
   await page.keyboard.press('Tab');
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.activeElement).outlineStyle), 'none');
   await page.screenshot({ path: path.join(out, 'login-keyboard-focus.png') });
-  await page.goto(base + '/ai'); await page.waitForURL('**/login?returnUrl=/ai');
+  await page.goto(base + '/ai'); await page.waitForURL(url=>url.pathname==='/login'&&url.searchParams.get('returnUrl')==='/ai');
   const anonymousAdmin = await page.request.get(base + '/api/admin/overview');
   assert.equal(anonymousAdmin.status(), 503, 'isolated build has no identity-service configuration');
   assert.match(anonymousAdmin.headers()['cache-control'], /private.*no-store/);

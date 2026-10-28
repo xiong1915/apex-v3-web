@@ -3,7 +3,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AIMessage, AISource, AIFactCard } from '@/lib/ai/types';
 import { GlassComposer, GlassButton } from '@/components/glass';
 import { MarkdownRenderer } from '@/components/markdown_renderer';
@@ -33,6 +33,14 @@ const PROMPT_SUGGESTIONS = [
 ];
 
 export default function AIPage() {
+  return <React.Suspense fallback={<div className="loading-state" role="status"><h2>正在打开 AI…</h2><p>正在准备对话界面，请稍候。</p></div>}><AIWorkspace/></React.Suspense>;
+}
+
+function AIWorkspace() {
+  const searchParams = useSearchParams();
+  const draftQuestion = (searchParams.get('draft') || '').trim().slice(0, 2000);
+  const queryQuestion = searchParams.get('q') || searchParams.get('prompt') || '';
+  const draftHandledRef = useRef('');
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<AIStatus>('idle');
@@ -101,7 +109,7 @@ export default function AIPage() {
           accountRef.current = user?.id || '';
         }
         setAccountId(user?.id || '');
-        if (!user) router.push('/login?returnUrl=/ai');
+        if (!user) router.replace('/login?returnUrl=' + encodeURIComponent('/ai' + window.location.search));
         else setAuthChecking(false);
       });
     };
@@ -246,8 +254,8 @@ export default function AIPage() {
 
       if (res.status === 401) {
         setStatus('idle');
-        sessionStorage.setItem('apex_ai_prompt', q);
-        router.push('/login?returnUrl=/ai');
+        try { sessionStorage.setItem('apex_ai_prompt', q); } catch {}
+        router.push('/login?returnUrl=' + encodeURIComponent('/ai?q=' + encodeURIComponent(q)));
         return;
       }
 
@@ -325,19 +333,36 @@ export default function AIPage() {
     }
   }, [input, messages, status, accountId, history.save, history.saving, history.loading, history.isBusy]);
 
-  // Consume the URL/storage handoff once, only after auth and history initialize.
+  useEffect(() => { initialPromptHandledRef.current = false; }, [queryQuestion]);
+
+  // Context links only prefill; do not wait for the history list or call the model.
   useEffect(() => {
-    if (authChecking || !history.ready || history.loading || history.saving || initialPromptHandledRef.current || submissionLockRef.current) return;
+    if (!draftQuestion) { draftHandledRef.current = ''; return; }
+    if (authChecking || !accountId) return;
+    const key = accountId + ':' + draftQuestion;
+    if (draftHandledRef.current === key) return;
+    draftHandledRef.current = key;
+    initialPromptHandledRef.current = true;
+    try { sessionStorage.removeItem('apex_ai_prompt'); } catch {}
+    setInput(draftQuestion);
+    textareaRef.current?.focus();
+  }, [draftQuestion, authChecking, accountId]);
+
+  // Explicit questions submitted from the home composer keep their send-once behavior.
+  useEffect(() => {
+    if (draftQuestion || authChecking || !history.ready || history.loading || history.saving || initialPromptHandledRef.current || submissionLockRef.current) return;
     const url = new URL(window.location.href);
-    const prompt = url.searchParams.get('q') || url.searchParams.get('prompt') || sessionStorage.getItem('apex_ai_prompt');
+    let storedPrompt = '';
+    try { storedPrompt = sessionStorage.getItem('apex_ai_prompt') || ''; } catch {}
+    const prompt = queryQuestion || storedPrompt;
     if (!prompt) { initialPromptHandledRef.current = true; return; }
     initialPromptHandledRef.current = true;
-    sessionStorage.removeItem('apex_ai_prompt');
+    try { sessionStorage.removeItem('apex_ai_prompt'); } catch {}
     url.searchParams.delete('q'); url.searchParams.delete('prompt');
     window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
     setInput(prompt);
     void sendMessage(prompt);
-  }, [sendMessage, authChecking, history.ready, history.loading, history.saving]);
+  }, [sendMessage, queryQuestion, draftQuestion, authChecking, history.ready, history.loading, history.saving]);
 
   // 恢复失败前提问内容至输入框
   const handleRestoreInput = () => {
@@ -386,7 +411,7 @@ export default function AIPage() {
       <div style={{ height: 'calc(100dvh - var(--nav-height))', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-red)', animation: 'pulse 1.5s infinite' }}></span>
-          <span>正在连接 APEX AI…</span>
+          <span role="status">正在确认登录状态，准备 AI 对话…</span>
         </div>
       </div>
     );
@@ -429,7 +454,7 @@ export default function AIPage() {
         </div>
       </div>
 
-      <div className="history-save-status" role="status">{responseMode&&<span className="ai-response-mode">{responseMode}</span>}<span>{history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</span></div>
+      <div className="history-save-status" role="status">{responseMode&&<span className="ai-response-mode">{responseMode}</span>}<span>{history.loading ? '正在读取历史对话，问题可以先编辑…' : history.error ? <><span>{history.error}</span>{history.saveError && <><button onClick={() => void history.save(messages)} disabled={history.saving || isGenerating}>重试保存</button><button onClick={history.saveAsNew} disabled={history.saving || isGenerating}>另存为新对话</button><button onClick={history.downloadDraft}>下载未保存草稿</button></>}</> : history.saving ? '正在保存到云端…' : history.activeId && !history.hasUnsaved ? '已保存到云端 · AI 参考最近的对话上下文' : messages.length ? '当前内容待保存到云端' : '提问后自动保存到账号历史'}</span></div>
 
       {/* 消息滚动区 (Scrollable Messages Stream) */}
       <div
@@ -685,7 +710,7 @@ export default function AIPage() {
                 }}
                 onKeyDown={handleKeyDown}
                 placeholder="输入 F1 问题（Enter 发送，Shift+Enter 换行）..."
-                disabled={isGenerating || history.saving || history.loading}
+                disabled={isGenerating || history.saving}
                 style={{
                   flex: 1,
                   background: 'transparent',
