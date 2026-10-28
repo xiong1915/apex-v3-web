@@ -2,8 +2,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { RaceStateService } from '@/lib/f1/race-state';
 
-export function Countdown({ targetUtcMs, isInProgress }: { targetUtcMs: number; serverTimeMs?: number; isInProgress?: boolean }) {
-  const [delta, setDelta] = useState(() => RaceStateService.calculateCountdown(targetUtcMs, Date.now()));
+export function Countdown({ targetUtcMs, serverTimeMs=targetUtcMs, isInProgress }: { targetUtcMs: number; serverTimeMs?: number; isInProgress?: boolean }) {
+  const [delta, setDelta] = useState(() => RaceStateService.calculateCountdown(targetUtcMs, serverTimeMs));
 
   const update = useCallback(() => {
     if (typeof document !== 'undefined' && !document.hidden) {

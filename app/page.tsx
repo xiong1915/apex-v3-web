@@ -28,7 +28,7 @@ async function Cockpit() {
 }
 async function Cover() {
  const overview = await defaultF1Service.getRaceCover();
- return <RaceCover overview={overview} seasonEnded={overview.totalRounds>0 && overview.currentMeeting.round===overview.totalRounds && RaceStateService.evaluateMeeting(overview.currentMeeting).state==='WEEKEND_FINISHED'}/>;
+ return <RaceCover overview={overview} serverTimeMs={Date.now()} seasonEnded={overview.totalRounds>0 && overview.currentMeeting.round===overview.totalRounds && RaceStateService.evaluateMeeting(overview.currentMeeting).state==='WEEKEND_FINISHED'}/>;
 }
 async function Championship() {
  const [drivers,teams]=await Promise.all([defaultF1Service.getDriverStandingsResult(),defaultF1Service.getConstructorStandingsResult()]);
