@@ -1,4 +1,4 @@
-.shell{padding:32px 0 64px;background:#f4f3ef;color:#17191d;min-height:85vh}
+.shell{padding:32px 0 64px;background:var(--wallpaper-page-surface,#f4f3ef);color:#17191d;min-height:85vh}
 .heading{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:24px}
 .heading h1{font-size:clamp(27px,3vw,38px);font-weight:750;letter-spacing:-1.8px;margin:14px 0}
 .heading h1 span{font-weight:450}
