@@ -1,6 +1,12 @@
 // Historical entries verified against GitHub main; merge-only duplicates are omitted.
 export const releaseHistory = [
   {
+    "sha": "37325ef4573ab0315cda5f4e0419296f70ad041e",
+    "date": "2026-10-28T09:05:00Z",
+    "version": "更新",
+    "summary": "新增 2026 赛季车手与车队详情页生平背景、竞技风格与工程档案介绍。"
+  },
+  {
     "sha": "a42473fcb61e972e8837ecbdbc9bccd4c82b1b3f",
     "date": "2026-10-28T08:37:11Z",
     "version": "更新",

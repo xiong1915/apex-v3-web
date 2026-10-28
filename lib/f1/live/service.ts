@@ -139,7 +139,17 @@ export class LivePublicService {
   const selected=states.find(s=>s.session.id===session?.id),results=selected?.classification==='confirmed'?(byType.get(session!.type)||[]):[];
   const nextMeeting=meetings.filter(m=>Date.parse(m.raceStartUTC)>Date.parse(meeting.raceStartUTC)).sort((a,b)=>Date.parse(a.raceStartUTC)-Date.parse(b.raceStartUTC))[0]||null;
   const afterSelection=sessions.find(s=>start(s)>now&&(!session||start(s)>start(session)))||null;
-  return {version:'3.3.0',serverTime:new Date(now).toISOString(),season:query.season,meeting,session,nextSession:afterSelection||(nextMeeting?sortedSessions(nextMeeting).find(s=>start(s)>now)||null:null),nextMeeting,
+  const availableMeetings=meetings.map(m=>{
+   const raceTime=Date.parse(m.raceStartUTC);
+   const status: 'finished' | 'next' | 'upcoming'=Number.isFinite(raceTime)&&raceTime+12*3600000<now?'finished':(nextMeeting&&m.round===nextMeeting.round?'next':'upcoming');
+   return {round:m.round,name:m.name,nameZh:m.nameZh,status};
+  });
+  const finishedMeetings=meetings.filter(m=>{
+   const raceTime=Date.parse(m.raceStartUTC);
+   return Number.isFinite(raceTime)&&raceTime+12*3600000<now;
+  }).sort((a,b)=>b.round-a.round);
+  const latestFinishedMeeting=finishedMeetings[0]?{round:finishedMeetings[0].round,name:finishedMeetings[0].name,nameZh:finishedMeetings[0].nameZh,session:'race'}:null;
+  return {version:'3.3.0',serverTime:new Date(now).toISOString(),season:query.season,meeting,session,nextSession:afterSelection||(nextMeeting?sortedSessions(nextMeeting).find(s=>start(s)>now)||null:null),nextMeeting,availableMeetings,latestFinishedMeeting,
    calendarUpdatedAt:calendar.fetchedAt||null,calendarSource:calendar.source,isStale:calendar.isStale,
    availability:{...LIVE_PUBLIC_POLICY,channels:PUBLIC_LIVE_CHANNELS.map(c=>({...c}))},sessions:states,snapshot:null,results,resultStatus:selected?.classification||'unavailable',
    resultSourceUrls:results.length?[`https://api.jolpi.ca/ergast/f1/${query.season}/${meeting.round}/${session?.type==='qualifying'?'qualifying':session?.type==='sprint'?'sprint':'results'}.json`]:[]};
