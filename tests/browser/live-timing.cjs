@@ -130,6 +130,9 @@ fs.mkdirSync(output,{recursive:true});
   assert.equal(await weather.locator('dd').allTextContents().then(values=>values.every(value=>value==='暂不可用')),true);
   assert.equal(await page.locator('[class*="messages"] li').count(),0,'historical results cannot invent race control events');
   for(const width of [320,390,768,1440,1920]){await page.setViewportSize({width,height:900});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await page.evaluate(()=>scrollTo(0,0));await page.screenshot({path:path.join(output,`live-archive-${width}.png`),fullPage:true,style:'.site-header,.skip-link{visibility:hidden!important}'});}
+  archive.recapResults=archive.results;archive.results=[];archive.latestFinishedMeeting={round:17,name:'Local Archive',nameZh:'本地归档大奖赛'};
+  await page.reload();const recapHeading=page.getByRole('heading',{name:'第 17 站 本地归档大奖赛 · 正赛成绩',exact:true});await recapHeading.waitFor();
+  assert.equal(await recapHeading.locator('xpath=../..').locator(':scope > span').innerText(),'正赛','recap label must describe the archived race, not selected practice');
   assert.deepEqual(errors,[]);
   await context.close();
   console.log(`PASS live timing: permission gate, 6 widths, scheduled WAITING, automatic LIVE, pause/resume, stale/failed/recovery, hidden/foreground, 80 refresh bounded heap delta=${heapAfter-heapBefore}, all session kinds and Q/SQ stages, filtering/favorites, provisional finish, reduced motion; synthetic local fixtures only`);
