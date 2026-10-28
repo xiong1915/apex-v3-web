@@ -20,14 +20,14 @@ function startIdentitySync() {
   window.addEventListener('storage', event => {
     if (event.key === identitySignalKey) invalidateIdentityReads(false);
   });
-  window.addEventListener('focus', () => invalidateIdentityReads(false));
+  window.addEventListener('focus', () => invalidateIdentityReads(false, 'focus'));
 }
 
-export function invalidateIdentityReads(broadcast = true) {
+export function invalidateIdentityReads(broadcast = true, reason: 'change' | 'focus' = 'change') {
   identityRevision++;
   pendingIdentityReads.clear();
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('apex:identity-changed'));
+    window.dispatchEvent(new CustomEvent('apex:identity-changed', {detail:{reason}}));
     if (broadcast) {
       try { window.localStorage.setItem(identitySignalKey, `${Date.now()}:${Math.random()}`); } catch { /* Focus revalidation still works when storage is blocked. */ }
     }
