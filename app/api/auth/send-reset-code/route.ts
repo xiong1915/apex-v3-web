@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '请输入有效的邮箱地址' }, { status: 400 });
     }
 
-    // 1. 60 秒频次限制
+    // 1. 60 秒频次限制防刷
     const rateLimiter = getRateLimitStore();
     const rateLimit = await rateLimiter.checkRateLimit(`reset_code_rate:${email}`, 1, 60);
     if (!rateLimit.allowed) {
@@ -35,8 +35,9 @@ export async function POST(req: NextRequest) {
     const cache = getCacheStore();
     await cache.set(`reset_code:${email}`, { code, attempts: 0, createdAt: Date.now() }, 600);
 
-    // 4. 尝试向用户邮箱投递真实邮件
+    // 4. 向用户邮箱投递真实邮件
     let emailSent = false;
+    let sendErrorMsg = '';
     const subject = `【APEX V3】您的密码重置验证码是：${code}`;
     const htmlText = `
       <div style="background:#0a0a0c; color:#fff; padding:32px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius:16px; max-width:480px; margin:0 auto; border:1px solid #222;">
@@ -56,14 +57,24 @@ export async function POST(req: NextRequest) {
     try {
       const result = await sendEmail({ to: email, subject, htmlText });
       emailSent = result.success;
-    } catch (_) {}
+      if (!emailSent) {
+        sendErrorMsg = result.error || '发信服务未配置';
+      }
+    } catch (e: any) {
+      sendErrorMsg = e.message || '网络连接异常';
+    }
+
+    if (!emailSent) {
+      return NextResponse.json({
+        error: `邮件投递失败（${sendErrorMsg}），发件服务尚未绑定，请联系管理员配置。`,
+        emailSent: false
+      }, { status: 503 });
+    }
 
     return NextResponse.json({
       success: true,
-      message: '验证码已生成并尝试发送，10分钟内有效',
-      emailSent,
-      // 贴心开发调试提示：避免因外部网络邮件拦截导致用户卡死
-      hintCode: code
+      message: '验证码已发送至您的邮箱，10分钟内有效，请注意查收！',
+      emailSent: true
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || '发送验证码服务异常，请稍后重试' }, { status: 500 });

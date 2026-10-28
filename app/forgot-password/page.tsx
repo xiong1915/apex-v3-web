@@ -19,7 +19,6 @@ export default function ForgotPasswordPage() {
   
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [hintCode, setHintCode] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const [retryUntil, setRetryUntil] = useState<number>(0);
@@ -71,9 +70,7 @@ export default function ForgotPasswordPage() {
       }
 
       setInfo(data.message || '验证码已发送，请查收');
-      if (data.hintCode) {
-        setHintCode(data.hintCode);
-      }
+      
       setRetryUntil(Date.now() + 60 * 1000);
       setNow(Date.now());
     } catch (e: any) {
@@ -210,38 +207,7 @@ export default function ForgotPasswordPage() {
                 </div>
               )}
 
-              {hintCode && (
-                <div style={{
-                  background: 'rgba(255, 214, 10, 0.08)',
-                  border: '1px solid rgba(255, 214, 10, 0.3)',
-                  borderRadius: '12px',
-                  padding: '10px 14px',
-                  color: '#ffd60a',
-                  fontSize: '13px',
-                  marginBottom: '16px',
-                  lineHeight: 1.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}>
-                  <span>测试直通验证码：<strong>{hintCode}</strong></span>
-                  <button
-                    type="button"
-                    onClick={() => setCode(hintCode)}
-                    style={{
-                      background: 'transparent',
-                      border: '1px solid #ffd60a',
-                      color: '#ffd60a',
-                      borderRadius: '6px',
-                      padding: '2px 8px',
-                      fontSize: '11px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    一键填入
-                  </button>
-                </div>
-              )}
+              
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {/* 邮箱 */}
