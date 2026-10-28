@@ -1,5 +1,6 @@
-﻿// Historical entries verified against GitHub main; merge-only duplicates are omitted.
+// Historical entries verified against GitHub main; merge-only duplicates are omitted.
 export const releaseHistory = [
+  {sha:'a33e7b4aa998a14c064e894e95d63950ce39cc01',date:'2026-10-28T12:11:48Z',version:'更新',summary:'整理实时数据页信息层次和移动端布局，移除历史成绩中来源未提供的遥测、天气与赛会消息。'},
   {
     "sha": "d36a97b98d1a12e2303023023023023023023023",
     "date": "2026-10-28T09:55:00Z",
