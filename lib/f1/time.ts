@@ -1,7 +1,8 @@
 // lib/f1/time.ts
 // 统一时间与会话调度系统：内部全量采用 UTC ISO-8601，展现层统一通过 Asia/Shanghai 时区转换并规整数字格式
 
-import { F1Session, NextSessionState } from './types';
+import { F1Session, NextSessionState, F1Meeting } from './types';
+import { RaceStateService } from './race-state';
 
 export interface TimeParts {
   year: string;
@@ -162,38 +163,28 @@ export function getNextRelevantSession(sessions: F1Session[] = [], nowDate: Date
     return { session: null, status: 'FINISHED', targetUtcMs: null, targetIso: null };
   }
 
-  const nowMs = nowDate.getTime();
+  const evalResult = RaceStateService.evaluateMeeting({ sessions } as F1Meeting, nowDate.getTime());
 
-  // 1. 检查是否有正在进行的 Session (IN_PROGRESS)
-  for (const s of sessions) {
-    const startMs = new Date(s.startTimeUTC).getTime();
-    const endMs = s.endTimeUTC ? new Date(s.endTimeUTC).getTime() : startMs + (s.durationMinutes * 60 * 1000);
-    if (nowMs >= startMs && nowMs < endMs) {
-      return {
-        session: s,
-        status: 'IN_PROGRESS',
-        targetUtcMs: endMs,
-        targetIso: s.endTimeUTC || new Date(endMs).toISOString()
-      };
-    }
+  if (evalResult.state === 'SESSION_IN_PROGRESS' && evalResult.currentSession) {
+    return {
+      session: evalResult.currentSession,
+      status: 'IN_PROGRESS',
+      targetUtcMs: evalResult.targetTimestamp,
+      targetIso: evalResult.currentSession.endTimeUTC || new Date(evalResult.targetTimestamp).toISOString()
+    };
   }
 
-  // 2. 查找第一个尚未开始的 Session (NEXT)
-  for (const s of sessions) {
-    const startMs = new Date(s.startTimeUTC).getTime();
-    if (startMs > nowMs) {
-      return {
-        session: s,
-        status: 'NEXT',
-        targetUtcMs: startMs,
-        targetIso: s.startTimeUTC
-      };
-    }
+  if (evalResult.nextSession) {
+    return {
+      session: evalResult.nextSession,
+      status: 'NEXT',
+      targetUtcMs: evalResult.targetTimestamp,
+      targetIso: evalResult.nextSession.startTimeUTC
+    };
   }
 
-  // 3. 所有环节均已结束 (FINISHED)
   return {
-    session: sessions[sessions.length - 1],
+    session: evalResult.currentSession || sessions[sessions.length - 1],
     status: 'FINISHED',
     targetUtcMs: null,
     targetIso: null

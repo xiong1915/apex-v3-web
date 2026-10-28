@@ -7,7 +7,8 @@ import type {PublicLiveResponse, LiveResult} from './public-types';
 import {LIVE_PUBLIC_POLICY, PUBLIC_LIVE_CHANNELS} from './policy';
 import {approvedLiveSource,projectPublicSnapshot,sourceActive,type ApprovedLiveSource} from './sources';
 import {RedisLiveStore} from './shared-store';
-import type {LiveSnapshot} from './types';
+import type {LiveSnapshot, LivePhase} from './types';
+import {RaceStateService} from '../race-state';
 
 export class LiveRequestError extends Error {constructor(message:string,public status=400){super(message);}}
 export interface LiveQuery {season:string;round?:number;session?:string}
@@ -32,7 +33,7 @@ function start(session:F1Session){return Date.parse(session.startTimeUTC);}
 function sortedSessions(meeting:F1Meeting){return [...meeting.sessions].sort((a,b)=>(start(a)||Infinity)-(start(b)||Infinity));}
 function defaultMeeting(calendar:F1Meeting[],now:number){
  const sorted=[...calendar].sort((a,b)=>Date.parse(a.raceStartUTC)-Date.parse(b.raceStartUTC));
- return sorted.find(m=>Date.parse(m.raceStartUTC)+12*3600000>=now)||sorted.at(-1)||null;
+ return sorted.find(m=>Date.parse(m.raceStartUTC)+4*3600000>=now)||sorted.at(-1)||null;
 }
 function selectedSession(sessions:F1Session[],requested:string):F1Session|null {
  const exact=sessions.find(s=>s.id===requested);if(exact)return exact;
@@ -45,10 +46,10 @@ function selectedSession(sessions:F1Session[],requested:string):F1Session|null {
  return null;
 }
 function defaultSession(meeting:F1Meeting,now:number){
- const sessions=sortedSessions(meeting);
- // The planned window selects a useful screen only; it NEVER confirms race state.
- return sessions.find(s=>Number.isFinite(start(s))&&start(s)<=now&&now<=start(s)+(s.durationMinutes||60)*60000)
-  ||sessions.find(s=>start(s)>now)||sessions.at(-1)||null;
+ const state=RaceStateService.evaluateMeeting(meeting,now);
+ if(state.state==='SESSION_IN_PROGRESS'&&state.currentSession)return state.currentSession;
+ if(state.nextSession)return state.nextSession;
+ return sortedSessions(meeting).at(-1)||null;
 }
 function row(item:DetailedRaceResultItem|DetailedQualifyingResultItem|DetailedSprintResultItem):LiveResult {
  return {position:item.position,number:item.driverNumber||null,code:item.driverCode||'',name:item.driverName,team:item.constructorName,
@@ -131,22 +132,47 @@ export class LivePublicService {
    // Scope is enforced by the canonical provider; malformed/empty responses are not results evidence.
    byType.set(type,records.filter(item=>Number.isInteger(item.position)&&item.position>0&&item.driverId&&item.driverName).map(row));
   }));
+  const raceTime=Date.parse(meeting.raceStartUTC);
+  const isMeetingFinished=Number.isFinite(raceTime)&&raceTime+4*3600000<now;
   const states:PublicLiveResponse['sessions']=sessions.map(s=>{
    const records=Number.isFinite(start(s))&&start(s)<=now?byType.get(s.type)||[]:[];
-   return {session:s,phase:records.length?'FINISHED':start(s)>now?'UPCOMING':'WAITING',classification:records.length?'confirmed':'unavailable',
-    reason:records.length?'已收录该节次成绩；尚未核验官方最终分类':start(s)>now?'按已公布赛程等待开始；时间调整以官方更新为准':'实际节次状态待确认；无法从计划时间推断开赛或完赛'};
+   const sStart=start(s);
+   const duration=(s.durationMinutes||(s.type==='race'?120:60))*60000;
+   const sEnd=s.endTimeUTC?Date.parse(s.endTimeUTC):(Number.isFinite(sStart)?sStart+duration:NaN);
+   const isPast=isMeetingFinished||(s.type==='practice'&&Number.isFinite(sEnd)&&sEnd+1800000<now);
+   let phase: LivePhase='UPCOMING';
+   let classification: 'confirmed'|'unavailable'='unavailable';
+   let reason='';
+   if(records.length){
+    phase='FINISHED';
+    classification='confirmed';
+    reason='已收录该节次成绩；尚未核验官方最终分类';
+   }else if(isPast){
+    phase='FINISHED';
+    classification='unavailable';
+    reason=s.type==='practice'?'练习赛已结束；历史档案未收录详细单圈数据':'该节次已结束';
+   }else if(Number.isFinite(sStart)&&sStart>now){
+    phase='UPCOMING';
+    classification='unavailable';
+    reason='按已公布赛程等待开始；时间调整以官方更新为准';
+   }else{
+    phase='WAITING';
+    classification='unavailable';
+    reason='实际节次状态待确认；无法从计划时间推断开赛或完赛';
+   }
+   return {session:s,phase,classification,reason};
   });
   const selected=states.find(s=>s.session.id===session?.id),results=selected?.classification==='confirmed'?(byType.get(session!.type)||[]):[];
   const nextMeeting=meetings.filter(m=>Date.parse(m.raceStartUTC)>Date.parse(meeting.raceStartUTC)).sort((a,b)=>Date.parse(a.raceStartUTC)-Date.parse(b.raceStartUTC))[0]||null;
   const afterSelection=sessions.find(s=>start(s)>now&&(!session||start(s)>start(session)))||null;
   const availableMeetings=meetings.map(m=>{
    const raceTime=Date.parse(m.raceStartUTC);
-   const status: 'finished' | 'next' | 'upcoming'=Number.isFinite(raceTime)&&raceTime+12*3600000<now?'finished':(nextMeeting&&m.round===nextMeeting.round?'next':'upcoming');
+   const status: 'finished' | 'next' | 'upcoming'=Number.isFinite(raceTime)&&raceTime+4*3600000<now?'finished':(nextMeeting&&m.round===nextMeeting.round?'next':'upcoming');
    return {round:m.round,name:m.name,nameZh:m.nameZh,status};
   });
   const finishedMeetings=meetings.filter(m=>{
    const raceTime=Date.parse(m.raceStartUTC);
-   return Number.isFinite(raceTime)&&raceTime+12*3600000<now;
+   return Number.isFinite(raceTime)&&raceTime+4*3600000<now;
   }).sort((a,b)=>b.round-a.round);
   const latestFinishedMeeting=finishedMeetings[0]?{round:finishedMeetings[0].round,name:finishedMeetings[0].name,nameZh:finishedMeetings[0].nameZh,session:'race'}:null;
   let recapResults: LiveResult[] | undefined;

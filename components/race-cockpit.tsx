@@ -10,10 +10,25 @@ import styles from './race-cockpit.module.css';
 
 export function RaceCockpit({meeting,race,qualifying,sprint}:{meeting:F1Meeting;race:DetailedRaceResultItem[];qualifying:DetailedQualifyingResultItem[];sprint:DetailedSprintResultItem[]}){
  const [now,setNow]=useState<number|null>(null);
- useEffect(()=>{const tick=()=>{if(!document.hidden)setNow(Date.now());};tick();const timer=setInterval(tick,1000);document.addEventListener('visibilitychange',tick);return()=>{clearInterval(timer);document.removeEventListener('visibilitychange',tick);};},[]);
+  useEffect(()=>{
+    const tick=()=>{if(typeof document!=='undefined'&&!document.hidden)setNow(Date.now());};
+    tick();
+    const timer=setInterval(tick,1000);
+    const onWakeup=()=>tick();
+    document.addEventListener('visibilitychange',onWakeup);
+    window.addEventListener('pageshow',onWakeup);
+    window.addEventListener('focus',onWakeup);
+    return()=>{
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange',onWakeup);
+      window.removeEventListener('pageshow',onWakeup);
+      window.removeEventListener('focus',onWakeup);
+    };
+  },[]);
  const state=RaceStateService.evaluateMeeting(meeting,now??0),next=state.nextSession;
- const remaining=next&&now!==null?Math.max(0,Date.parse(next.startTimeUTC)-now):0;
- const seconds=Math.floor(remaining/1000),days=Math.floor(seconds/86400),hours=Math.floor(seconds%86400/3600),minutes=Math.floor(seconds%3600/60);
+ const targetMs=state.targetTimestamp||(next?Date.parse(next.startTimeUTC):0);
+ const delta=RaceStateService.calculateCountdown(targetMs,now??Date.now());
+
  if (!meeting.round) return <section className="editorial-section paper-section" id="race-cockpit"><div className="container"><h2>比赛周驾驶舱</h2><p role="status">分站赛程暂不可用，时间与成绩待同步。</p><Link className="text-link" href={`/races?season=${meeting.season}`}>查看赛历 ↗</Link></div></section>;
  return <section className="editorial-section paper-section" id="race-cockpit"><div className="container">
   <div className="section-head"><div><span className="eyebrow">第 {meeting.round} 站 · {meeting.season}</span><h2>比赛周驾驶舱</h2><p>{meeting.nameZh||meeting.name} · {meeting.circuitName}</p></div><Link className="text-link" href={`/races/${meeting.round}?season=${meeting.season}`}>分站详情与赛果 ↗</Link></div>
@@ -22,7 +37,7 @@ export function RaceCockpit({meeting,race,qualifying,sprint}:{meeting:F1Meeting;
     <span className={styles.kicker}>下一节 · 北京时间</span>
     <h3>{now===null?'正在校准赛程…':next?.name||'本分站暂无后续场次'}</h3>
     {next&&<time dateTime={next.startTimeUTC}>{formatBeijingDisplay(next.startTimeUTC)}</time>}
-    {now===null?<p role="status">正在校准北京时间…</p>:next?<div className={styles.countdown} aria-label={`距计划开赛 ${days} 天 ${hours} 小时 ${minutes} 分 ${seconds%60} 秒`}>{[[days,'天'],[hours,'时'],[minutes,'分'],[seconds%60,'秒']].map(([value,label])=><span key={label}><strong>{String(value).padStart(2,'0')}</strong><small>{label}</small></span>)}</div>:<p className={styles.muted}>查看分站详情，获取已收录成绩。</p>}
+    {now===null?<p role="status">正在校准北京时间…</p>:next?<div className={styles.countdown} aria-label={`距计划开赛 ${delta.days} 天 ${delta.hours} 小时 ${delta.mins} 分 ${delta.secs} 秒`}>{[[delta.days,'天'],[delta.hours,'时'],[delta.mins,'分'],[delta.secs,'秒']].map(([value,label])=><span key={label}><strong>{String(value).padStart(2,'0')}</strong><small>{label}</small></span>)}</div>:<p className={styles.muted}>查看分站详情，获取已收录成绩。</p>}
     <p className={styles.disclaimer}>按赛程倒计时，实际开始与状态以官方公布为准。</p>
     <Link className={styles.primary} prefetch={false} href={`/live?season=${meeting.season}&round=${meeting.round}`}>打开赛事中心 <span aria-hidden="true">↗</span></Link>
    </div>

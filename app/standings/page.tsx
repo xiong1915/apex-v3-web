@@ -1,19 +1,68 @@
-import {teamStyle} from '@/lib/ui/team-colors';
-import Link from 'next/link';
 import { defaultF1Service } from '@/providers/f1/service';
 import { PageHeading } from '@/components/page-heading';
 import { SeasonSelector } from '@/components/season_selector';
 import { formatBeijingDisplay } from '@/lib/f1/time';
-export const dynamic='force-dynamic';
-export default async function StandingsPage({searchParams}:{searchParams:Promise<{season?:string}>}){
- const {season:rawSeason}=(await searchParams)||{};const season=rawSeason||'2026';
- const [seasons,overview,drivers,constructors]=await Promise.all([defaultF1Service.getSeasons(),defaultF1Service.getOverview(season),defaultF1Service.getDriverStandings(season),defaultF1Service.getConstructorStandings(season)]);
- const historical=Number(season)<new Date().getUTCFullYear();const pre1958=Number(season)<1958;
- return <div className="page-shell page-standings"><div className="container"><PageHeading category={`${season} · 锦标赛积分`} title="锦标赛积分榜" description="车手与车队积分，按当前可用的官方记录展示。" actions={<SeasonSelector currentSeason={season} seasons={seasons} baseUrl="/standings"/>} meta={<><span>{overview.standingsCutoffDesc||'积分统计范围待核实'}{overview.standingsCutoffVerified?' · 已核实':''}</span><span>更新于 {formatBeijingDisplay(overview.updatedAt)}{overview.upstreamSyncSuccess===false?' · 最近同步失败，保留已有数据':''}</span></>}/>
+import { StandingsTabs } from '@/components/standings-tabs';
+import { PersistentDetails } from '@/components/persistent-details';
 
- {drivers.length>0&&<section className="podium-ribbon" aria-label="车手积分前三名">{drivers.slice(0,3).map(d=><div key={d.driverId||d.code} style={teamStyle(d.team)}><span className="podium-place">P{d.rank}</span><div><strong>{d.name||d.nameEn}</strong><small>{d.team.split(/\s*\(/)[0]}</small></div><span className="podium-points">{d.points}<small>PTS</small></span></div>)}</section>}
- <nav className="section-jumps" aria-label="积分榜内容"><a href="#driver-championship">车手积分</a><a href="#team-championship">车队积分</a></nav><section className="table-section" id="driver-championship"><div className="section-head"><h2>车手锦标赛</h2><span className="data-note">{drivers.length} 位车手</span></div>{!drivers.length?<p className="empty-state">该赛季暂无车手积分榜数据</p>:<div className="table-panel"><table className="data-table driver-standings"><caption className="sr-only">{season} 赛季车手积分榜</caption><thead><tr><th scope="col">排名</th><th scope="col">车手</th><th scope="col">所属车队</th><th scope="col">分站冠军</th><th scope="col">分差</th><th scope="col">总积分</th></tr></thead><tbody>{drivers.map(d=><tr key={d.driverId||d.code} style={teamStyle(d.team)} data-podium={d.rank<=3}><td className="rank-cell mono">{String(d.rank).padStart(2,'0')}</td><td>{season === '2026' ? <Link href={`/drivers/${d.driverId||d.code.toLowerCase()}`}><strong>{d.name||d.nameEn}</strong><small>#{d.number}</small></Link> : <><strong>{d.name||d.nameEn}</strong><small>#{d.number}</small></>}</td><td className="team-cell"><span className="team-name">{d.team.split(/\s*\(/)[0]}</span><small>{d.team.match(/\((.*)\)/)?.[1]}</small></td><td className="wins-cell">{d.wins} 胜</td><td className="gap-cell">{d.gap===0?historical?'世界冠军':'榜首领跑':`${d.gap} 分`}</td><td className="points-cell mono">{d.points}</td></tr>)}</tbody></table></div>}</section>
- <section className="table-section" id="team-championship"><div className="section-head"><h2>车队锦标赛</h2><span className="data-note">{pre1958?'1958 年之前未设车队世界冠军':`${constructors.length} 支车队`}</span></div>{pre1958?<p className="empty-state">{season} 赛季尚未设立车队世界冠军奖项，FIA 自 1958 年起设立该奖项。</p>:!constructors.length?<p className="empty-state">该赛季暂无车队积分榜数据</p>:<div className="table-panel"><table className="data-table team-standings"><caption className="sr-only">{season} 赛季车队积分榜</caption><thead><tr><th scope="col">排名</th><th scope="col">车队</th><th scope="col">分站冠军</th><th scope="col">分差</th><th scope="col">总积分</th></tr></thead><tbody>{constructors.map(t=><tr key={t.teamId} style={teamStyle(t.nameEn||t.name)} data-podium={t.rank<=3}><td className="rank-cell mono">{String(t.rank).padStart(2,'0')}</td><td>{season === '2026' ? <Link href={`/teams/${t.teamId}`}><strong>{t.name||t.nameEn}</strong></Link> : <strong>{t.name||t.nameEn}</strong>}</td><td className="wins-cell">{t.wins} 胜</td><td className="gap-cell">{t.gap===0?historical?'年度冠军车队':'榜首领跑':`${t.gap} 分`}</td><td className="points-cell mono">{t.points}</td></tr>)}</tbody></table></div>}</section>
- <details className="rules-note"><summary>积分规则与统计口径</summary><p>{historical?`${season} 赛季积分快照。`:'正赛前十名 25-18-15-12-10-8-6-4-2-1；冲刺赛前八名 8-7-6-5-4-3-2-1。'}车队积分按各站实际归属统计，可能与当前阵容车手全年积分之和不同。各分站具体历史成绩与车队积分明细仍在逐站核验中。</p></details>
- </div></div>;
+export const dynamic = 'force-dynamic';
+
+export default async function StandingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ season?: string }>;
+}) {
+  const { season: rawSeason } = (await searchParams) || {};
+  const season = rawSeason || '2026';
+  const [seasons, overview, drivers, constructors] = await Promise.all([
+    defaultF1Service.getSeasons(),
+    defaultF1Service.getOverview(season),
+    defaultF1Service.getDriverStandings(season),
+    defaultF1Service.getConstructorStandings(season),
+  ]);
+  const historical = Number(season) < new Date().getUTCFullYear();
+  const pre1958 = Number(season) < 1958;
+
+  return (
+    <div className="page-shell page-standings">
+      <div className="container">
+        <PageHeading
+          category={`${season} · 锦标赛积分`}
+          title="锦标赛积分榜"
+          description="车手与车队积分，按当前可用的官方记录展示。"
+          actions={<SeasonSelector currentSeason={season} seasons={seasons} baseUrl="/standings" />}
+          meta={
+            <>
+              <span>
+                {overview.standingsCutoffDesc || '积分统计范围待核实'}
+                {overview.standingsCutoffVerified ? ' · 已核实' : ''}
+              </span>
+              <span>
+                更新于 {formatBeijingDisplay(overview.updatedAt)}
+                {overview.upstreamSyncSuccess === false ? ' · 最近同步失败，保留已有数据' : ''}
+              </span>
+            </>
+          }
+        />
+
+        <StandingsTabs
+          drivers={drivers}
+          constructors={constructors}
+          season={season}
+          historical={historical}
+          pre1958={pre1958}
+        />
+
+        <PersistentDetails id="standings-rules" className="rules-note">
+          <summary>积分规则与统计口径</summary>
+          <p>
+            {historical
+              ? `${season} 赛季积分快照。`
+              : '正赛前十名 25-18-15-12-10-8-6-4-2-1；冲刺赛前八名 8-7-6-5-4-3-2-1。'}
+            车队积分按各站实际归属统计，可能与当前阵容车手全年积分之和不同。各分站具体历史成绩与车队积分明细仍在逐站核验中。
+          </p>
+        </PersistentDetails>
+      </div>
+    </div>
+  );
 }
