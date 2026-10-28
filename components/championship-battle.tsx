@@ -1,4 +1,5 @@
 'use client';
+import {teamStyle} from '@/lib/ui/team-colors';
 
 import { useId, useState } from 'react';
 import Link from 'next/link';
@@ -23,7 +24,7 @@ export function ChampionshipBattle({ drivers, teams }: { drivers: BattleEntry[];
     <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-tab-${tab}`} tabIndex={0}>
       {entries.length === 0 ? <p className="race-empty">积分暂不可用。取得真实数据后将在这里展示。</p> : <ol className="battle-list" key={tab}>
         {entries.map(entry => <li key={entry.id}>
-          <Link href={entry.href} className="battle-row">
+          <Link href={entry.href} className="battle-row" style={teamStyle(tab===0?entry.detail:entry.id+" "+entry.name)}>
             <span className="battle-rank">{String(entry.rank).padStart(2, '0')}</span>
             <span className="battle-name"><strong>{entry.name}</strong><small>{entry.detail}</small><span className="battle-track" aria-hidden="true"><i style={{ transform: `scaleX(${standingRatio(entry.points, entries[0]?.points)})` }} /></span></span>
             <span className="battle-points">{entry.points}<small>PTS</small></span>

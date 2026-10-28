@@ -1,3 +1,4 @@
+/* Controls: red primary = main task; ink secondary = alternate task; ghost/text = navigation. */
 /* Shared controls. Legacy Glass exports remain API-compatible, with solid materials. */
 .btn-primary,.btn-secondary,.glass-button {
   display:inline-flex;
@@ -21,13 +22,13 @@
   background:var(--accent-red-hover)
 }
 .btn-secondary,.glass-btn-secondary {
-  background:transparent;
-  border-color:var(--line-dark);
-  color:var(--text-primary)
+  background:var(--text-primary);
+  border-color:var(--text-primary);
+  color:var(--bg-secondary)
 }
 .btn-secondary:hover,.glass-btn-secondary:hover {
-  background:#17191d06;
-  border-color:#17191d40
+  background:#353941;
+  border-color:#353941
 }
 .glass-btn-ghost {
   background:transparent;
@@ -55,15 +56,12 @@
   border-bottom:1px solid currentColor;
   font-size:13px;
   font-weight:600;
-  transition:color var(--motion-fast)
+  transition:color var(--motion-fast),transform var(--motion-fast)
 }
 .text-link:hover {
-  color:var(--text-secondary)
+  color:var(--accent-action)
 }
-.section-light .btn-secondary,.paper-section .btn-secondary {
-  color:var(--text-dark-primary);
-  border-color:var(--line-light)
-}
+
 .badge-pill {
   display:inline-flex;
   align-items:center;
@@ -199,7 +197,7 @@
   font-size:12px;
   white-space:nowrap;
   color:var(--text-secondary);
-  transition:color var(--motion-fast)
+  transition:color var(--motion-fast),transform var(--motion-fast)
 }
 .nav-link:hover,.nav-link[aria-current=page] {
   color:var(--text-primary)
@@ -554,7 +552,7 @@
   grid-template-columns:32px minmax(0,1fr) 72px;
   gap:16px;
   align-items:center;
-  padding:20px 0;
+  padding:14px 0;
   border-bottom:1px solid var(--line-light)
 }
 .battle-rank {
@@ -593,7 +591,7 @@
   transition:transform var(--motion-base)
 }
 .battle-list li:first-child .battle-track i {
-  background:var(--accent-red)
+  background:var(--team-color,var(--accent-red))
 }
 .race-empty,.empty-state {
   padding:32px;
@@ -677,3 +675,5 @@
     padding:24px
   }
 }
+
+.trace-missing{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:120px;color:var(--text-secondary);font-size:12px}.trace-missing svg{width:64px;height:52px;opacity:.6}

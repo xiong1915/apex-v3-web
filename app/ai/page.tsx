@@ -417,12 +417,11 @@ function AIWorkspace() {
 
   if (authChecking) {
     return (
-      <div style={{ height: 'calc(100dvh - var(--nav-height))', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-red)', animation: 'pulse 1.5s infinite' }}></span>
-          <span role="status">正在确认登录状态，准备 AI 对话…</span>
-        </div>
-      </div>
+      <section className="ai-entry-skeleton container" aria-busy="true" aria-label="AI 对话准备中">
+        <div className="ai-entry-heading"><span className="eyebrow">APEX AI · 赛事助手</span><h1>想了解哪一场比赛？</h1><p>赛程、积分与规则，从一个问题开始。</p></div>
+        <div className="ai-example-grid" aria-hidden="true">{['下一节比赛什么时候开始？','车手积分榜前三名是谁？','解释本赛季的积分规则'].map(question=><div key={question}>{question}<span>↗</span></div>)}</div>
+        <div className="ai-skeleton-composer"><label htmlFor="ai-pending-input">你的问题</label><textarea id="ai-pending-input" placeholder="正在准备对话…" disabled rows={2}/><span role="status">正在确认登录状态，准备 AI 对话…</span></div>
+      </section>
     );
   }
 

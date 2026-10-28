@@ -29,7 +29,7 @@
   margin-block:8px 24px;
   background:#17191D;
   color:#F4F3EF;
-  border-radius:28px;
+  border-radius:var(--radius-md);
   --text-primary:#F4F3EF;
   --text-secondary:#A5A7AD;
   --text-muted:#A5A7AD;
@@ -101,7 +101,7 @@
   min-width:0;
   background:#e7e6e0;
   color:var(--text-dark-primary);
-  border-radius:24px;
+  border-radius:var(--radius-md);
   overflow:hidden;
   position:relative
 }
@@ -122,7 +122,7 @@
   stroke-width:12
 }
 .race-cover-visual .trace-line {
-  stroke:#44484e;
+  stroke:var(--accent-action);
   stroke-width:3
 }
 .map-caption {
@@ -183,7 +183,7 @@
   line-height:1.8
 }
 .session-rail .session-race strong {
-  color:var(--accent-red)
+  color:var(--text-primary)
 }
 .home-data-note {
   display:flex;
@@ -224,29 +224,30 @@
 }
 .championship-spread {
   display:grid;
-  grid-template-columns:.75fr 1.25fr;
-  gap:64px;
+  grid-template-columns:1fr;
+  gap:24px;
   align-items:start;
   background:#fff;
   padding:40px;
-  border-radius:28px
+  border-radius:var(--radius-md)
 }
 .championship-context h2 {
-  font-size:36px;
-  margin-top:16px
+  font-size:32px;
+  margin-top:8px
 }
+.championship-context{display:grid;grid-template-columns:1fr auto;column-gap:24px;align-items:center}.championship-context .eyebrow,.championship-context>p,.championship-context>h2{grid-column:1}.championship-context>.text-link{grid-column:2;grid-row:2/4;align-self:center}
 .championship-context>p {
   font-size:13px;
   line-height:1.9;
   color:var(--text-dark-secondary);
-  margin-top:24px;
-  max-width:300px
+  margin-top:12px;
+  max-width:65ch
 }
 .championship-context>.text-link {
   margin-top:24px
 }
 .championship-context .data-note {
-  margin-top:32px
+  margin-top:16px
 }
 .season-preview {
   display:grid;
@@ -292,7 +293,7 @@
   align-items:start;
   gap:24px;
   background:var(--bg-secondary);
-  border-radius:24px;
+  border-radius:var(--radius-md);
   padding:32px;
   min-height:210px
 }
@@ -516,7 +517,7 @@
     grid-template-columns:1fr;
     gap:24px;
     padding:24px;
-    border-radius:24px
+    border-radius:var(--radius-md)
   }
   .championship-context h2 {
     font-size:28px
@@ -581,3 +582,8 @@
     min-height:850px
   }
 }
+
+.session-label{display:inline-block;background:#e106000d;color:var(--accent-action);font-size:10px;border-radius:6px;padding:2px 6px;margin-left:8px}
+.battle-track i{background:var(--team-color,var(--accent-action))}.battle-row:hover{background:color-mix(in srgb,var(--team-color,#747a84) 5%,transparent)}
+.race-cover-visual{display:flex;flex-direction:column}.cover-circuit{flex:1;min-height:280px;display:grid;place-items:center}.race-cover-visual .trace-line{filter:drop-shadow(0 2px 3px #c9050020)}
+@media(max-width:767px){.championship-context{display:block}.championship-context>.text-link{margin-top:12px}}
