@@ -14,7 +14,7 @@ fs.mkdirSync(output,{recursive:true});
   const page=await context.newPage(),errors=[],calls=[];
   await page.clock.install({time:Date.now()});
   page.on('pageerror',error=>errors.push(error.message));
-  let allowed=false,phase='UPCOMING',segment=null,flag=null,failed=false,stale=false;
+  let allowed=false,phase='UPCOMING',segment=null,flag=null,failed=false,stale=false,holdNext=false,releaseNext=null;
   const starts=new Date(Date.now()+1500).toISOString();
   const sessions=[['fp1','第一次自由练习','practice'],['fp2','第二次自由练习','practice'],['fp3','第三次自由练习','practice'],['sq','冲刺排位赛','sprint_qualifying'],['sprint','冲刺赛','sprint'],['quali','大奖赛排位赛','qualifying'],['race','大奖赛正赛','race']].map(([id,name,type],index)=>({id,name,nameEn:id,type,startTimeUTC:index===6?new Date(Date.now()+86400000).toISOString():starts,durationMinutes:type==='race'?120:60}));
   const driver=(number,position,lastLap,bestLap)=>({number,position,code:number==='44'?'HAM':'VER',name:number==='44'?'本地车手甲':'本地车手乙',team:'协议验收车队',teamColour:'e10600',lastLap,bestLap,sectors:['25.100','29.200',null],completedLaps:12,gapLeader:position===1?'LEADER':'+1.200',gapAhead:position===1?null:'+1.200',compound:'MEDIUM',tyreAge:8,pitCount:1,inPit:false,retired:false,updatedAt:new Date().toISOString(),sectorPersonalBest:[true,false,false],sectorOverallBest:[false,true,false]});
@@ -24,6 +24,7 @@ fs.mkdirSync(output,{recursive:true});
    if(url.pathname==='/api/auth/session')return route.fulfill({json:{user:null,session:null}});
    if(url.pathname==='/api/f1/live/snapshot'){
     calls.push(Object.fromEntries(url.searchParams));
+    if(holdNext){holdNext=false;await new Promise(resolve=>{releaseNext=resolve;});}
     if(failed)return route.fulfill({status:503,json:{error:'本地验收连接故障'}});
     const selected=sessions.find(session=>session.id===url.searchParams.get('session'))||sessions[0];
     const timestamp=new Date(Date.now()-(stale?60000:0)).toISOString();
@@ -104,6 +105,16 @@ fs.mkdirSync(output,{recursive:true});
   assert.ok(heapAfter-heapBefore<8*1024*1024,`80 refreshes retain bounded heap: ${heapAfter-heapBefore}`);
   assert.equal(await timingTable.locator('tbody tr').count(),2,'repeated snapshots replace rows instead of accumulating');
   await cdp.detach();
+  // Hold one response to verify the selection moves without pretending old data belongs to the new session.
+  const lens=page.locator('[data-session-lens]');const previousTransform=await lens.evaluate(e=>e.style.transform);
+  holdNext=true;await page.getByRole('button',{name:/第二次自由练习/}).first().click();
+  await page.getByText('正在切换节次；当前仍显示上一节数据。',{exact:true}).waitFor();
+  await page.waitForFunction(()=>document.querySelector('[data-session-lens]')?.style.transform!==''&&document.querySelector('[data-session-lens]')?.parentElement?.querySelector('button[aria-pressed="true"]')?.textContent?.includes('第二次自由练习'));
+  assert.notEqual(await lens.evaluate(e=>e.style.transform),previousTransform,'shared indicator moves to the requested session');
+  assert.match(await page.locator('[data-connection="RECONNECTING"]').innerText(),/STALE/);
+  for(let i=0;i<30&&!releaseNext;i++)await new Promise(resolve=>setTimeout(resolve,50));
+  assert.ok(releaseNext,'requested session fetch began');const release=releaseNext;releaseNext=null;release();
+  await page.getByText('正在切换节次；当前仍显示上一节数据。',{exact:true}).waitFor({state:'hidden'});
   for(const [id,name,stages] of [['fp1','第一次自由练习',[]],['fp2','第二次自由练习',[]],['fp3','第三次自由练习',[]],['sq','冲刺排位赛',['SQ1','SQ2','SQ3']],['sprint','冲刺赛',[]],['quali','大奖赛排位赛',['Q1','Q2','Q3']],['race','大奖赛正赛',[]]]){
    const button=page.getByRole('button',{name:new RegExp(name)}).first();const loaded=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/f1/live/snapshot'&&new URL(response.url()).searchParams.get('session')===id);await button.click();await loaded;
    await page.waitForFunction(id=>new URL(location.href).searchParams.get('session')===id,id);
