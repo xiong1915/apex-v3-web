@@ -33,6 +33,8 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
  const params=useSearchParams();
  const baseQuery=useMemo(()=>{const query=new URLSearchParams();for(const name of ['season','round','session']){const item=params.get(name);if(item)query.set(name,item);}return query.toString();},[params]);
  const [query,setQuery]=useState(baseQuery),[data,setData]=useState<PublicLiveResponse|null>(initialData||null),[error,setError]=useState<string|null>(null),[loading,setLoading]=useState(!initialData),[now,setNow]=useState<number|null>(null),[filter,setFilter]=useState(''),[order,setOrder]=useState('position'),[favorites,setFavorites]=useState<string[]>([]),[onlyFavorites,setOnlyFavorites]=useState(false);
+ const sessionListRef=useRef<HTMLDivElement>(null);
+ const initialQuery=useRef(baseQuery);
  const offset=useRef(0),dataRef=useRef<PublicLiveResponse|null>(initialData||null),refreshRef=useRef<()=>void>(()=>{}),requestRevision=useRef(0);
  useEffect(()=>{setQuery(baseQuery);},[baseQuery]);
  useEffect(()=>{try{const stored=JSON.parse(localStorage.getItem('apex:live:favorites')||'[]');if(Array.isArray(stored))setFavorites(stored.filter(number=>typeof number==='string'&&/^\d{1,3}$/.test(number)).slice(0,30));}catch{}},[]);
@@ -40,7 +42,12 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
  useEffect(()=>{
   let disposed=false,timer:ReturnType<typeof setTimeout>|null=null,controller:AbortController|null=null,inFlight=false,refreshPending=false,attempt=0;
   const revision=++requestRevision.current;
-  if(!initialData||query!==baseQuery){dataRef.current=null;setData(null);setError(null);setLoading(true);}
+  if(!initialData||query!==initialQuery.current){
+   const wanted=new URLSearchParams(query),previous=dataRef.current;
+   const sameMeeting=Boolean(previous&&wanted.get('session')&&previous.sessions.some(item=>item.session.id===wanted.get('session'))&&(!wanted.get('round')||Number(wanted.get('round'))===previous.meeting?.round)&&(!wanted.get('season')||wanted.get('season')===previous.season));
+   if(!sameMeeting){dataRef.current=null;setData(null);}
+   setError(null);setLoading(true);
+  }
   function schedule(delay:number){if(timer)clearTimeout(timer);if(!disposed&&!document.hidden)timer=setTimeout(poll,delay);}
   async function poll(){
    if(disposed||document.hidden||inFlight)return;
@@ -60,9 +67,17 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
   const clock=setInterval(()=>{if(!document.hidden)setNow(Date.now()+offset.current);},1000);setNow(Date.now());
   document.addEventListener('visibilitychange',visibility);void poll();
   return()=>{disposed=true;if(timer)clearTimeout(timer);clearInterval(clock);controller?.abort();document.removeEventListener('visibilitychange',visibility);};
- },[query,baseQuery,initialData]);
+ },[query,initialData]);
 
  const session=data?.session;
+ const requestedSession=new URLSearchParams(query).get('session');
+ const isSessionSwitch=Boolean(data&&session&&requestedSession&&requestedSession!==session.id&&data.sessions.some(item=>item.session.id===requestedSession));
+ const selectedSessionId=isSessionSwitch?requestedSession:session?.id;
+ useEffect(()=>{
+  const list=sessionListRef.current;if(!list)return;
+  const update=()=>{const button=list.querySelector<HTMLElement>('button[aria-pressed="true"]');const lens=list.querySelector<HTMLElement>('[data-session-lens]');if(!button||!lens)return;lens.style.width=`${button.offsetWidth}px`;lens.style.height=`${button.offsetHeight}px`;lens.style.transform=`translate3d(${button.offsetLeft}px,${button.offsetTop}px,0)`;lens.style.opacity='1';};
+  update();const observer=new ResizeObserver(update);observer.observe(list);return()=>observer.disconnect();
+ },[selectedSessionId,data?.sessions.length]);
  const rawSnapshot=data?.availability.timingPublic?data.snapshot:null;
  const hasCurrentResults=Boolean(data?.results&&data.results.length>0);
  const isCurrentReplay=!rawSnapshot&&hasCurrentResults;
@@ -72,7 +87,7 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
  const sourceAge=rawSnapshot?.sourceTimestamp&&now!==null?now-Date.parse(rawSnapshot.sourceTimestamp):null;
  const selected=data?.sessions.find(item=>item.session.id===session?.id);
  const phase=phaseForDisplay(rawSnapshot?.phase||selected?.phase||'UPCOMING',session?.startTimeUTC||'',now??0);
- const connection=rawSnapshot?connectionForDisplay(rawSnapshot.connection,rawSnapshot.sourceTimestamp,now??Date.now(),!!error):isReplayMode?'FINISHED':'UNAVAILABLE';
+ const connection=rawSnapshot?(isSessionSwitch?'RECONNECTING':connectionForDisplay(rawSnapshot.connection,rawSnapshot.sourceTimestamp,now??Date.now(),!!error)):isReplayMode?'FINISHED':'UNAVAILABLE';
  const parts=session&&now!==null?countdownParts(session.startTimeUTC,now):null;
 
  const driversList=rawSnapshot?.drivers||[];
@@ -94,6 +109,7 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
 
  return <div className={styles.shell}><div className="container">
   <header className={styles.heading}><div><span className="eyebrow">APEX · 赛事数据中心</span><h1>APEX <span>LIVE TIMING</span></h1><p>赛程、节次状态与已收录成绩，一处查看。</p></div><Link className="text-link" href="/races">全季赛历与订阅 ↗</Link></header>
+  {isSessionSwitch?<p className={styles.switchNotice} role="status">{error?'切换失败，正在重试；当前仍显示上一节数据。':'正在切换节次；当前仍显示上一节数据。'}</p>:null}
   {params.has('legacySession')?<p className={styles.source} role="note">旧回放已升级，请选择分站和节次；历史回放编号不代表当前直播。</p>:null}
   
   {data?.availableMeetings&&data.availableMeetings.length>0?<div className={styles.roundSelectorBar}><label htmlFor="round-select">大奖赛</label><select id="round-select" value={data.meeting?.round||''} onChange={e=>pickMeeting(Number(e.target.value))}>{data.availableMeetings.map(m=><option key={m.round} value={m.round}>第 {m.round} 站 · {m.nameZh||m.name} {m.status==='finished'?'(已完赛)':m.status==='next'?'(即将开赛)':''}</option>)}</select></div>:null}
@@ -107,7 +123,7 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
   {(phase==='UPCOMING'||phase==='WAITING')&&!data.results.length&&data.latestFinishedMeeting&&data.meeting?.round!==data.latestFinishedMeeting?.round?<div className={styles.recapBanner} role="region" aria-label="已完赛分站直通推荐"><div className={styles.recapInfo}><span className={styles.recapTag}>围场休整中</span><p>当前尚未开赛，下方可查看<strong>{recapTitle}</strong>的已收录成绩。</p></div><button type="button" className={styles.recapBtn} onClick={()=>pickMeeting(data.latestFinishedMeeting!.round)}>查看该分站 ↗</button></div>:null}
 
   {phase==='WAITING'?<p className={styles.statusNote}>计划时间已到，实际节次状态待确认；不能仅凭赛程判断开赛或完赛。</p>:phase==='SUSPENDED'?<p className={styles.statusNote}>{rawSnapshot?.reason||'节次暂停，当前计时表已保留，等待恢复。'}</p>:phase==='CANCELLED'||phase==='DELAYED'?<p className={styles.statusNote}>{rawSnapshot?.reason||selected?.reason||'请关注赛会时间调整。'}</p>:phase==='FINISHED'?<p className={styles.statusNote}>{selected?.reason||`${classifications[data.resultStatus]} · ${rawSnapshot?.reason||'查看本节次已收录的真实成绩。'}`}</p>:<p className={styles.statusNote}>赛程时间不代表实际开赛；延期、暂停与完赛以可信赛事信息为准。</p>}
-  <div className={styles.heroLinks}>{official?<a href={official} target="_blank" rel="noopener noreferrer" className={styles.official}>F1 官方实时计时 ↗</a>:null}{data.meeting?<Link href={`/races/${data.meeting.round}?season=${data.season}`}>分站资料 ↗</Link>:null}</div></div><aside className={styles.weekend}><div className={styles.weekendTitle}><h3>本周末节次</h3><span>{data.meeting?.isSprintWeekend?'冲刺周末':'大奖赛周末'}</span></div><div className={styles.sessionList}>{data.sessions.map(item=><button key={item.session.id} type="button" onClick={()=>pickSession(item.session.id)} aria-pressed={item.session.id===session?.id} className={item.session.id===session?.id?styles.selectedSession:''}><span><strong>{item.session.name}</strong><small>{formatBeijingDisplay(item.session.startTimeUTC)}</small></span><span className={styles.sessionState}>{phaseLabels[phaseForDisplay(item.phase,item.session.startTimeUTC,now??0)]}</span></button>)}</div>{!data.sessions.length?<p>当前没有可显示的节次安排。</p>:null}</aside></section>
+  <div className={styles.heroLinks}>{official?<a href={official} target="_blank" rel="noopener noreferrer" className={styles.official}>F1 官方实时计时 ↗</a>:null}{data.meeting?<Link href={`/races/${data.meeting.round}?season=${data.season}`}>分站资料 ↗</Link>:null}</div></div><aside className={styles.weekend}><div className={styles.weekendTitle}><h3>本周末节次</h3><span>{data.meeting?.isSprintWeekend?'冲刺周末':'大奖赛周末'}</span></div><div ref={sessionListRef} className={styles.sessionList}><span className={styles.sessionLens} data-session-lens aria-hidden="true"/>{data.sessions.map(item=><button key={item.session.id} type="button" onClick={()=>pickSession(item.session.id)} aria-pressed={item.session.id===selectedSessionId} className={item.session.id===selectedSessionId?styles.selectedSession:''}><span><strong>{item.session.name}</strong><small>{formatBeijingDisplay(item.session.startTimeUTC)}</small></span><span className={styles.sessionState}>{phaseLabels[phaseForDisplay(item.phase,item.session.startTimeUTC,now??0)]}</span></button>)}</div>{!data.sessions.length?<p>当前没有可显示的节次安排。</p>:null}</aside></section>
   
   {!data.availability.timingPublic?<section className={styles.permission}><div className={styles.permissionIcon} aria-hidden="true">i</div><div><h2>完整实时圈速尚不可公开提供</h2><p>{data.availability.reason}</p><p>这里提供真实赛程、倒计时与已确认成绩。查看比赛期间完整计时，请使用 F1 官方入口。</p></div></section>:null}
   
