@@ -146,7 +146,7 @@ export function Navbar() {
   }, []);
 
   const handleLogout = async () => {
-    if (loggingOut) return;
+    if (loggingOut) return false;
     setUserDropdownOpen(false);
     setLogoutError(null);
     setLoggingOut(true);
@@ -155,9 +155,10 @@ export function Navbar() {
       setUser(null);
       setProfile(null);
       router.refresh();
+      return true;
     } catch {
-      setMenuOpen(false);
       setLogoutError('退出登录失败，请检查网络后重试。当前登录状态仍保留。');
+      return false;
     } finally { setLoggingOut(false); }
   };
 
@@ -281,12 +282,13 @@ export function Navbar() {
      <button type="button" className="mobile-nav-toggle" ref={toggleRef} aria-expanded={menuOpen} aria-controls="mobile-menu" aria-label="切换导航菜单" onClick={()=>setMenuOpen(!menuOpen)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d={menuOpen?'M6 6l12 12M18 6L6 18':'M4 8h16M4 16h16'}/></svg></button>
     </div>
    </div>
-   {logoutError&&<div className="nav-feedback" role="alert">{logoutError}</div>}
+   {logoutError&&!menuOpen&&<div className="nav-feedback" role="alert">{logoutError}</div>}
    {menuOpen&&<div id="mobile-menu" className="mobile-menu" role="dialog" aria-modal="true" aria-label="网站导航" ref={drawerRef}>
     <button type="button" className="mobile-menu-close" onClick={()=>{setMenuOpen(false);toggleRef.current?.focus()}}>网站导航 <span>关闭 ×</span></button>
-    {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label} <span aria-hidden="true">↗</span><NavigationFeedback/></Link>)}
-    <AILink onClick={()=>setMenuOpen(false)}>APEX AI ↗</AILink>
+    {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label}<NavigationFeedback/></Link>)}
+    <AILink onClick={()=>setMenuOpen(false)}>APEX AI</AILink>
     <div className="mobile-account">
+      {logoutError&&<div className="nav-feedback" role="alert">{logoutError}</div>}
       {identityStatus !== 'ready' ? <span className="data-note" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (
         <>
           <div className="mobile-profile-card">
@@ -303,8 +305,8 @@ export function Navbar() {
             </svg>
             APEX ID 个人中心
           </Link>
-          {user.isAdmin && <Link href="/admin" onClick={()=>setMenuOpen(false)}>管理工作台 ↗</Link>}
-          <button type="button" className="btn-secondary" disabled={loggingOut} onClick={async()=>{await handleLogout();setMenuOpen(false)}}>
+          {user.isAdmin && <Link href="/admin" onClick={()=>setMenuOpen(false)}>管理工作台</Link>}
+          <button type="button" className="btn-secondary" disabled={loggingOut} onClick={async()=>{if(await handleLogout())setMenuOpen(false)}}>
             {loggingOut?'正在退出…':'退出登录'}
           </button>
         </>
