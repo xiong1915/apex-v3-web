@@ -69,8 +69,9 @@ html[data-wallpaper=on] .site-header.menu-open {
 
 /* Content stays opaque; optical blur is reserved for floating controls. */
 html[data-wallpaper=on] body :is(.card-light,.card-dark,.driver-tile,.team-tile,.calendar-tile,.championship-spread,.profile-feature,.table-panel,.empty-state,.profile-cover,.profile-stats>div,.bio-card,.team-driver-link,.race-detail-map,.result-panel,.system-summary,.system-details,.calendar-subscription,.detail-schedule,.race-empty-note,.session-rail>div,.podium-ribbon>div){background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-wallpaper=on] body .race-cover{background:#17191d;color:#f4f3ef;--text-primary:#f4f3ef;--text-secondary:#c3c5c9;--text-muted:#c3c5c9;--line-dark:#ffffff30;-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-wallpaper=on] .race-cover-visual{background:#f4f3ef;color:#17191d}
+html[data-wallpaper=on] body .race-cover{background:rgba(246,248,250,.88);color:#17191d;--text-primary:#17191d;--text-secondary:#41464f;--text-muted:#41464f;--line-dark:#17191d24;-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1)}
+html[data-wallpaper=on] .race-cover-visual{background:rgba(255,255,255,.7);color:#17191d}
+@media(prefers-reduced-transparency:reduce){html[data-wallpaper=on] body .race-cover{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}html[data-wallpaper=on] .race-cover-visual{background:#fff}}
 html[data-wallpaper=on] .site-footer{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}
 html[data-wallpaper=on] .profile-page-shell .apex-card{background:#202630;-webkit-backdrop-filter:none;backdrop-filter:none}
 
