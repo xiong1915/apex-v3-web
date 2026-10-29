@@ -104,6 +104,7 @@ export function Navbar() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const mobileLogoutRef = useRef<HTMLButtonElement>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [identityStatus, setIdentityStatus] = useState<'loading'|'ready'|'error'>('loading');
   const identityRequest = useRef(0);
@@ -161,6 +162,10 @@ export function Navbar() {
       return false;
     } finally { setLoggingOut(false); }
   };
+
+  useEffect(() => {
+    if (menuOpen && logoutError && !loggingOut) mobileLogoutRef.current?.focus();
+  }, [menuOpen, logoutError, loggingOut]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -306,7 +311,7 @@ export function Navbar() {
             APEX ID 个人中心
           </Link>
           {user.isAdmin && <Link href="/admin" onClick={()=>setMenuOpen(false)}>管理工作台</Link>}
-          <button type="button" className="btn-secondary" disabled={loggingOut} onClick={async()=>{if(await handleLogout())setMenuOpen(false)}}>
+          <button type="button" className="btn-secondary" ref={mobileLogoutRef} disabled={loggingOut} onClick={async()=>{if(await handleLogout())setMenuOpen(false)}}>
             {loggingOut?'正在退出…':'退出登录'}
           </button>
         </>
