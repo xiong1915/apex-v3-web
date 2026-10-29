@@ -27,13 +27,13 @@
   align-items:center;
   padding:40px;
   margin-block:8px 24px;
-  background:#17191D;
-  color:#F4F3EF;
+  background:#f4f3ef;
+  color:#17191d;
   border-radius:var(--radius-md);
-  --text-primary:#F4F3EF;
-  --text-secondary:#A5A7AD;
-  --text-muted:#A5A7AD;
-  --line-dark:#ffffff20
+  --text-primary:#17191d;
+  --text-secondary:#41464f;
+  --text-muted:#41464f;
+  --line-dark:#17191d24
 }
 .race-cover-copy {
   min-width:0
