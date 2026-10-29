@@ -18,7 +18,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
   await page.goto(base+'/',{timeout:90000});await page.locator('.race-cover').waitFor({timeout:60000});
   if(engine==='chromium')await page.waitForFunction(()=>document.querySelectorAll('[data-glass-mode=refracted]').length>0);
   else{await page.waitForTimeout(500);assert.equal(await page.locator('[data-glass-mode=refracted]').count(),0,engine+' avoids unsupported URL backdrop filters');}
-  assert.equal(await filter(page.locator('.race-cover')),'none','content hero is opaque');
+  assert.match(await filter(page.locator('.race-cover')),/blur\(8px\)/,'hero uses light glass when wallpaper is enabled');
   assert.ok(await page.locator('[data-glass-mode=refracted]').count()<=2,'shared two-lens budget');
   assert.ok(await page.locator('.liquid-glass svg filter').count()<=2,'at most two filter maps');
   await page.screenshot({path:path.join(out,engine+'-desktop.png')});
@@ -28,7 +28,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
   await page.waitForFunction(()=>!document.documentElement.dataset.wallpaper);
   assert.match(await filter(page.locator('.site-header')),/blur\(/,'navigation retains glass without wallpaper');
   assert.deepEqual(await page.locator('.race-cover').boundingBox(),rect,'no geometry changes when switching glass');
-  assert.equal(await page.locator('.race-cover').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(23, 25, 29)');
+  assert.equal(await page.locator('.race-cover').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(244, 243, 239)');
   await page.getByRole('button',{name:'壁纸背景',exact:true}).click();
   await page.setViewportSize({width:390,height:844});await page.goto(base+'/login');
   await page.waitForFunction(()=>document.documentElement.dataset.wallpaper==='on');
@@ -42,7 +42,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
   await page.emulateMedia({reducedMotion:'reduce'});await page.setViewportSize({width:1440,height:1000});await page.goto(base+'/');await page.locator('.race-cover').waitFor({timeout:60000});
   await page.waitForFunction(()=>document.documentElement.dataset.wallpaper==='on'&&!document.querySelector('.wallpaper-video'));
   assert.equal(await page.locator('[data-glass-mode=refracted]').count(),0,'reduced motion avoids optional refraction');
-  assert.equal(await filter(page.locator('.race-cover')),'none','reduced motion keeps solid readable content');
+  assert.match(await filter(page.locator('.race-cover')),/blur\(8px\)/,'reduced motion keeps readable glass');
   assert.deepEqual(errors,[]);console.log('PASS '+engine+': desktop/mobile glass, source cleanup, unchanged geometry, menu and reduced motion');
   await context.close();
  }finally{await browser.close();}

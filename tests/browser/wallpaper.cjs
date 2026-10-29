@@ -69,7 +69,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
   await page.goto(base+'/',{timeout:90000});await page.locator('.race-cover').waitFor({timeout:60000});
   await page.waitForFunction(()=>document.documentElement.dataset.wallpaper==='on');
   const cover=page.locator('.race-cover');const material=await cover.evaluate(e=>({bg:getComputedStyle(e).backgroundColor,ink:getComputedStyle(e).color,filter:getComputedStyle(e).backdropFilter}));
-  assert.equal(material.bg,'rgb(23, 25, 29)','home hero is an opaque dark content panel');assert.equal(material.ink,'rgb(244, 243, 239)','dark hero retains light text');assert.equal(material.filter,'none');
+  assert.equal(material.bg,'rgba(246, 248, 250, 0.88)','home hero uses a light translucent panel');assert.equal(material.ink,'rgb(23, 25, 29)','light hero retains dark text');assert.match(material.filter,/blur\(8px\)/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.screenshot({path:path.join(out,'home-glass-'+width+'.png'),fullPage:true});
   await page.locator('.site-footer').evaluate(e=>e.scrollIntoView({behavior:'instant',block:'end'}));await page.waitForTimeout(250);await page.screenshot({path:path.join(out,'footer-glass-'+width+'.png')});
