@@ -51,6 +51,8 @@ export function AISearchBox({ defaultLight = false }: { defaultLight?: boolean }
     <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
       {/* Search Input Box using GlassComposer */}
       <GlassComposer
+        optical
+        className="home-ai-composer"
         isFocused={isFocused}
         style={{
           background: isLight ? 'rgba(255, 255, 255, 0.92)' : undefined,

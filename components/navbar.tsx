@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {AILink} from './ai-link';
 import {NavigationFeedback} from './navigation-feedback';
+import {LiquidGlass} from '@/components/ui/liquid-glass';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiLogout } from '@/lib/auth/client';
 import { fetchAccountProfile, UserProfile } from '@/lib/profile/client';
@@ -99,6 +100,7 @@ export function Navbar() {
   const drawerRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState<(User & { isAdmin?: boolean }) | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -168,6 +170,18 @@ export function Navbar() {
   }, [menuOpen, logoutError, loggingOut]);
 
   useEffect(() => {
+    const header=headerRef.current;
+    const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+    if(!header)return;
+    let frame=0,x=50;
+    const draw=()=>{frame=0;header.style.setProperty('--glass-x',`${x}%`);header.style.setProperty('--glass-y',`${10+10*Math.sin(scrollY/500)}%`);};
+    const queue=()=>{if(!reduced.matches&&!frame)frame=requestAnimationFrame(draw);};
+    const move=(event:PointerEvent)=>{const rect=header.getBoundingClientRect();x=Math.max(0,Math.min(100,(event.clientX-rect.left)/rect.width*100));queue();};
+    window.addEventListener('scroll',queue,{passive:true});header.addEventListener('pointermove',move,{passive:true});
+    return()=>{window.removeEventListener('scroll',queue);header.removeEventListener('pointermove',move);if(frame)cancelAnimationFrame(frame);};
+  }, []);
+
+  useEffect(() => {
     setMenuOpen(false);
     setUserDropdownOpen(false);
   }, [pathname]);
@@ -224,7 +238,8 @@ export function Navbar() {
   const displayName = profile?.display_name || user?.user_metadata?.name || user?.email?.split('@')[0] || '我的账户';
   const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || null;
 
-  return <header className={`site-header ${menuOpen ? 'menu-open' : ''}`}>
+  return <header ref={headerRef} className={`site-header ${menuOpen ? 'menu-open' : ''}`}>
+   <LiquidGlass optical className="header-optics" aria-hidden="true"/>
    <div className="container nav-inner">
     <Link href="/" className="nav-brand" aria-label="APEX 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19L11 4h6l4 15h-5l-1-4H9l-2 4zM11 11h3l-1-4z" fill="currentColor"/></svg><span>APEX</span></Link>
     <nav className="nav-links desktop-nav" aria-label="主导航" style={{'--nav-index':Math.max(0,currentIndex),'--nav-active':currentIndex<0?0:1} as React.CSSProperties}>
