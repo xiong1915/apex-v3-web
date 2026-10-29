@@ -1,4 +1,4 @@
-.workspace{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:var(--wallpaper-panel,var(--surface,#fff));-webkit-backdrop-filter:var(--wallpaper-filter,none);backdrop-filter:var(--wallpaper-filter,none);border:1px solid var(--border,#ddd);border-radius:24px;overflow:hidden}
+.workspace{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));background:var(--surface,#fff);border:1px solid var(--border,#ddd);border-radius:24px;overflow:hidden}
 .focus{padding:32px;display:flex;flex-direction:column;align-items:flex-start;min-width:0;background:rgba(0,0,0,.015)}
 .kicker,.muted,.disclaimer,.scheduleHead span,.status{font-size:12px;color:var(--text-secondary,#667085);line-height:1.6}
 .kicker{letter-spacing:.08em}

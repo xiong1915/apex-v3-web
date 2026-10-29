@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { LiquidGlass } from '@/components/ui/liquid-glass';
 import { teamStyle } from '@/lib/ui/team-colors';
 import type { DriverStanding, ConstructorStanding } from '@/lib/f1/types';
 
@@ -21,6 +22,8 @@ export function StandingsTabs({
   pre1958,
 }: StandingsTabsProps) {
   const [activeTab, setActiveTab] = useState<'driver' | 'team'>('driver');
+  const driverRef=useRef<HTMLButtonElement>(null);
+  const teamRef=useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     try {
@@ -40,10 +43,18 @@ export function StandingsTabs({
 
   return (
     <>
-      <nav className="section-jumps" role="tablist" aria-label="积分榜内容">
+      <LiquidGlass className="standings-glass" optical>
+      <nav className="section-jumps standings-switch" data-active={activeTab} role="tablist" aria-label="积分榜内容" onKeyDown={event=>{
+        if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+        event.preventDefault();
+        const next=event.key==='Home'?'driver':event.key==='End'?'team':activeTab==='driver'?'team':'driver';
+        switchTab(next);(next==='driver'?driverRef:teamRef).current?.focus();
+      }}>
         <button
           type="button"
           role="tab"
+          ref={driverRef}
+          tabIndex={activeTab === 'driver' ? 0 : -1}
           aria-selected={activeTab === 'driver'}
           className={activeTab === 'driver' ? 'active' : ''}
           onClick={() => switchTab('driver')}
@@ -53,6 +64,8 @@ export function StandingsTabs({
         <button
           type="button"
           role="tab"
+          ref={teamRef}
+          tabIndex={activeTab === 'team' ? 0 : -1}
           aria-selected={activeTab === 'team'}
           className={activeTab === 'team' ? 'active' : ''}
           onClick={() => switchTab('team')}
@@ -60,6 +73,7 @@ export function StandingsTabs({
           车队积分榜 ({constructors.length})
         </button>
       </nav>
+      </LiquidGlass>
 
       {activeTab === 'driver' && (
         <>

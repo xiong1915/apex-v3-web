@@ -1135,3 +1135,16 @@ body:has(.ai-chat-console) {
 .calendar-track{aspect-ratio:4/3;display:grid;place-items:center}.calendar-track .circuit-trace{height:100%;width:100%;object-fit:contain}.calendar-track .trace-line{stroke:var(--accent-action);stroke-width:2}.race-detail-cover{align-items:stretch}.race-detail-map{display:flex;flex-direction:column;justify-content:center}.race-detail-map>.circuit-trace{flex:1;min-height:0}
 
 @media(min-width:768px){.page-standings{padding-top:24px}.page-standings .page-heading{margin-bottom:16px}.page-standings .page-heading-top{margin-bottom:8px}.page-standings .page-heading-meta{margin-top:8px}.page-standings .podium-ribbon{margin:16px 0}.page-standings .section-jumps{margin-bottom:16px}.page-standings .table-section .section-head{margin-bottom:16px}.page-standings .data-table td{padding-block:6px;line-height:1.4}.page-standings .data-table .points-cell{line-height:1.2}.page-standings .team-cell small{font-size:10px;line-height:1.25}.page-standings>.container>.rules-note{margin-top:24px}}
+
+/* One movable highlight keeps the standings switch compact and readable. */
+.standings-glass{width:min(100%,440px);border-radius:999px;-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
+.standings-switch{position:relative;isolation:isolate;display:flex;width:100%;gap:0;padding:4px;border:1px solid #ffffff80;border-radius:999px;background:rgba(244,243,239,.72)}
+.standings-switch::before{content:'';position:absolute;z-index:-1;top:4px;bottom:4px;left:4px;width:calc((100% - 8px)/2);border-radius:999px;background:rgba(255,255,255,.85);box-shadow:inset 0 1px 0 #ffffff70,0 3px 10px #17191d20;transform:translateX(0);transition:transform 400ms cubic-bezier(.34,1.4,.64,1)}
+.standings-switch[data-active=team]::before{transform:translateX(100%);animation:standings-glass-team 400ms ease}
+.standings-switch[data-active=driver]::before{animation:standings-glass-driver 400ms ease}
+@keyframes standings-glass-team{0%,100%{scale:1 1}45%{scale:1.09 .94}}
+@keyframes standings-glass-driver{0%,100%{scale:1 1}45%{scale:1.09 .94}}
+.standings-switch :is(button,button.active){flex:1;min-width:0;background:transparent;border-color:transparent;color:#17191d;transition:color 180ms ease}
+.standings-switch button.active{color:#a80400}
+@media(prefers-reduced-motion:reduce){.standings-switch::before,.standings-switch button{transition:none;animation:none}}
+@media(prefers-reduced-transparency:reduce){.standings-glass{-webkit-backdrop-filter:none;backdrop-filter:none}.standings-switch{background:#f4f3ef}}

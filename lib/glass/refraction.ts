@@ -130,7 +130,7 @@ export function computeDisplacementData(opts: DisplacementOptions) {
 
 /** Large surfaces retain the shared frosted material; maps never exceed 64K pixels. */
 export function getRefractionSize(width:number,height:number){
- if(!Number.isFinite(width)||!Number.isFinite(height)||width<2||height<2||width*height>120000)return null;
+ if(!Number.isFinite(width)||!Number.isFinite(height)||width<2||height<2||width*height>200000)return null;
  const ratio=Math.min(1,Math.sqrt(65536/(width*height)));
  return {width:Math.max(2,Math.floor(width*ratio)),height:Math.max(2,Math.floor(height*ratio)),ratio};
 }
