@@ -9,7 +9,7 @@ if(!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))throw Error('Localho
  await c.route('**/api/auth/logout',r=>fails?r.fulfill({status:503,json:{error:'local failure'}}):r.fulfill({json:{ok:true}}));
  const p=await c.newPage();await p.goto(base+'/login');await p.getByRole('button',{name:'切换导航菜单'}).click();const menu=p.getByRole('dialog',{name:'网站导航'});await menu.getByText('本地测试').waitFor();
  assert.doesNotMatch(await menu.innerText(),/[↗→←↓]/);
- await menu.getByRole('button',{name:'退出登录'}).click();await menu.getByRole('alert').waitFor();assert.match(await menu.getByRole('alert').innerText(),/失败/);assert.equal(await menu.isVisible(),true);
+ await menu.getByRole('button',{name:'退出登录'}).click();await menu.getByRole('alert').waitFor();assert.match(await menu.getByRole('alert').innerText(),/失败/);assert.equal(await menu.isVisible(),true);await p.waitForFunction(()=>document.activeElement?.textContent?.includes('退出登录'));assert.equal(await menu.getByRole('button',{name:'退出登录'}).evaluate(e=>e===document.activeElement),true);
  fails=false;await menu.getByRole('button',{name:'退出登录'}).click();await menu.waitFor({state:'hidden'});
  console.log('PASS mobile menu: clear links, visible logout failure and successful retry');await c.close();
  }finally{await b.close()}})().catch(e=>{console.error(e);process.exit(1)});
