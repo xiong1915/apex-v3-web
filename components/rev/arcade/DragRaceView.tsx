@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GlassSurface } from '@/components/glass/GlassSurface';
 import { CAR_SPECS } from '@/lib/arcade/car-specs';
 import { DragPhysicsEngine, DragRaceTelemetry, ShiftQuality } from '@/lib/arcade/drag-physics';
 import { F1EngineSynthesizer } from '@/lib/audio/engine-synthesizer';
@@ -525,7 +524,7 @@ export function DragRaceView({
       />
 
       {/* 直线加速主 HUD 视口 (Liquid Glass) */}
-      <GlassSurface
+      <div style={{ background: 'rgba(15, 17, 23, 0.96)' }}
         className="relative w-full p-5 sm:p-8 rounded-3xl border border-white/15 bg-zinc-950/80 shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-2xl text-white overflow-hidden flex flex-col items-center"
       >
         {/* 换挡浮动评价浮层 */}
@@ -561,7 +560,7 @@ export function DragRaceView({
         <div className="flex flex-row items-center justify-around w-full gap-2 sm:gap-6 my-2">
           {/* 当前挡位 */}
           <div className="flex flex-col items-center min-w-[70px]">
-            <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
+            <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">
               GEAR · 挡位
             </span>
             <div
@@ -598,13 +597,13 @@ export function DragRaceView({
 
           {/* 实时转速 */}
           <div className="flex flex-col items-center min-w-[80px] sm:min-w-[120px]">
-            <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
+            <span className="text-[10px] font-mono tracking-widest text-zinc-400 uppercase">
               ENGINE · 转速
             </span>
             <div className="text-2xl sm:text-4xl font-mono font-bold text-zinc-200 mt-1">
               {telemetry.rpm.toLocaleString()}
             </div>
-            <span className="text-xs font-mono text-zinc-500">RPM</span>
+            <span className="text-xs font-mono text-zinc-400">RPM</span>
           </div>
         </div>
 
@@ -616,7 +615,7 @@ export function DragRaceView({
               当前: {telemetry.distanceM.toFixed(1)}m
             </span>
             {ghostPoints && (
-              <span className="flex items-center gap-1.5 text-zinc-500">
+              <span className="flex items-center gap-1.5 text-zinc-400">
                 <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
                 幽灵车: {ghostDistanceM.toFixed(1)}m
               </span>
@@ -718,13 +717,13 @@ export function DragRaceView({
 
             <button
               onClick={onExitToLobby}
-              className="text-zinc-500 hover:text-zinc-300 underline underline-offset-4 cursor-pointer"
+              className="text-zinc-400 hover:text-zinc-300 underline underline-offset-4 cursor-pointer"
             >
               ← 切换其他模式
             </button>
           </div>
         </div>
-      </GlassSurface>
+      </div>
 
       {/* 结算弹窗 */}
       {raceResult && (

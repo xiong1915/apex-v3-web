@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GlassSurface } from '@/components/glass/GlassSurface';
+
 import { CAR_SPECS, CarSpec } from '@/lib/arcade/car-specs';
 import { DragPhysicsEngine, DragRaceTelemetry } from '@/lib/arcade/drag-physics';
 import { F1EngineSynthesizer } from '@/lib/audio/engine-synthesizer';
@@ -308,7 +308,7 @@ export function LaunchControlView({
       />
 
       {/* 核心挑战仪表盘 */}
-      <GlassSurface
+      <div style={{ background: 'rgba(15, 17, 23, 0.96)' }}
         className="relative w-full p-6 sm:p-8 rounded-3xl border border-white/15 bg-zinc-950/85 shadow-2xl backdrop-blur-2xl text-white flex flex-col items-center"
       >
         <div className="text-xs font-mono tracking-widest text-zinc-400 uppercase mb-2">
@@ -374,22 +374,22 @@ export function LaunchControlView({
           <div className="w-full max-w-md my-4 p-4 rounded-2xl bg-white/[0.04] border border-white/10 flex flex-col items-center gap-3 animate-in zoom-in-95 duration-200">
             <div className="text-xs font-mono text-zinc-400 tracking-wider">综合起步评分</div>
             <div className="text-5xl font-mono font-black text-amber-400">
-              {score} <span className="text-lg font-bold text-zinc-500">分</span>
+              {score} <span className="text-lg font-bold text-zinc-400">分</span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 w-full text-center font-mono text-xs mt-1">
               <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <div className="text-zinc-500">起步反应</div>
+                <div className="text-zinc-400">起步反应</div>
                 <div className="text-emerald-400 font-bold mt-0.5">
                   {isJumpStart ? '抢跑' : `+${reactionTimeMs}ms`}
                 </div>
               </div>
               <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <div className="text-zinc-500">弹射品质</div>
+                <div className="text-zinc-400">弹射品质</div>
                 <div className="text-white font-bold mt-0.5">{launchQuality || 'GOOD'}</div>
               </div>
               <div className="p-2 rounded-xl bg-black/40 border border-white/5">
-                <div className="text-zinc-500">0-100m 耗时</div>
+                <div className="text-zinc-400">0-100m 耗时</div>
                 <div className="text-amber-300 font-bold mt-0.5">
                   {time100m ? `${time100m.toFixed(3)}s` : '--'}
                 </div>
@@ -437,12 +437,12 @@ export function LaunchControlView({
                 <span className="text-[10px] text-rose-200/70">灭灯瞬间点击</span>
               </button>
             </div>
-            <div className="text-center text-xs font-mono text-zinc-500">
+            <div className="text-center text-xs font-mono text-zinc-400">
               按键操作: 保持 [Space] 控油门 · 灭灯瞬间点击 [E] 触发弹射
             </div>
           </div>
         )}
-      </GlassSurface>
+      </div>
     </div>
   );
 }

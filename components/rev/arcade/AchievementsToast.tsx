@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { GlassSurface } from '@/components/glass/GlassSurface';
+
 import { AchievementDef } from '@/lib/arcade/storage';
 
 interface AchievementsToastProps {
@@ -22,7 +22,7 @@ export function AchievementsToast({ achievement, onClose }: AchievementsToastPro
 
   return (
     <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
-      <GlassSurface
+      <div style={{ background: 'rgba(15, 17, 23, 0.96)' }}
         className="flex items-center gap-3.5 p-4 pr-6 rounded-2xl border border-amber-400/40 bg-zinc-950/90 shadow-[0_8px_32px_rgba(251,191,36,0.25)] text-white"
       >
         <div className="w-12 h-12 rounded-xl bg-amber-400/20 border border-amber-400/50 flex items-center justify-center text-2xl shadow-inner">
@@ -35,7 +35,7 @@ export function AchievementsToast({ achievement, onClose }: AchievementsToastPro
           <div className="text-sm font-bold text-white mt-0.5">{achievement.title}</div>
           <div className="text-xs text-zinc-400 mt-0.5">{achievement.description}</div>
         </div>
-      </GlassSurface>
+      </div>
     </div>
   );
 }

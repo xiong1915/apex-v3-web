@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GlassSurface } from '@/components/glass/GlassSurface';
+
 import { ENGINE_PRESETS, EnginePreset } from '@/lib/audio/engine-presets';
 import { F1EngineSynthesizer } from '@/lib/audio/engine-synthesizer';
 import { AchievementDef, tryUnlockAchievement } from '@/lib/arcade/storage';
@@ -209,7 +209,7 @@ export function SoundQuizView({
           </span>
           <button
             onClick={onExitToLobby}
-            className="text-zinc-500 hover:text-white underline underline-offset-4 cursor-pointer"
+            className="text-zinc-400 hover:text-white underline underline-offset-4 cursor-pointer"
           >
             返回大厅
           </button>
@@ -217,7 +217,7 @@ export function SoundQuizView({
       </div>
 
       {!isQuizFinished ? (
-        <GlassSurface
+        <div style={{ background: 'rgba(15, 17, 23, 0.96)' }}
           className="relative w-full p-6 sm:p-8 rounded-3xl border border-white/15 bg-zinc-950/85 shadow-2xl backdrop-blur-2xl text-white flex flex-col items-center"
         >
           <div className="text-xs font-mono tracking-widest text-zinc-400 uppercase mb-4">
@@ -295,10 +295,10 @@ export function SoundQuizView({
               );
             })}
           </div>
-        </GlassSurface>
+        </div>
       ) : (
         /* 结算卡片 */
-        <GlassSurface
+        <div style={{ background: 'rgba(15, 17, 23, 0.96)' }}
           className="relative w-full p-6 sm:p-8 rounded-3xl border border-white/15 bg-zinc-950/90 shadow-2xl backdrop-blur-2xl text-white flex flex-col items-center animate-in zoom-in-95 duration-200"
         >
           <div className="text-xs font-mono tracking-widest text-zinc-400 uppercase mb-2">
@@ -306,7 +306,7 @@ export function SoundQuizView({
           </div>
 
           <div className="text-6xl font-mono font-black text-amber-400 my-2">
-            {score} <span className="text-xl font-bold text-zinc-500">PTS</span>
+            {score} <span className="text-xl font-bold text-zinc-400">PTS</span>
           </div>
 
           <div className="text-sm font-mono text-zinc-300 mt-1">
@@ -319,11 +319,11 @@ export function SoundQuizView({
 
           <div className="grid grid-cols-2 gap-3 w-full max-w-sm my-6 font-mono text-xs text-center">
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10">
-              <div className="text-zinc-500">最高连击</div>
+              <div className="text-zinc-400">最高连击</div>
               <div className="text-lg font-bold text-amber-300 mt-0.5">{maxCombo} 连对</div>
             </div>
             <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10">
-              <div className="text-zinc-500">总答题数</div>
+              <div className="text-zinc-400">总答题数</div>
               <div className="text-lg font-bold text-white mt-0.5">10 题</div>
             </div>
           </div>
@@ -342,7 +342,7 @@ export function SoundQuizView({
               {copied ? '✓ 已复制战绩' : '分享成绩'}
             </button>
           </div>
-        </GlassSurface>
+        </div>
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { GlassSurface } from '@/components/glass/GlassSurface';
+
 import { CarSpec } from '@/lib/arcade/car-specs';
 
 export interface RaceResultData {
@@ -65,7 +65,7 @@ export function RaceResultModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <GlassSurface
+      <div style={{ background: 'rgba(15, 17, 23, 0.96)' }}
         className="relative w-full max-w-lg p-6 sm:p-8 rounded-3xl border border-white/15 bg-zinc-950/90 shadow-2xl text-white overflow-hidden"
       >
         {/* 背景光效 */}
@@ -108,7 +108,7 @@ export function RaceResultModal({
             <span className="text-5xl sm:text-6xl font-black font-mono tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-white to-zinc-400">
               {result.time400m.toFixed(3)}
             </span>
-            <span className="text-xl font-mono font-bold text-zinc-500">s</span>
+            <span className="text-xl font-mono font-bold text-zinc-400">s</span>
           </div>
 
           {result.isJumpStart && (
@@ -180,7 +180,7 @@ export function RaceResultModal({
             返回大厅
           </button>
         </div>
-      </GlassSurface>
+      </div>
     </div>
   );
 }
