@@ -16,7 +16,8 @@ const NAV_ITEMS = [
   { href: '/standings', label: '积分榜' },
   { href: '/live', label: '实时数据' },
   { href: '/drivers', label: '车手' },
-  { href: '/teams', label: '车队' }
+  { href: '/teams', label: '车队' },
+  { href: '/rev', label: '声浪室' }
 ];
 
 const clockFormatter = new Intl.DateTimeFormat('zh-CN', {

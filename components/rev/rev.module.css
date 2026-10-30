@@ -1,0 +1,625 @@
+/* components/rev/rev.module.css */
+/* APEX V3 Acoustic Rev — F1 Cockpit & Liquid Glass Styling */
+
+.dashboardContainer {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  color: #f3f4f6;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 顶部控制栏 */
+.topBar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 14px 20px;
+  background: rgba(22, 27, 34, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36);
+}
+
+.brandGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandIcon {
+  font-size: 20px;
+}
+
+.brandTitle {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+}
+
+.brandSubtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--font-mono, monospace);
+  margin-left: 6px;
+}
+
+/* 预设切换按键群 */
+.presetSelector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.presetBtn {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.presetBtn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.presetBtnActive {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* 音量与动作栏 */
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.volumeGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.muteBtn {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  transition: color 0.15s ease;
+}
+
+.muteBtn:hover {
+  color: #fff;
+}
+
+.volumeSlider {
+  width: 70px;
+  height: 4px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+}
+
+.backHomeLink {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.2s ease;
+}
+
+.backHomeLink:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+/* 核心仪表舱主体 (驾驶舱面板) */
+.cockpitPanel {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: radial-gradient(circle at 50% 30%, rgba(30, 36, 48, 0.75), rgba(13, 16, 23, 0.88));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 28px 24px 36px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+/* 换挡 LED 指示灯群 */
+.shiftLightsContainer {
+  width: 100%;
+  max-width: 460px;
+  margin-bottom: 20px;
+}
+
+.shiftLightsTrack {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+
+.shiftLed {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transition: all 0.08s ease;
+}
+
+.shiftLed.green.lit {
+  background: #10b981;
+  box-shadow: 0 0 12px #10b981, 0 0 4px #fff;
+}
+
+.shiftLed.red.lit {
+  background: #ef4444;
+  box-shadow: 0 0 12px #ef4444, 0 0 4px #fff;
+}
+
+.shiftLed.blue.lit {
+  background: #8b5cf6;
+  box-shadow: 0 0 14px #8b5cf6, 0 0 6px #fff;
+}
+
+.flashingGroup .shiftLed.lit {
+  animation: ledPulse 0.12s infinite alternate;
+}
+
+@keyframes ledPulse {
+  from { opacity: 0.35; filter: brightness(0.8); }
+  to { opacity: 1; filter: brightness(1.6); }
+}
+
+/* 转速表盘 (Tachometer) */
+.tachometerWrapper {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tachoSvg {
+  width: 100%;
+  height: 100%;
+}
+
+.tachoBgTrack {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 14;
+  stroke-linecap: round;
+}
+
+.tachoActiveTrack {
+  fill: none;
+  stroke-width: 14;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.04s linear;
+}
+
+.needleGroup {
+  transition: transform 0.04s cubic-bezier(0.1, 0.9, 0.2, 1);
+  transform-origin: 160px 160px;
+}
+
+.needleLine {
+  stroke: #ff3b30;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.needleRedline {
+  stroke: #ec4899;
+}
+
+.needleCenterOuter {
+  fill: #1f2937;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 2;
+}
+
+.needleCenterInner {
+  fill: #ff3b30;
+}
+
+/* 仪表中心信息 */
+.tachoCenterInfo {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.gearDisplay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.gearLetter {
+  font-family: var(--font-mono, monospace);
+  font-size: 32px;
+  font-weight: 800;
+  color: #10b981;
+  text-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
+  line-height: 1;
+}
+
+.gearLabel {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.1em;
+}
+
+.rpmValueDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.rpmDigits {
+  font-family: var(--font-mono, monospace);
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.rpmUnit {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.engineMeta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.engineNameText {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.redlineTag {
+  font-family: var(--font-mono, monospace);
+  font-size: 9px;
+  color: #ef4444;
+  letter-spacing: 0.08em;
+}
+
+/* 油门交互区 (Throttle Section) */
+.throttleSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.pedalWrapper {
+  position: relative;
+  width: 160px;
+  height: 190px;
+  cursor: pointer;
+  touch-action: none; /* 禁止原生上下滑动，由我们精准捕获 */
+  outline: none;
+}
+
+.pedalPlate {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(145deg, rgba(45, 52, 64, 0.8), rgba(20, 24, 32, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), inset 0 2px 2px rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 12px;
+}
+
+.pedalActive .pedalPlate {
+  transform: scale(0.96) translateY(4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+/* 防滑金属防滑槽 */
+.pedalTreads {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  z-index: 2;
+}
+
+.pedalTreads span {
+  width: 80%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 踏板内部液态填充条 */
+.pedalFillIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(to top, rgba(239, 68, 68, 0.7), rgba(245, 158, 11, 0.45));
+  transition: height 0.03s linear;
+  z-index: 1;
+}
+
+.pedalFootprint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 2;
+}
+
+.pedalActionText {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.pedalValueText {
+  font-family: var(--font-mono, monospace);
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.2;
+}
+
+/* 油门交互提示 */
+.throttleHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.keyBadge {
+  font-family: var(--font-mono, monospace);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  color: #fff;
+}
+
+.orText {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.hintText {
+  font-size: 12px;
+}
+
+/* 排气与火花特效容器 */
+.exhaustContainer {
+  position: relative;
+  width: 300px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -10px;
+}
+
+.sparksCanvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.exhaustPipes {
+  display: flex;
+  gap: 18px;
+  z-index: 1;
+}
+
+.pipeTip {
+  width: 36px;
+  height: 24px;
+  background: radial-gradient(circle at 50% 50%, #000 45%, #374151 75%, #1f2937 100%);
+  border: 2px solid #4b5563;
+  border-radius: 50%;
+  box-shadow: inset 0 0 10px #000, 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+
+.heatwaveGlow {
+  position: absolute;
+  width: 120px;
+  height: 60px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.4) 0%, rgba(245, 158, 11, 0.15) 50%, transparent 80%);
+  border-radius: 50%;
+  filter: blur(10px);
+  pointer-events: none;
+  z-index: 2;
+  transition: opacity 0.1s ease;
+}
+
+/* 首次用户交互启动全屏遮罩 (Audio Unlock) */
+.startOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-radius: 24px;
+}
+
+.startBtn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  padding: 14px 32px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.startBtn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 12px 32px rgba(239, 68, 68, 0.6);
+}
+
+.startNote {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  max-width: 300px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* 移动端响应式适配 */
+@media (max-width: 640px) {
+  .dashboardContainer {
+    padding: 16px 12px 40px;
+    gap: 20px;
+  }
+
+  .topBar {
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .presetSelector {
+    order: 3;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .presetBtn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .cockpitPanel {
+    padding: 20px 12px 28px;
+    border-radius: 20px;
+  }
+
+  .tachometerWrapper {
+    width: 270px;
+    height: 270px;
+  }
+
+  .rpmDigits {
+    font-size: 32px;
+  }
+
+  .pedalWrapper {
+    width: 150px;
+    height: 170px;
+  }
+
+  .throttleHint .keyBadge,
+  .throttleHint .orText {
+    display: none;
+  }
+}
