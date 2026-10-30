@@ -1,0 +1,5 @@
+
+.helmet{position:absolute;right:0;bottom:0;width:160px;height:136px;padding:0;border:0;background:transparent;cursor:grab;touch-action:pan-y;z-index:2;filter:drop-shadow(0 8px 8px #17191d2e);transform-origin:center;contain:layout style;pointer-events:auto}
+.helmet svg{width:100%;height:100%;display:block;pointer-events:none}.helmet[data-dragging=true]{cursor:grabbing}.helmet:focus-visible{outline:2px solid #e10600;outline-offset:4px;border-radius:24px}
+@media(max-width:767px){.helmet{width:120px;height:104px}}
+@media(prefers-reduced-motion:reduce){.helmet{cursor:default;transform:none!important}}
