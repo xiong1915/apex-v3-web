@@ -1,6 +1,6 @@
 /* Wallpaper is decorative and outside normal flow; all content surfaces remain intact. */
 html[data-wallpaper=on] body{background:transparent}
-html[data-wallpaper=on]{--wallpaper-page-surface:transparent;--wallpaper-filter:blur(12px) saturate(1.08);--wallpaper-panel:rgba(255,255,255,.72);--wallpaper-live-panel:rgba(22,29,40,.78);--wallpaper-live-inset:rgba(16,23,34,.28);--bg-primary:rgba(244,243,239,.76);--bg-secondary:var(--wallpaper-panel);--bg-elevated:rgba(255,255,255,.88);--text-secondary:#41464f;--text-muted:#41464f;--text-dark-secondary:#41464f}
+html[data-wallpaper=on]{--wallpaper-page-surface:transparent;--wallpaper-filter:blur(12px) saturate(1.08);--wallpaper-panel:rgba(255,255,255,.86);--wallpaper-live-panel:rgba(22,29,40,.78);--wallpaper-live-inset:rgba(16,23,34,.28);--bg-primary:rgba(244,243,239,.76);--bg-secondary:var(--wallpaper-panel);--bg-elevated:rgba(255,255,255,.88);--text-secondary:#323943;--text-muted:#323943;--text-dark-secondary:#41464f}
 .site-wallpaper{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;user-select:none;background:var(--bg-primary)}
 .wallpaper-poster,.wallpaper-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 50%;pointer-events:none}
 .wallpaper-video{opacity:0;transition:opacity 180ms ease}
@@ -33,14 +33,14 @@ body:has(.ai-chat-console) .wallpaper-toggle{bottom:calc(120px + env(safe-area-i
 body:has(.mobile-admin-bottom-nav) .wallpaper-toggle{bottom:calc(100px + env(safe-area-inset-bottom))}
 
 /* Wallpaper materials preserve each component's geometry and semantic accent colors. */
-html[data-wallpaper=on] .race-cover{--text-primary:#17191d;--text-secondary:#41464f;--text-muted:#41464f;--line-dark:#17191d24;color:var(--text-primary)}
+html[data-wallpaper=on] .race-cover{--text-primary:#17191d;--text-secondary:#323943;--text-muted:#323943;--line-dark:#17191d36;color:var(--text-primary)}
 html[data-wallpaper=on] .race-cover-visual{background:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 #ffffffb3,inset 0 0 0 1px #ffffff4d}
 html[data-wallpaper=on] :is(.ai-chat-console .glass-composer,.ai-chat-console .glass-surface){background:rgba(255,255,255,.84)}
 html[data-wallpaper=on] .ai-welcome{background:var(--wallpaper-panel)!important}
 html[data-wallpaper=on] :is(.profile-page-shell .apex-card){background:var(--wallpaper-live-panel);color:#f4f3ef;--text-primary:#f4f3ef;--text-secondary:#c2cad4;--text-muted:#c2cad4;box-shadow:inset 0 1px 0 #ffffff30,0 8px 28px #182f4810;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
 html[data-wallpaper=on] .admin-shell{background:transparent!important}
 html[data-wallpaper=on] :is(.admin-header,.admin-sidebar,.admin-panel,.admin-shell .glass-surface){background:rgba(255,255,255,.84)}
-@media(max-width:767px){html[data-wallpaper=on]{--wallpaper-filter:blur(6px) saturate(1.08);--wallpaper-panel:rgba(255,255,255,.8);--wallpaper-live-panel:rgba(22,29,40,.9)}html[data-wallpaper=on] .profile-page-shell .apex-card{-webkit-backdrop-filter:var(--wallpaper-filter);backdrop-filter:var(--wallpaper-filter)}}
+@media(max-width:767px){html[data-wallpaper=on]{--wallpaper-filter:blur(6px) saturate(1.08);--wallpaper-panel:rgba(255,255,255,.9);--wallpaper-live-panel:rgba(22,29,40,.9)}html[data-wallpaper=on] .profile-page-shell .apex-card{-webkit-backdrop-filter:var(--wallpaper-filter);backdrop-filter:var(--wallpaper-filter)}}
 
 html[data-wallpaper=on] :is(.admin-header,.admin-sidebar,.admin-panel,.conversation-sidebar,.table-panel){-webkit-backdrop-filter:var(--wallpaper-filter);backdrop-filter:var(--wallpaper-filter)}
 /* A separate optical layer leaves the tablet menu's fixed positioning intact. */
@@ -69,7 +69,7 @@ html[data-wallpaper=on] .site-header.menu-open {
 
 /* Content stays opaque; optical blur is reserved for floating controls. */
 html[data-wallpaper=on] body :is(.card-light,.card-dark,.driver-tile,.team-tile,.calendar-tile,.championship-spread,.profile-feature,.table-panel,.empty-state,.profile-cover,.profile-stats>div,.bio-card,.team-driver-link,.race-detail-map,.result-panel,.system-summary,.system-details,.calendar-subscription,.detail-schedule,.race-empty-note,.session-rail>div,.podium-ribbon>div){background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-wallpaper=on] body .race-cover{background:rgba(246,248,250,.88);color:#17191d;--text-primary:#17191d;--text-secondary:#41464f;--text-muted:#41464f;--line-dark:#17191d24;-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1)}
+html[data-wallpaper=on] body .race-cover{background:rgba(246,248,250,.94);color:#17191d;--text-primary:#17191d;--text-secondary:#323943;--text-muted:#323943;--line-dark:#17191d36;-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1)}
 html[data-wallpaper=on] .race-cover-visual{background:rgba(255,255,255,.7);color:#17191d}
 @media(prefers-reduced-transparency:reduce){html[data-wallpaper=on] body .race-cover{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}html[data-wallpaper=on] .race-cover-visual{background:#fff}}
 html[data-wallpaper=on] .site-footer{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}

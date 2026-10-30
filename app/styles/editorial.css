@@ -587,3 +587,4 @@
 .battle-track i{background:var(--team-color,var(--accent-action))}.battle-row:hover{background:color-mix(in srgb,var(--team-color,#747a84) 5%,transparent)}
 .race-cover-visual{display:flex;flex-direction:column}.cover-circuit{flex:1;min-height:280px;display:grid;place-items:center}.race-cover-visual .trace-line{filter:drop-shadow(0 2px 3px #c9050020)}
 @media(max-width:767px){.championship-context{display:block}.championship-context>.text-link{margin-top:12px}}
+.race-interaction-slot{position:relative;width:160px;height:136px;margin-right:24px;flex-shrink:0;pointer-events:none}@media(max-width:767px){.race-interaction-slot{width:120px;height:104px;margin-right:8px}.race-cover .map-topline{padding-inline:16px}}
