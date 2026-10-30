@@ -1,7 +1,7 @@
 // components/rev/ExhaustEffects.tsx
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 import styles from './rev.module.css';
 
 interface ExhaustEffectsProps {
@@ -23,7 +23,7 @@ interface Particle {
   maxLife: number;
 }
 
-export function ExhaustEffects({
+export const ExhaustEffects = memo(function ExhaustEffects({
   isBackfiring,
   backfireCount,
   audioEnergy,
@@ -35,7 +35,7 @@ export function ExhaustEffects({
 
   // 1. 触发回火爆火花粒子
   useEffect(() => {
-    if (!isBackfiring) return;
+    if (!isBackfiring || rpm === 0) return;
 
     const count = Math.min(24, 12 * backfireCount);
     const colors = ['#f59e0b', '#ef4444', '#fbbf24', '#ffffff'];
@@ -55,7 +55,7 @@ export function ExhaustEffects({
         maxLife: 15 + Math.random() * 20
       });
     }
-  }, [isBackfiring, backfireCount]);
+  }, [isBackfiring, backfireCount, rpm]);
 
   // 2. 粒子动画循环
   useEffect(() => {
@@ -105,39 +105,39 @@ export function ExhaustEffects({
     };
   }, []);
 
-  // 热浪波纹与低音共振强度 (0 ~ 1)
-  const heatIntensity = Math.min(1, Math.max(0, (rpm - 8000) / 10000)) * (0.3 + 0.7 * audioEnergy);
+  const heatScale = rpm === 0 ? 0 : Math.min(1.4, 1 + audioEnergy * 0.5);
 
   return (
-    <div
-      className={styles.exhaustContainer}
-      style={{
-        // 动态根据声波能量产生轻微微像素抖动（低音震颤）
-        transform: heatIntensity > 0.4 ? `translateY(${(Math.random() - 0.5) * 1.5}px)` : 'none'
-      }}
-      aria-hidden="true"
-    >
+    <div className={styles.exhaustWrapper} aria-hidden="true">
+      {/* 双出金属排气尾喉 */}
+      <div className={styles.exhaustPipes}>
+        <div className={styles.pipeOpening}>
+          <div
+            className={styles.afterburnerGlow}
+            style={{
+              opacity: rpm === 0 ? 0 : 0.2 + audioEnergy * 0.8,
+              transform: `scale(${heatScale})`
+            }}
+          />
+        </div>
+        <div className={styles.pipeOpening}>
+          <div
+            className={styles.afterburnerGlow}
+            style={{
+              opacity: rpm === 0 ? 0 : 0.2 + audioEnergy * 0.8,
+              transform: `scale(${heatScale})`
+            }}
+          />
+        </div>
+      </div>
+
+      {/* 排气火花 Canvas */}
       <canvas
         ref={canvasRef}
         width={300}
-        height={100}
-        className={styles.sparksCanvas}
-      />
-
-      {/* 排气管口光泽底座 */}
-      <div className={styles.exhaustPipes}>
-        <div className={styles.pipeTip} />
-        <div className={styles.pipeTip} />
-      </div>
-
-      {/* 热浪漫反射发光层 */}
-      <div
-        className={styles.heatwaveGlow}
-        style={{
-          opacity: heatIntensity * 0.8,
-          transform: `scale(${1 + heatIntensity * 0.15})`
-        }}
+        height={120}
+        className={styles.sparkCanvas}
       />
     </div>
   );
-}
+});

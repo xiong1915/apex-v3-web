@@ -1,7 +1,7 @@
 // components/rev/ShiftLights.tsx
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import styles from './rev.module.css';
 
 interface ShiftLightsProps {
@@ -10,16 +10,25 @@ interface ShiftLightsProps {
   idleRpm: number;
 }
 
-export function ShiftLights({ rpm, redlineRpm, idleRpm }: ShiftLightsProps) {
+export const ShiftLights = memo(function ShiftLights({
+  rpm,
+  redlineRpm,
+  idleRpm
+}: ShiftLightsProps) {
+  // 引擎熄火时熄灭全部指示灯
+  const isEngineOff = rpm === 0;
+
   // 换挡灯计算：总共 15 颗 (5绿，5红，5蓝/紫)
   // 当转速超过怠速到红线时依次点亮
-  const effectiveRange = redlineRpm - (idleRpm + 2000);
-  const currentOverBase = Math.max(0, rpm - (idleRpm + 2000));
-  const progress = Math.min(1, currentOverBase / Math.max(1, effectiveRange));
+  const effectiveRange = redlineRpm - (idleRpm + 1500);
+  const currentOverBase = Math.max(0, rpm - (idleRpm + 1500));
+  const progress = isEngineOff
+    ? 0
+    : Math.min(1, currentOverBase / Math.max(1, effectiveRange));
 
   const totalLeds = 15;
-  const litCount = Math.floor(progress * totalLeds);
-  const isRedlineFlashing = progress >= 0.96;
+  const litCount = isEngineOff ? 0 : Math.floor(progress * totalLeds);
+  const isRedlineFlashing = !isEngineOff && progress >= 0.96;
 
   // 15 颗 LED 颜色类型定义
   // 0~4: 绿 (Green)
@@ -31,7 +40,7 @@ export function ShiftLights({ rpm, redlineRpm, idleRpm }: ShiftLightsProps) {
     else if (i < 10) colorType = 'red';
     else colorType = 'blue';
 
-    const isLit = isRedlineFlashing ? true : i < litCount;
+    const isLit = !isEngineOff && (isRedlineFlashing ? true : i < litCount);
 
     return {
       index: i,
@@ -43,7 +52,7 @@ export function ShiftLights({ rpm, redlineRpm, idleRpm }: ShiftLightsProps) {
   return (
     <div
       className={`${styles.shiftLightsContainer} ${isRedlineFlashing ? styles.flashingGroup : ''}`}
-      aria-label="换挡指示灯"
+      aria-label="转速区间与断油提示灯"
       role="meter"
       aria-valuenow={rpm}
       aria-valuemin={idleRpm}
@@ -59,4 +68,4 @@ export function ShiftLights({ rpm, redlineRpm, idleRpm }: ShiftLightsProps) {
       </div>
     </div>
   );
-}
+});

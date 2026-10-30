@@ -26,7 +26,7 @@ export class F1EngineSynthesizer {
   private turboOsc: OscillatorNode | null = null;
   private turboGain: GainNode | null = null;
 
-  // 音量与静音
+  // 音量与静音状态 (独立持久化)
   private volume: number = 0.65;
   private isMuted: boolean = false;
 
@@ -47,7 +47,10 @@ export class F1EngineSynthesizer {
     }
 
     try {
+      if (typeof window === 'undefined') return false;
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return false;
+
       this.ctx = new AudioCtx({ latencyHint: 'interactive' });
 
       // 1. 主输出总线与压限器 (避免任何情况下的数字爆音与削波)
@@ -232,7 +235,7 @@ export class F1EngineSynthesizer {
    * 触发松油门排气管回火放炮 (Backfire Pop)
    */
   public triggerBackfire(): void {
-    if (!this.ctx || !this.masterGain || this.isMuted) return;
+    if (!this.ctx || !this.masterGain || this.isMuted || !this.isRunning) return;
 
     const now = this.ctx.currentTime;
     // 采用衰减脉冲噪音模拟瞬态爆鸣
@@ -271,20 +274,19 @@ export class F1EngineSynthesizer {
     this.preset = newPreset;
 
     if (this.ctx && this.isRunning) {
-      // 快速淡出旧声音，重建新节点图，再淡入
       const now = this.ctx.currentTime;
       if (this.masterGain) {
         this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, now);
-        this.masterGain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+        this.masterGain.gain.linearRampToValueAtTime(0.001, now + 0.04);
       }
 
-      setTimeout(() => {
-        this.buildAudioGraph();
-        if (this.masterGain && this.ctx) {
-          const t = this.ctx.currentTime;
-          this.masterGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : this.volume, t + 0.08);
-        }
-      }, 50);
+      await new Promise(r => setTimeout(r, 45));
+      this.buildAudioGraph();
+
+      if (this.masterGain && this.ctx) {
+        const t = this.ctx.currentTime;
+        this.masterGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : this.volume, t + 0.06);
+      }
     }
   }
 
@@ -292,7 +294,7 @@ export class F1EngineSynthesizer {
    * 获取瞬时声学能量 (供液态玻璃气浪与抖动使用，返回 0.0 ~ 1.0)
    */
   public getEnergy(): number {
-    if (!this.analyser) return 0;
+    if (!this.analyser || !this.isRunning) return 0;
     const array = new Uint8Array(this.analyser.frequencyBinCount);
     this.analyser.getByteFrequencyData(array);
     let sum = 0;
@@ -304,36 +306,96 @@ export class F1EngineSynthesizer {
 
   public setVolume(val: number): void {
     this.volume = Math.max(0, Math.min(1, val));
-    if (this.masterGain && this.ctx && !this.isMuted) {
+    if (this.masterGain && this.ctx && !this.isMuted && this.isRunning) {
       this.masterGain.gain.setTargetAtTime(this.volume, this.ctx.currentTime, 0.03);
     }
   }
 
   public setMuted(muted: boolean): void {
     this.isMuted = muted;
-    if (this.masterGain && this.ctx) {
+    if (this.masterGain && this.ctx && this.isRunning) {
       this.masterGain.gain.setTargetAtTime(muted ? 0 : this.volume, this.ctx.currentTime, 0.03);
     }
   }
 
-  public suspend(): void {
-    if (this.ctx && this.ctx.state === 'running') {
-      this.ctx.suspend();
+  public getVolume(): number {
+    return this.volume;
+  }
+
+  public getIsMuted(): boolean {
+    return this.isMuted;
+  }
+
+  public getIsRunning(): boolean {
+    return this.isRunning;
+  }
+
+  /**
+   * 平滑淡出并暂停 (熄火 / 页面隐藏切后台)
+   */
+  public async fadeAndSuspend(durationMs: number = 60): Promise<void> {
+    if (!this.ctx || this.ctx.state === 'closed') {
       this.isRunning = false;
+      return;
+    }
+
+    if (this.masterGain && this.ctx.state === 'running') {
+      const now = this.ctx.currentTime;
+      const durSec = durationMs / 1000;
+      this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, now);
+      this.masterGain.gain.linearRampToValueAtTime(0.0001, now + durSec);
+      await new Promise(r => setTimeout(r, durationMs + 10));
+    }
+
+    if (this.ctx && this.ctx.state === 'running') {
+      try {
+        await this.ctx.suspend();
+      } catch (_) {}
+    }
+    this.isRunning = false;
+  }
+
+  /**
+   * 恢复并平滑淡入 (启动 / 页面重新获得焦点)
+   */
+  public async resumeAndFadeIn(durationMs: number = 80): Promise<boolean> {
+    if (!this.ctx || this.ctx.state === 'closed') {
+      return await this.init();
+    }
+
+    try {
+      if (this.ctx.state === 'suspended') {
+        await this.ctx.resume();
+      }
+      this.isRunning = true;
+
+      if (this.masterGain) {
+        const now = this.ctx.currentTime;
+        const durSec = durationMs / 1000;
+        this.masterGain.gain.setValueAtTime(0.0001, now);
+        this.masterGain.gain.linearRampToValueAtTime(this.isMuted ? 0 : this.volume, now + durSec);
+      }
+      return true;
+    } catch (err) {
+      console.warn('[F1EngineSynthesizer] resume failed:', err);
+      return false;
     }
   }
 
+  public suspend(): void {
+    this.fadeAndSuspend(40);
+  }
+
   public resume(): void {
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
-      this.isRunning = true;
-    }
+    this.resumeAndFadeIn(60);
   }
 
   public destroy(): void {
     this.cleanupGraphNodes();
     if (this.ctx && this.ctx.state !== 'closed') {
-      this.ctx.close();
+      try {
+        this.ctx.close();
+      } catch (_) {}
     }
     this.ctx = null;
     this.isRunning = false;
@@ -341,20 +403,31 @@ export class F1EngineSynthesizer {
 
   private cleanupGraphNodes(): void {
     this.harmonicOscs.forEach(osc => {
-      try { osc.stop(); osc.disconnect(); } catch (_) {}
+      try {
+        osc.stop();
+        osc.disconnect();
+      } catch (_) {}
     });
     this.harmonicOscs = [];
     this.harmonicGains.forEach(gain => {
-      try { gain.disconnect(); } catch (_) {}
+      try {
+        gain.disconnect();
+      } catch (_) {}
     });
     this.harmonicGains = [];
 
     if (this.noiseNode) {
-      try { this.noiseNode.stop(); this.noiseNode.disconnect(); } catch (_) {}
+      try {
+        this.noiseNode.stop();
+        this.noiseNode.disconnect();
+      } catch (_) {}
       this.noiseNode = null;
     }
     if (this.turboOsc) {
-      try { this.turboOsc.stop(); this.turboOsc.disconnect(); } catch (_) {}
+      try {
+        this.turboOsc.stop();
+        this.turboOsc.disconnect();
+      } catch (_) {}
       this.turboOsc = null;
     }
   }

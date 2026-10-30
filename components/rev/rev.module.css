@@ -4,17 +4,18 @@
 .dashboardContainer {
   position: relative;
   width: 100%;
-  max-width: 960px;
+  max-width: 920px;
   margin: 0 auto;
-  padding: 32px 20px 60px;
+  padding: 12px 16px 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
+  gap: 14px;
   color: #f3f4f6;
   font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
   user-select: none;
   -webkit-user-select: none;
+  box-sizing: border-box;
 }
 
 /* 顶部控制栏 */
@@ -24,35 +25,36 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 16px;
-  padding: 14px 20px;
-  background: rgba(22, 27, 34, 0.65);
+  gap: 12px;
+  padding: 10px 18px;
+  background: rgba(22, 27, 34, 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36);
+  border-radius: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
 }
 
 .brandGroup {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .brandIcon {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .brandTitle {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #fff;
 }
 
 .brandSubtitle {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.5);
   font-family: var(--font-mono, monospace);
   margin-left: 6px;
@@ -62,10 +64,10 @@
 .presetSelector {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: rgba(0, 0, 0, 0.45);
-  padding: 4px;
-  border-radius: 12px;
+  padding: 3px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -73,10 +75,10 @@
   background: transparent;
   border: 0;
   color: rgba(255, 255, 255, 0.65);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 8px;
+  padding: 5px 12px;
+  border-radius: 7px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -89,20 +91,81 @@
 .presetBtnActive {
   background: rgba(255, 255, 255, 0.18) !important;
   color: #fff !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
-/* 音量与动作栏 */
+/* 启停按键、音量与动作栏 */
 .topActions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
+/* 核心双态启停控制按钮 */
+.engineControlBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  outline: none;
+}
+
+.btnOff {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.25), rgba(185, 28, 28, 0.35));
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.45);
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.2);
+}
+
+.btnOff:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(185, 28, 28, 0.5));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+}
+
+.btnRunning {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.35));
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.25);
+}
+
+.btnRunning:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(185, 28, 28, 0.4));
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.engineBtnLed {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+  display: inline-block;
+}
+
+.btnRunning .engineBtnLed {
+  animation: ledRunningBlink 1.2s infinite ease-in-out alternate;
+}
+
+@keyframes ledRunningBlink {
+  from { opacity: 0.5; filter: drop-shadow(0 0 2px #10b981); }
+  to { opacity: 1; filter: drop-shadow(0 0 8px #10b981); }
+}
+
+/* 音量控制 */
 .volumeGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .muteBtn {
@@ -110,11 +173,11 @@
   border: 0;
   color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 3px;
   transition: color 0.15s ease;
 }
 
@@ -123,19 +186,25 @@
 }
 
 .volumeSlider {
-  width: 70px;
+  width: 60px;
   height: 4px;
   -webkit-appearance: none;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.25);
   border-radius: 2px;
   outline: none;
   cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.sliderMuted {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .volumeSlider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
@@ -145,13 +214,14 @@
 .backHomeLink {
   color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 5px 10px;
+  border-radius: 7px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.1);
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .backHomeLink:hover {
@@ -166,56 +236,69 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: radial-gradient(circle at 50% 30%, rgba(30, 36, 48, 0.75), rgba(13, 16, 23, 0.88));
+  background: radial-gradient(circle at 50% 25%, rgba(28, 34, 46, 0.8), rgba(11, 14, 20, 0.92));
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 24px;
-  padding: 28px 24px 36px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 16px 20px 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.15);
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* 待机提示条 */
+.standbyBanner {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 4px 14px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+  letter-spacing: 0.03em;
 }
 
 /* 换挡 LED 指示灯群 */
 .shiftLightsContainer {
   width: 100%;
-  max-width: 460px;
-  margin-bottom: 20px;
+  max-width: 440px;
+  margin-bottom: 10px;
 }
 
 .shiftLightsTrack {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  padding: 10px 14px;
+  gap: 5px;
+  padding: 8px 12px;
   background: rgba(0, 0, 0, 0.65);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 999px;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
 }
 
 .shiftLed {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  transition: all 0.08s ease;
+  background: rgba(255, 255, 255, 0.08);
+  transition: all 0.06s ease;
 }
 
 .shiftLed.green.lit {
   background: #10b981;
-  box-shadow: 0 0 12px #10b981, 0 0 4px #fff;
+  box-shadow: 0 0 10px #10b981, 0 0 3px #fff;
 }
 
 .shiftLed.red.lit {
   background: #ef4444;
-  box-shadow: 0 0 12px #ef4444, 0 0 4px #fff;
+  box-shadow: 0 0 10px #ef4444, 0 0 3px #fff;
 }
 
 .shiftLed.blue.lit {
   background: #8b5cf6;
-  box-shadow: 0 0 14px #8b5cf6, 0 0 6px #fff;
+  box-shadow: 0 0 12px #8b5cf6, 0 0 4px #fff;
 }
 
 .flashingGroup .shiftLed.lit {
@@ -230,8 +313,8 @@
 /* 转速表盘 (Tachometer) */
 .tachometerWrapper {
   position: relative;
-  width: 320px;
-  height: 320px;
+  width: 260px;
+  height: 260px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -245,13 +328,13 @@
 .tachoBgTrack {
   fill: none;
   stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 14;
+  stroke-width: 13;
   stroke-linecap: round;
 }
 
 .tachoActiveTrack {
   fill: none;
-  stroke-width: 14;
+  stroke-width: 13;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.04s linear;
 }
@@ -299,40 +382,40 @@
 
 .gearLetter {
   font-family: var(--font-mono, monospace);
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 800;
   color: #10b981;
-  text-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
+  text-shadow: 0 0 14px rgba(16, 185, 129, 0.45);
   line-height: 1;
 }
 
 .gearLabel {
-  font-size: 9px;
+  font-size: 8px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.5);
   letter-spacing: 0.1em;
 }
 
 .rpmValueDisplay {
   display: flex;
   align-items: baseline;
-  gap: 4px;
+  gap: 3px;
 }
 
 .rpmDigits {
   font-family: var(--font-mono, monospace);
-  font-size: 40px;
+  font-size: 34px;
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #fff;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .rpmUnit {
   font-family: var(--font-mono, monospace);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
 }
@@ -342,20 +425,85 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .engineNameText {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.85);
 }
 
+.limitTags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .redlineTag {
   font-family: var(--font-mono, monospace);
-  font-size: 9px;
-  color: #ef4444;
-  letter-spacing: 0.08em;
+  font-size: 8px;
+  color: #f87171;
+  letter-spacing: 0.06em;
+}
+
+.limiterTag {
+  font-family: var(--font-mono, monospace);
+  font-size: 8px;
+  color: #ec4899;
+  letter-spacing: 0.06em;
+}
+
+/* 排气与火花特效容器 */
+.exhaustWrapper {
+  position: relative;
+  width: 240px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: -6px;
+  margin-bottom: 4px;
+}
+
+.exhaustPipes {
+  display: flex;
+  gap: 16px;
+  z-index: 1;
+}
+
+.pipeOpening {
+  position: relative;
+  width: 30px;
+  height: 20px;
+  background: radial-gradient(circle at 50% 50%, #000 45%, #374151 75%, #1f2937 100%);
+  border: 2px solid #4b5563;
+  border-radius: 50%;
+  box-shadow: inset 0 0 8px #000, 0 3px 8px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.afterburnerGlow {
+  position: absolute;
+  width: 38px;
+  height: 24px;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.85) 0%, rgba(245, 158, 11, 0.4) 50%, transparent 75%);
+  border-radius: 50%;
+  filter: blur(6px);
+  pointer-events: none;
+  transition: opacity 0.08s ease, transform 0.08s ease;
+}
+
+.sparkCanvas {
+  position: absolute;
+  top: -30px;
+  left: -30px;
+  width: 300px;
+  height: 100px;
+  pointer-events: none;
+  z-index: 3;
 }
 
 /* 油门交互区 (Throttle Section) */
@@ -364,17 +512,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .pedalWrapper {
   position: relative;
-  width: 160px;
-  height: 190px;
+  width: 140px;
+  height: 140px;
   cursor: pointer;
   touch-action: none; /* 禁止原生上下滑动，由我们精准捕获 */
   outline: none;
+}
+
+.pedalDisabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .pedalPlate {
@@ -383,20 +536,21 @@
   height: 100%;
   background: linear-gradient(145deg, rgba(45, 52, 64, 0.8), rgba(20, 24, 32, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), inset 0 2px 2px rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 2px 2px rgba(255, 255, 255, 0.2);
   overflow: hidden;
   transition: transform 0.08s ease, box-shadow 0.08s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 12px;
+  padding: 10px 10px;
+  box-sizing: border-box;
 }
 
 .pedalActive .pedalPlate {
-  transform: scale(0.96) translateY(4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transform: scale(0.96) translateY(3px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.3);
   border-color: rgba(239, 68, 68, 0.6);
 }
 
@@ -405,14 +559,14 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   z-index: 2;
 }
 
 .pedalTreads span {
-  width: 80%;
-  height: 4px;
+  width: 76%;
+  height: 3px;
   background: rgba(255, 255, 255, 0.15);
   border-radius: 2px;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -437,7 +591,7 @@
 }
 
 .pedalActionText {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
   color: #fff;
@@ -446,144 +600,51 @@
 
 .pedalValueText {
   font-family: var(--font-mono, monospace);
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
   color: #fff;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 /* 油门交互提示 */
 .throttleHint {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.55);
 }
 
 .keyBadge {
   font-family: var(--font-mono, monospace);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 1px 5px;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  border-radius: 3px;
   color: #fff;
 }
 
 .orText {
-  font-size: 11px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.4);
 }
 
 .hintText {
-  font-size: 12px;
-}
-
-/* 排气与火花特效容器 */
-.exhaustContainer {
-  position: relative;
-  width: 300px;
-  height: 90px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: -10px;
-}
-
-.sparksCanvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.exhaustPipes {
-  display: flex;
-  gap: 18px;
-  z-index: 1;
-}
-
-.pipeTip {
-  width: 36px;
-  height: 24px;
-  background: radial-gradient(circle at 50% 50%, #000 45%, #374151 75%, #1f2937 100%);
-  border: 2px solid #4b5563;
-  border-radius: 50%;
-  box-shadow: inset 0 0 10px #000, 0 4px 12px rgba(0, 0, 0, 0.8);
-}
-
-.heatwaveGlow {
-  position: absolute;
-  width: 120px;
-  height: 60px;
-  background: radial-gradient(circle, rgba(239, 68, 68, 0.4) 0%, rgba(245, 158, 11, 0.15) 50%, transparent 80%);
-  border-radius: 50%;
-  filter: blur(10px);
-  pointer-events: none;
-  z-index: 2;
-  transition: opacity 0.1s ease;
-}
-
-/* 首次用户交互启动全屏遮罩 (Audio Unlock) */
-.startOverlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  border-radius: 24px;
-}
-
-.startBtn {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  padding: 14px 32px;
-  border-radius: 999px;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.startBtn:hover {
-  transform: scale(1.04);
-  box-shadow: 0 12px 32px rgba(239, 68, 68, 0.6);
-}
-
-.startNote {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  max-width: 300px;
-  text-align: center;
-  line-height: 1.5;
+  font-size: 11px;
 }
 
 /* 移动端响应式适配 */
 @media (max-width: 640px) {
   .dashboardContainer {
-    padding: 16px 12px 40px;
-    gap: 20px;
+    padding: 8px 10px 20px;
+    gap: 10px;
   }
 
   .topBar {
-    padding: 10px 14px;
-    border-radius: 14px;
+    padding: 8px 12px;
+    border-radius: 12px;
   }
 
   .presetSelector {
@@ -595,27 +656,27 @@
   .presetBtn {
     flex: 1;
     text-align: center;
-    padding: 6px 8px;
-    font-size: 11px;
+    padding: 5px 6px;
+    font-size: 10px;
   }
 
   .cockpitPanel {
-    padding: 20px 12px 28px;
-    border-radius: 20px;
+    padding: 12px 10px 16px;
+    border-radius: 16px;
   }
 
   .tachometerWrapper {
-    width: 270px;
-    height: 270px;
+    width: 220px;
+    height: 220px;
   }
 
   .rpmDigits {
-    font-size: 32px;
+    font-size: 28px;
   }
 
   .pedalWrapper {
-    width: 150px;
-    height: 170px;
+    width: 130px;
+    height: 130px;
   }
 
   .throttleHint .keyBadge,
