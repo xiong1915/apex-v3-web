@@ -39,13 +39,17 @@ test('Phase 3 — 1. Glass Component System Completeness', () => {
   assert.match(indexContent, /GlassSheet/);
 });
 
-test('Editorial CSS uses solid surfaces, responsive layout and reduced motion', () => {
+test('Shared clear glass uses responsive geometry, readable frost and reduced motion', () => {
   const css = fs.readFileSync(path.join(ROOT_DIR, 'app/globals.css'), 'utf8');
   const components = fs.readFileSync(path.join(ROOT_DIR, 'app/styles/components.css'), 'utf8');
   assert.match(css, /@media\s*\(max-width:\s*767px\)/);
   assert.match(css, /@media\s*\(prefers-reduced-motion:\s*reduce\)/);
   assert.match(css, /animation:\s*none\s*!important/);
-  assert.doesNotMatch(css + components, /backdrop-filter:\s*blur/);
+  const materials=fs.readFileSync(path.join(ROOT_DIR,'app/styles/materials.css'),'utf8');
+  assert.match(materials,/background:transparent!important/);
+  assert.match(fs.readFileSync(path.join(ROOT_DIR,'app/styles/tokens.css'),'utf8'),/brightness\(\.42\)/);
+  assert.match(materials,/prefers-reduced-transparency/);
+  assert.match(materials,/forced-colors/);
   // Actual viewport overflow is asserted by tests/browser/editorial.cjs at five widths.
   assert.match(css, /main\s*\{\s*min-width:\s*0/);
 });
@@ -80,8 +84,8 @@ test('Phase 3 — 3. Viewport & Overflow Safety Across Core Pages', () => {
   }
 });
 
-test('Phase 3 — 4. Editorial Solid Data Hierarchy (No Blanket Glass Blur on Content)', () => {
-  // Standings, Drivers, Teams, Races must maintain high-contrast solid backgrounds
+test('Phase 3 — 4. Data routes retain shared components instead of route-specific material variants', () => {
+  // The shared stylesheet owns material; route markup must not introduce a competing variant.
   const dataPages = [
     'app/standings/page.tsx',
     'app/drivers/page.tsx',
@@ -92,10 +96,10 @@ test('Phase 3 — 4. Editorial Solid Data Hierarchy (No Blanket Glass Blur on Co
     const fullPath = path.join(ROOT_DIR, relPath);
     const content = fs.readFileSync(fullPath, 'utf8');
 
-    // Should not use glass blur for raw tabular data cards
+    // Route markup leaves material selection to the shared stylesheet.
     assert.ok(
       !content.includes('glass-elevated'),
-      `${relPath} should maintain solid editorial surfaces for data clarity`
+      `${relPath} should use the shared site material`
     );
   }
 });

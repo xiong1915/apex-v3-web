@@ -136,7 +136,7 @@ fs.mkdirSync(output,{recursive:true});
   await page.route('**/api/f1/live/snapshot*',route=>route.fulfill({json:archive}));
   // Check the archive's default state without the preceding scenario's saved expansion.
   await page.evaluate(()=>sessionStorage.removeItem('apex:details:live-timing-panels'));
-  await page.reload();await page.getByRole('heading',{name:'已确认成绩',exact:true}).waitFor();
+  await page.reload();await page.getByRole('heading',{name:'已确认成绩',exact:true}).waitFor();await page.getByRole('region',{name:'已确认成绩，可横向滚动'}).locator('tbody th').filter({hasText:'本地归档车手'}).waitFor();
   assert.equal(await page.getByRole('region',{name:'已确认成绩，可横向滚动'}).locator('tbody tr').count(),1);
   assert.equal(await timingTable.locator('tbody tr').count(),0,'historical classification must not fabricate telemetry');
   assert.equal(await liveSummary.locator('xpath=..').getAttribute('open'),null,'historical telemetry stays collapsed');

@@ -9,8 +9,8 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
  p.on('pageerror',e=>errors.push(e.message));p.on('request',r=>{if(r.url().includes('/wallpapers/'))requests.push(r.url());});
  await p.goto(base+'/login');await p.keyboard.press('Tab');assert.equal(await p.evaluate(()=>document.activeElement?.classList.contains('skip-link')),true,'original skip link stays first in keyboard order');const toggle=p.getByRole('button',{name:'壁纸背景',exact:true});await toggle.waitFor();
  await p.waitForFunction(()=>document.querySelector('.wallpaper-video')?.readyState>=2&&document.querySelector('.wallpaper-video')?.currentTime>.3);
- assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.match(await p.locator('.auth-frame>.glass-surface').evaluate(e=>getComputedStyle(e).backdropFilter),/blur\(12px\)/,'compiled desktop glass filter must really apply');
- const headerAlpha=await p.locator('.site-header').evaluate(e=>Number(getComputedStyle(e).backgroundColor.split(',')[3]?.replace(')','')));assert.ok(headerAlpha>0&&headerAlpha<1,'header remains translucent');assert.equal(await p.locator('.site-footer').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(244, 243, 239)','footer remains opaque');
+ assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.match(await p.locator('.auth-frame>.glass-surface').evaluate(e=>getComputedStyle(e).backdropFilter),/blur\(14px\)/,'compiled desktop glass filter must really apply');
+ const headerAlpha=await p.locator('.site-header').evaluate(e=>Number(getComputedStyle(e).backgroundColor.split(',')[3]?.replace(')','')));assert.equal(headerAlpha,0,'header has no colored fill');const footerMaterial=await p.locator('.site-footer').evaluate(e=>({bg:getComputedStyle(e).backgroundColor,filter:getComputedStyle(e).backdropFilter}));assert.ok(footerMaterial.bg.startsWith('rgba('),'footer is translucent');assert.ok(footerMaterial.filter.includes('blur('),'footer is frosted');
  const video=p.locator('.wallpaper-video');
  const media=await video.evaluate(v=>({muted:v.muted,loop:v.loop,inline:v.playsInline,duration:v.duration,time:v.currentTime,width:v.videoWidth,source:v.currentSrc}));
  assert.ok(media.muted&&media.loop&&media.inline&&media.duration>15);assert.ok(media.source.endsWith('nachoneko-1440.mp4'));assert.equal(media.width,2560);
@@ -19,7 +19,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
  await p.screenshot({path:path.join(out,'after-desktop.png'),fullPage:true});await p.evaluate(()=>document.fonts.ready);await p.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));const on=await layout();
  await toggle.click();await p.waitForFunction(()=>!document.documentElement.dataset.wallpaper);
  assert.equal(await p.locator('.wallpaper-video').count(),0);assert.deepEqual(await layout(),on,'wallpaper cannot move or replace existing content');
- assert.equal(await p.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(244, 243, 239)');
+ assert.equal(await p.locator('body').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 19, 24)');
  await p.screenshot({path:path.join(out,'before-desktop.png'),fullPage:true});
  await p.reload();assert.equal(await toggle.getAttribute('aria-pressed'),'false','off preference persists');
  await toggle.click();await p.waitForFunction(()=>document.querySelector('video.wallpaper-video')?.currentTime>.2);
@@ -48,7 +48,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
   if(mode==='failure')await context.route('**/wallpapers/*.mp4',r=>r.abort());
   const page=await context.newPage(),mediaRequests=[];page.on('request',r=>{if(r.url().endsWith('.mp4'))mediaRequests.push(r.url());});
   await page.goto(base+'/login');await page.getByRole('button',{name:'壁纸背景',exact:true}).waitFor();
-  if(mode==='mobile'){assert.match(await page.locator('.auth-frame>.glass-surface').evaluate(e=>getComputedStyle(e).backdropFilter),/blur\(6px\)/,'mobile uses lightweight real glass rather than an opaque fallback');
+  if(mode==='mobile'){assert.match(await page.locator('.auth-frame>.glass-surface').evaluate(e=>getComputedStyle(e).backdropFilter),/blur\(8px\)/,'mobile uses lightweight real glass rather than an opaque fallback');
    await page.waitForFunction(()=>document.querySelector('.wallpaper-video')?.currentTime>.2);
    assert.ok(await page.locator('.wallpaper-video').evaluate(v=>v.currentSrc.endsWith('nachoneko-portrait-720.mp4')));
    assert.ok(!mediaRequests.some(url=>url.includes('-1440.mp4')));assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
@@ -69,7 +69,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
   await page.goto(base+'/',{timeout:90000});await page.locator('.race-cover').waitFor({timeout:60000});
   await page.waitForFunction(()=>document.documentElement.dataset.wallpaper==='on');
   const cover=page.locator('.race-cover');const material=await cover.evaluate(e=>({bg:getComputedStyle(e).backgroundColor,ink:getComputedStyle(e).color,filter:getComputedStyle(e).backdropFilter}));
-  assert.equal(material.bg,'rgba(246, 248, 250, 0.94)','home hero uses a light translucent panel');assert.equal(material.ink,'rgb(23, 25, 29)','light hero retains dark text');assert.match(material.filter,/blur\(8px\)/);
+  assert.equal(material.bg,'rgba(0, 0, 0, 0)','home hero is colorless transparent');assert.equal(material.ink,'rgb(245, 247, 250)','transparent hero retains readable text');assert.match(material.filter,/blur\(/);assert.match(material.filter,/brightness\(0.42\)/);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   await page.screenshot({path:path.join(out,'home-glass-'+width+'.png'),fullPage:true});
   await page.locator('.site-footer').evaluate(e=>e.scrollIntoView({behavior:'instant',block:'end'}));await page.waitForTimeout(250);await page.screenshot({path:path.join(out,'footer-glass-'+width+'.png')});

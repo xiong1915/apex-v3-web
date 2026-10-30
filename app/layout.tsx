@@ -2,6 +2,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './wallpaper.css';
+import './styles/materials.css';
 import {WallpaperBackground} from '@/components/wallpaper-background';
 
 import { Navbar } from '@/components/navbar';
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#F4F3EF',
+  themeColor: '#101318',
   viewportFit: 'cover'
 };
 

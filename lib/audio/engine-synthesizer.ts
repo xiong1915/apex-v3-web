@@ -262,6 +262,12 @@ export class F1EngineSynthesizer {
     popFilter.connect(popGain);
     popGain.connect(this.masterGain);
 
+    popSource.onended = () => {
+      popSource.disconnect();
+      popFilter.disconnect();
+      popGain.disconnect();
+    };
+
     popSource.start(now);
     popSource.stop(now + 0.08);
   }
@@ -302,6 +308,11 @@ export class F1EngineSynthesizer {
       sum += array[i];
     }
     return sum / (array.length * 255);
+  }
+
+  public readSpectrum(target: Uint8Array<ArrayBuffer>): void {
+    if (this.analyser && this.isRunning) this.analyser.getByteFrequencyData(target);
+    else target.fill(0);
   }
 
   public setVolume(val: number): void {
