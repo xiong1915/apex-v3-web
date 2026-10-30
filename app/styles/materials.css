@@ -1,0 +1,65 @@
+/* A single colorless material for every route. Geometry remains owned by each component. */
+
+html{color-scheme:dark}body{background:#101318;color:var(--text-primary)}
+/* Blur and luminance attenuation happen only behind readable surfaces, never as a page tint. */
+html body :is(.glass-surface,.glass-floating,.glass-popover,.glass-sheet-panel,.card-light,.card-dark,.race-cover,.driver-tile,.team-tile,.calendar-tile,.championship-spread,.profile-feature,.table-panel,.empty-state,.profile-cover,.profile-stats>div,.bio-card,.team-driver-link,.race-detail-map,.result-panel,.system-summary,.system-details,.calendar-subscription,.detail-schedule,.race-empty-note,.session-rail>div,.podium-ribbon>div,.apex-card,.team-card,.favorite-pill,.favorite-empty-hint,.modal-content,.admin-panel,.admin-sidebar,.admin-header,.admin-stat-card,.admin-notice,.conversation-sidebar,.ai-welcome,.monitor-config>div,.monitor-stats>div,.monitor-chart,.monitor-events,.tool-ai,.tool-live,.season-preview,.home-history,.page-heading){
+ background:transparent!important;color:var(--text-primary);border-color:var(--line-dark);box-shadow:var(--glass-shadow)!important;
+ -webkit-backdrop-filter:var(--glass-filter)!important;backdrop-filter:var(--glass-filter)!important;
+ --text-primary:#f5f7fa;--text-secondary:#d3d8e0;--text-muted:#d3d8e0;--text-dark-primary:#f5f7fa;--text-dark-secondary:#d3d8e0;
+}
+/* Nested controls retain the same optical rim without compounding expensive blur passes. */
+html body :is(.glass-surface,.apex-card,.admin-panel,.table-panel) :is(.glass-surface,.team-card,.table-panel,.monitor-config>div,.monitor-stats>div){-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+html body :is(button,.btn-primary,.btn-secondary,.glass-button,.apex-btn-primary,.nav-login,.nav-ai,.nav-rev,.section-jumps a,.subscription-actions a,.standings-switch a,.home-ai-composer,.glass-composer){
+ background:linear-gradient(140deg,#ffffff12,#ffffff03)!important;color:var(--text-primary)!important;border-color:var(--glass-edge)!important;
+ box-shadow:inset 0 1px 0 #ffffff66,inset 0 -1px 0 #ffffff16,0 3px 12px #00000014!important;
+ -webkit-backdrop-filter:var(--glass-control-filter);backdrop-filter:var(--glass-control-filter);
+ transition:transform var(--motion-fast) var(--ease),box-shadow var(--motion-fast),border-color var(--motion-fast),background var(--motion-fast);
+}
+html body button{border-style:solid;border-width:1px;border-radius:var(--radius-sm)}
+html body :is(.btn-primary,.btn-secondary,.glass-button,.apex-btn-primary,.nav-login,.nav-ai,.nav-rev){border-style:solid;border-width:1px;border-radius:var(--radius-pill)}
+html body :is(button,.btn-primary,.btn-secondary,.glass-button):hover:not(:disabled){border-color:#ffffffa6!important;box-shadow:inset 0 1px 0 #ffffffa6,0 5px 20px #0002!important}
+html body :is(button,.btn-primary,.btn-secondary,.glass-button):active:not(:disabled){transform:scale(.98)}
+html body :is(button[aria-pressed=true],[role=tab][aria-selected=true],.btn-primary,.glass-btn-primary,.apex-btn-primary,.admin-button.primary,.section-jumps .active){border-color:#f27972!important;box-shadow:inset 0 1px 0 #ffffff88,inset 0 -2px 0 #e1060080,0 3px 12px #0002!important}
+html body :is(input:not([type=range]):not([type=checkbox]):not([type=radio]),textarea,select){background:#00000016!important;color:var(--text-primary)!important;border-color:var(--line-dark)!important;color-scheme:dark}
+html body select option{background:#181c22;color:#f5f7fa}
+html body input::placeholder,html body textarea::placeholder{color:#c1c8d2;opacity:1}
+html body :is(.editorial-home,.section-dark,.section-secondary,.section-light,.page-shell,.profile-page-shell,.admin-shell,.ai-chat-console){background:transparent!important;color:var(--text-primary)}
+html body :is(.profile-hero-title,.apex-card-title,.meta-val,.team-card-name,.modal-header h3,.profile-hero-subtitle,.profile-hero-badge,.form-label,.form-counter,.meta-key,.team-card-meta,.team-card-foot,.favorite-empty-hint){color:var(--text-primary)}
+html body :is(.profile-page-shell,.admin-shell){--admin-border:var(--line-dark);--admin-muted:var(--text-secondary);--admin-ink:var(--text-primary);--admin-accent:#f49a95}
+html body :is(.race-cover-visual,.calendar-track,.team-card-visual,.driver-portrait,.bio-visual,.history-item.is-active,.rank-chip){background:transparent!important;color:var(--text-primary);border-color:var(--line-dark)}
+html body :is(.race-cover,.profile-hero,.section-head,.home-intro,.championship-context,.home-history,.history-footer,.navigation-feedback,.ai-chat-console>div:first-child){color:var(--text-primary)}
+html body :is(.home-intro,.profile-hero,.championship-context,.section-head,.driving-copy,.source-links,.data-note,.history-footer,.navigation-feedback){-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter);border-radius:12px}
+html body :is(.table-panel,.admin-users,.history-scroll) :is(th,td){background:transparent;color:var(--text-primary);border-color:var(--line-dark)}
+html body :is(.table-panel,.admin-users,.history-scroll) thead th{background:#00000024;color:var(--text-secondary)}
+html body :is(.badge-pill,.provider-badge,.monitor-outcome,.admin-status){background:#ffffff0b;border-color:var(--line-dark)}
+html body :is(.glass-surface,.apex-card,.admin-panel) button{--glass-control-filter:none}
+html body .home-ai-composer input{background:transparent!important}
+/* The helmet is an interactive illustration rather than a control surface. */
+html body button[data-helmet]{background:transparent!important;border:0;box-shadow:none!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+@media(max-width:767px){:root,html[data-wallpaper=on]{--glass-blur:8px;--glass-control-filter:blur(3px)}}
+@media(prefers-reduced-motion:reduce){html body :is(button,.btn-primary,.btn-secondary,.glass-button){transition:none!important}html body :is(button,.btn-primary,.btn-secondary,.glass-button):active{transform:none}}
+/* Respect accessibility and older engines with one neutral opaque fallback. */
+@media(prefers-reduced-transparency:reduce){:root,html[data-wallpaper=on]{--glass-filter:none;--glass-control-filter:none}html body :is(.glass-surface,.card-light,.card-dark,.apex-card,.race-cover,.table-panel,.admin-panel,.modal-content,.site-header,.site-footer){background:#181c22!important}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html body :is(.glass-surface,.card-light,.card-dark,.apex-card,.race-cover,.table-panel,.admin-panel,.modal-content,.site-header,.site-footer){background:#181c22!important}}
+@media(forced-colors:active){html body :is(button,.btn-primary,.btn-secondary,.glass-button,.glass-surface,.card-light,.card-dark,.apex-card,.race-cover,.table-panel,.admin-panel,.modal-content){background:Canvas!important;color:CanvasText!important;border-color:ButtonText!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}
+/* Text outside cards gets its own local frost, with no page-wide fill. */
+html body :is(.auth-intro,.bio-meta-card,.bio-tag,.auth-emblem,.ai-welcome-mark,.loading-mark,.state-symbol,.standings-glass,.standings-switch,.rules-note,.data-note,.source-links){background:transparent!important;color:var(--text-primary);border-color:var(--line-dark);-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+html body .auth-intro{padding:24px;border-radius:24px;box-shadow:var(--glass-shadow)}
+html body :is(.auth-emblem,.ai-welcome-mark){background:transparent;box-shadow:var(--glass-shadow)}
+html body .standings-switch::before{background:#ffffff0c;box-shadow:inset 0 1px 0 #ffffff80,inset 0 0 0 1px #ffffff50}
+html body .data-table tbody tr[data-podium=true]{background:#ffffff08}
+html body :is(.podium-place,.team-ink){color:var(--text-primary)}
+html body :is(.form-counter,.team-card-code,.team-card-title,.team-card-desc,.team-card-status,.form-feedback){color:var(--text-secondary)}
+html body .form-feedback.error{color:#ffb4ad}html body .form-feedback.success{color:#a0e4b8}
+html body .admin-shell{--admin-accent:#f49a95!important;--admin-ink:var(--text-primary)!important;--admin-muted:var(--text-secondary)!important;--admin-border:var(--line-dark)!important}
+html body .ai-chat-console>div:first-child{background:transparent!important}
+@media(prefers-reduced-transparency:reduce){.site-wallpaper{display:none}body{background:#101318!important}}
+
+html body .history-item:hover,html body .history-item.is-active{background:#ffffff0c}
+html body .monitor-outcome.outcome-success,html body .admin-status[data-state=healthy]{color:#a0e4b8}
+html body .monitor-outcome.outcome-error,html body .monitor-outcome.outcome-timeout,html body .admin-notice.error{color:#ffb4ad}
+html body .admin-status:is([data-state=offline],[data-state=degraded],[data-state=pending]){color:#f3ca88}
+html body .team-card-body p{color:var(--text-secondary)}
+html body .monitor-alert{background:transparent;color:#f3ca88;-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.site-wallpaper{display:none}body{background:#101318!important}}
+html body :is(.map-topline,.map-caption small,.map-specs small){color:var(--text-secondary)}

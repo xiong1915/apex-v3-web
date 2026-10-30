@@ -261,3 +261,24 @@
 .sessionList button.selectedSession:hover{background:transparent}
 
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.sessionLens{background:#443035}}
+/* Colorless site material, including the formerly dark timing table. */
+.hero,.panel,.permission,.next,.tableScroll,.recapBanner,.timingMeta,.loading,.error,.switchNotice{background:transparent;color:var(--text-primary);border:1px solid var(--line-dark);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+.weekend,.phase,.segment,.connection,.replayBadge,.roundSelectorBar{background:transparent;color:var(--text-primary);border-color:var(--line-dark)}
+.hero :is(p,small),.hero .season,.weekendTitle>span,.sessionState,.weekendNote,.sessionList small,.countdown span,.startTime span{color:var(--text-secondary)}
+.hero .startTime{color:var(--text-primary)!important}
+.timingTable thead th,.resultTable thead th{background:#00000028;color:var(--text-secondary)}
+.stickyDriver{background:#151a20eb;color:var(--text-primary)}
+.followed td,.followed .stickyDriver{background:#303841d9}
+.timingTable th,.timingTable td,.resultTable th,.resultTable td{border-color:var(--line-dark)}
+.timingMeta strong,.driver strong,.noTiming,.error p,.panel .empty,.heading p,.permission p,.source,.provenance,.provenance p{color:var(--text-secondary)}
+.shell{background:transparent;color:var(--text-primary)}
+.heading,.toolbar,.sectionHead,.provenance{-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter);border-radius:12px;padding:12px}
+@media(prefers-reduced-transparency:reduce){.hero,.panel,.permission,.next,.tableScroll,.recapBanner,.timingMeta,.loading,.error,.switchNotice{background:#181c22;-webkit-backdrop-filter:none;backdrop-filter:none}}
+.connection[data-connection=LIVE]{background:transparent;color:#a0e4b8}.connection[data-connection=RECONNECTING],.connection[data-connection=DELAYED]{background:transparent;color:#f3ca88}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.hero,.panel,.permission,.next,.tableScroll,.recapBanner,.timingMeta,.loading,.error,.switchNotice{background:#181c22}}
+.official{background:transparent;color:var(--text-primary);border:1px solid var(--glass-edge);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+.livePanels{background:transparent;color:var(--text-primary);border-color:var(--line-dark);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+.livePanels .panel,.livePanels .tableScroll{-webkit-backdrop-filter:none;backdrop-filter:none}
+.livePanels>summary span,.roundSelectorBar label,.results .empty,.next p,.resultSources,.results .sectionHead>span{color:var(--text-secondary)}
+@media(prefers-reduced-transparency:reduce){.livePanels{background:#181c22;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.livePanels{background:#181c22}}

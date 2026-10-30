@@ -36,3 +36,5 @@
 .card :is(a,summary):focus-visible,.source :is(a,summary):focus-visible{outline:2px solid var(--accent,#e10600);outline-offset:4px;border-radius:4px}
 @media(max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.grid{grid-template-columns:1fr;gap:16px}.card,.notice{padding:20px}.score{padding:20px 0}.score strong{font-size:30px}}
+.card,.notice{background:transparent;color:var(--text-primary);border-color:var(--line-dark);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+@media(prefers-reduced-transparency:reduce){.card,.notice{background:#181c22;-webkit-backdrop-filter:none;backdrop-filter:none}}

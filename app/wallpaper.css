@@ -1,100 +1,25 @@
-/* Wallpaper is decorative and outside normal flow; all content surfaces remain intact. */
+/* One decorative decoder, independent from route-specific transparent glass. */
 html[data-wallpaper=on] body{background:transparent}
-html[data-wallpaper=on]{--wallpaper-page-surface:transparent;--wallpaper-filter:blur(12px) saturate(1.08);--wallpaper-panel:rgba(255,255,255,.86);--wallpaper-live-panel:rgba(22,29,40,.78);--wallpaper-live-inset:rgba(16,23,34,.28);--bg-primary:rgba(244,243,239,.76);--bg-secondary:var(--wallpaper-panel);--bg-elevated:rgba(255,255,255,.88);--text-secondary:#323943;--text-muted:#323943;--text-dark-secondary:#41464f}
-.site-wallpaper{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;user-select:none;background:var(--bg-primary)}
+.site-wallpaper{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;user-select:none;background:#101318}
 .wallpaper-poster,.wallpaper-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:62% 50%;pointer-events:none}
 .wallpaper-video{opacity:0;transition:opacity 180ms ease}
 .site-wallpaper[data-playing=true] .wallpaper-video{opacity:1}
-.site-wallpaper::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(244,243,239,.22),rgba(244,243,239,.08) 55%,rgba(244,243,239,.04));pointer-events:none}
-html[data-wallpaper=on] :is(.editorial-home,.section-dark,.section-secondary,.section-light){background:transparent}
-html[data-wallpaper=on] .profile-page-shell{background:transparent;color:#17191d}
-html[data-wallpaper=on] .profile-hero-title{color:#17191d}
-html[data-wallpaper=on] :is(.profile-hero-subtitle,.profile-hero-badge){color:#41464f}
-.wallpaper-toggle{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:110;display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;border:1px solid var(--line-dark);background:#f4f3eff5;color:var(--text-primary);box-shadow:0 2px 12px #17191d12;cursor:pointer;transition:background 180ms,color 180ms}
-.wallpaper-toggle[aria-pressed=true]{color:var(--accent-action);border-color:#c9050040}
-.wallpaper-toggle:hover{background:#fff}
+.wallpaper-toggle{position:fixed;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:110;display:grid;place-items:center;width:44px;height:44px;padding:0;border-radius:50%;border:1px solid #ffffff50;background:transparent;color:#f5f7fa;cursor:pointer}
+.wallpaper-toggle[aria-pressed=true]{border-color:#f27972}
 .wallpaper-toggle:focus-visible{outline:2px solid var(--accent-action);outline-offset:4px}
-@media(max-width:767px){.site-wallpaper::after{background:rgba(244,243,239,.14)}.wallpaper-toggle{right:12px;bottom:max(12px,env(safe-area-inset-bottom))}}
-@media(prefers-reduced-motion:reduce){.wallpaper-video,.wallpaper-toggle{transition:none}}
-
-/* Static optical edges and bounded blur on panels, never animated filters or per-row effects. */
-html[data-wallpaper=on] :is(.glass-surface,.card-light,.card-dark,.driver-tile,.team-tile,.calendar-tile,.championship-spread,.profile-feature,.table-panel,.race-cover,.empty-state,.profile-cover,.profile-stats>div,.bio-card,.team-driver-link,.race-detail-map,.result-panel,.system-summary,.system-details,.calendar-subscription,.detail-schedule,.race-empty-note,.session-rail>div,.podium-ribbon>div){background:var(--wallpaper-panel);box-shadow:inset 0 0 0 1px #ffffff9c,inset 0 1px 0 #fffffff0,inset 0 -1px 0 #ffffff40,0 8px 28px #182f4814}
-@supports(backdrop-filter:blur(1px)){html[data-wallpaper=on] :is(.glass-surface,.card-light,.card-dark,.driver-tile,.team-tile,.calendar-tile,.championship-spread,.profile-feature,.race-cover,.empty-state,.profile-cover,.profile-stats>div,.bio-card,.team-driver-link,.race-detail-map,.result-panel,.system-summary,.system-details,.calendar-subscription,.detail-schedule,.race-empty-note,.session-rail>div,.podium-ribbon>div){-webkit-backdrop-filter:var(--wallpaper-filter);backdrop-filter:var(--wallpaper-filter)}}
-html[data-wallpaper=on] :is(.site-header,.site-footer){background:rgba(244,243,239,.66);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
-@media(max-width:767px){html[data-wallpaper=on] :is(.glass-surface,.card-light,.card-dark,.driver-tile,.team-tile,.calendar-tile,.championship-spread,.profile-feature,.race-cover,.empty-state,.profile-cover,.profile-stats>div,.bio-card,.team-driver-link,.race-detail-map,.result-panel,.system-summary,.system-details,.calendar-subscription,.detail-schedule,.race-empty-note,.session-rail>div,.podium-ribbon>div){background:var(--wallpaper-panel);-webkit-backdrop-filter:var(--wallpaper-filter);backdrop-filter:var(--wallpaper-filter)}html[data-wallpaper=on] :is(.site-header,.site-footer){background:rgba(244,243,239,.72);-webkit-backdrop-filter:none;backdrop-filter:none}}
-
-html[data-wallpaper=on] .table-panel{background:rgba(255,255,255,.9)}
-
-/* Keep the new control clear of the existing AI send/stop targets. */
 body:has(.ai-chat-console) .wallpaper-toggle{bottom:calc(120px + env(safe-area-inset-bottom))}
-/* A filtered header would become the containing block of the tablet's fixed menu. */
-@media(max-width:1100px){html[data-wallpaper=on] .site-header{-webkit-backdrop-filter:none;backdrop-filter:none}}
-
 body:has(.mobile-admin-bottom-nav) .wallpaper-toggle{bottom:calc(100px + env(safe-area-inset-bottom))}
-
-/* Wallpaper materials preserve each component's geometry and semantic accent colors. */
-html[data-wallpaper=on] .race-cover{--text-primary:#17191d;--text-secondary:#323943;--text-muted:#323943;--line-dark:#17191d36;color:var(--text-primary)}
-html[data-wallpaper=on] .race-cover-visual{background:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 #ffffffb3,inset 0 0 0 1px #ffffff4d}
-html[data-wallpaper=on] :is(.ai-chat-console .glass-composer,.ai-chat-console .glass-surface){background:rgba(255,255,255,.84)}
-html[data-wallpaper=on] .ai-welcome{background:var(--wallpaper-panel)!important}
-html[data-wallpaper=on] :is(.profile-page-shell .apex-card){background:var(--wallpaper-live-panel);color:#f4f3ef;--text-primary:#f4f3ef;--text-secondary:#c2cad4;--text-muted:#c2cad4;box-shadow:inset 0 1px 0 #ffffff30,0 8px 28px #182f4810;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
-html[data-wallpaper=on] .admin-shell{background:transparent!important}
-html[data-wallpaper=on] :is(.admin-header,.admin-sidebar,.admin-panel,.admin-shell .glass-surface){background:rgba(255,255,255,.84)}
-@media(max-width:767px){html[data-wallpaper=on]{--wallpaper-filter:blur(6px) saturate(1.08);--wallpaper-panel:rgba(255,255,255,.9);--wallpaper-live-panel:rgba(22,29,40,.9)}html[data-wallpaper=on] .profile-page-shell .apex-card{-webkit-backdrop-filter:var(--wallpaper-filter);backdrop-filter:var(--wallpaper-filter)}}
-
-html[data-wallpaper=on] :is(.admin-header,.admin-sidebar,.admin-panel,.conversation-sidebar,.table-panel){-webkit-backdrop-filter:var(--wallpaper-filter);backdrop-filter:var(--wallpaper-filter)}
-/* A separate optical layer leaves the tablet menu's fixed positioning intact. */
-@media(max-width:1100px){html[data-wallpaper=on] .site-header{background:transparent}html[data-wallpaper=on] .site-header::before{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background:rgba(244,243,239,.68);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}}
-@media(max-width:767px){html[data-wallpaper=on] .site-footer{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}}
-
-/* Refraction is limited to small visible Chromium surfaces, with one displacement pass. */
-html[data-wallpaper=on] .liquid-glass[data-glass-mode=refracted]{-webkit-backdrop-filter:var(--glass-refraction);backdrop-filter:var(--glass-refraction)}
-/* No URL-filter dependency in Safari/Firefox; their shared frosted material stays visible. */
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html[data-wallpaper=on] :is(.liquid-glass,.glass-surface,.race-cover){background:rgba(255,255,255,.96)}}
-@media(prefers-reduced-transparency:reduce){html[data-wallpaper=on] .liquid-glass{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}}
-@media(forced-colors:active){html[data-wallpaper=on] .liquid-glass{background:Canvas;color:CanvasText;-webkit-backdrop-filter:none;backdrop-filter:none}.site-wallpaper{display:none}}
-
-/* Mobile navigation drawer must always remain fully opaque regardless of wallpaper state */
-html[data-wallpaper=on] .mobile-menu {
-  background: #f4f3ef !important;
-  background: rgba(244, 243, 239, 0.98) !important;
-  -webkit-backdrop-filter: blur(24px);
-  backdrop-filter: blur(24px);
-  z-index: 99999 !important;
-}
-html[data-wallpaper=on] .site-header.menu-open {
-  z-index: 99999 !important;
-  background: #f4f3effa !important;
-}
-
-/* Content stays opaque; optical blur is reserved for floating controls. */
-html[data-wallpaper=on] body :is(.card-light,.card-dark,.driver-tile,.team-tile,.calendar-tile,.championship-spread,.profile-feature,.table-panel,.empty-state,.profile-cover,.profile-stats>div,.bio-card,.team-driver-link,.race-detail-map,.result-panel,.system-summary,.system-details,.calendar-subscription,.detail-schedule,.race-empty-note,.session-rail>div,.podium-ribbon>div){background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-wallpaper=on] body .race-cover{background:rgba(246,248,250,.94);color:#17191d;--text-primary:#17191d;--text-secondary:#323943;--text-muted:#323943;--line-dark:#17191d36;-webkit-backdrop-filter:blur(8px) saturate(1.1);backdrop-filter:blur(8px) saturate(1.1)}
-html[data-wallpaper=on] .race-cover-visual{background:rgba(255,255,255,.7);color:#17191d}
-@media(prefers-reduced-transparency:reduce){html[data-wallpaper=on] body .race-cover{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}html[data-wallpaper=on] .race-cover-visual{background:#fff}}
-html[data-wallpaper=on] .site-footer{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-wallpaper=on] .profile-page-shell .apex-card{background:#202630;-webkit-backdrop-filter:none;backdrop-filter:none}
-
-.standings-glass[data-glass-mode=refracted]{-webkit-backdrop-filter:var(--glass-refraction);backdrop-filter:var(--glass-refraction)}
-html[data-wallpaper=on] .editorial-home > section .section-head,html[data-wallpaper=on] .page-heading{background:rgba(244,243,239,.92);border-radius:16px;padding:16px}
-
-/* The optic layer is separate from navigation so it never intercepts interaction. */
-.site-header{background:rgba(244,243,239,.82);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+@media(max-width:767px){.wallpaper-toggle{right:12px;bottom:max(12px,env(safe-area-inset-bottom))}}
+/* No filter on the header: the mobile drawer must remain viewport-fixed. */
+.site-header{background:transparent;border-color:#ffffff30;-webkit-backdrop-filter:none;backdrop-filter:none}
 .site-header .nav-inner{position:relative;z-index:1}
-.header-optics{position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:0;overflow:hidden}
-.header-optics::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(240px circle at var(--glass-x,50%) var(--glass-y,0%),#ffffff30,transparent 65%);box-shadow:inset 0 -1px 0 #ffffff50}
-.header-optics[data-glass-mode=refracted]{-webkit-backdrop-filter:var(--glass-refraction);backdrop-filter:var(--glass-refraction)}
-@media(max-width:1100px){.site-header{-webkit-backdrop-filter:none;backdrop-filter:none}.header-optics{-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}}
-@media(prefers-reduced-motion:reduce){.header-optics::after{background:none}}
-@media(prefers-reduced-transparency:reduce){.site-header{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}.header-optics{-webkit-backdrop-filter:none;backdrop-filter:none}}
-
-html[data-wallpaper=on] :is(.admin-panel,.admin-sidebar,.admin-shell .glass-surface,.ai-chat-console .glass-surface:not(.glass-composer)){background:#fff;-webkit-backdrop-filter:none;backdrop-filter:none}
-html[data-wallpaper=on] .ai-welcome{background:#fff!important;-webkit-backdrop-filter:none;backdrop-filter:none}
-.home-ai-composer{background:rgba(244,243,239,.64)!important;border:1px solid #ffffff99!important;box-shadow:inset 0 1px 0 #ffffffb3,0 8px 24px #17191d16!important;-webkit-backdrop-filter:blur(10px) saturate(1.2);backdrop-filter:blur(10px) saturate(1.2)}
-.home-ai-composer input{background:rgba(255,255,255,.9)!important;border-radius:12px;padding:10px 12px!important}
-.home-ai-composer[data-glass-mode=refracted]{-webkit-backdrop-filter:var(--glass-refraction);backdrop-filter:var(--glass-refraction)}
-@media(prefers-reduced-transparency:reduce){.home-ai-composer{background:#f4f3ef!important;-webkit-backdrop-filter:none;backdrop-filter:none}}
-
-@media(prefers-reduced-transparency:reduce){html[data-wallpaper=on] :is(.site-header,.site-header.menu-open){background:#f4f3ef!important;-webkit-backdrop-filter:none;backdrop-filter:none}html[data-wallpaper=on] .site-header::before{background:#f4f3ef;-webkit-backdrop-filter:none;backdrop-filter:none}html[data-wallpaper=on] .header-optics{-webkit-backdrop-filter:none;backdrop-filter:none}}
-
-@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.site-header,.standings-switch,.home-ai-composer{background:#f4f3ef!important}}
+.header-optics{position:absolute;inset:0;z-index:0;pointer-events:none;border-radius:0;overflow:hidden;-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+.header-optics::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(115deg,#ffffff12,transparent 35%,#ffffff04);box-shadow:inset 0 -1px 0 #ffffff66}
+.header-optics[data-glass-mode=refracted]{-webkit-backdrop-filter:var(--glass-refraction) brightness(.42);backdrop-filter:var(--glass-refraction) brightness(.42)}
+.site-footer{background:transparent;-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter);box-shadow:inset 0 1px 0 #ffffff66}
+.mobile-menu{background:#101318dc!important;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.site-header.menu-open{z-index:99999!important}
+@media(prefers-reduced-motion:reduce){.header-optics::after{background:none}.wallpaper-video{transition:none}}
+@media(prefers-reduced-transparency:reduce){.site-header,.site-footer,.mobile-menu{background:#181c22!important;-webkit-backdrop-filter:none;backdrop-filter:none}.header-optics{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.site-header,.site-footer,.mobile-menu{background:#181c22!important}}
+@media(forced-colors:active){.site-header,.site-footer,.mobile-menu{background:Canvas!important;color:CanvasText;-webkit-backdrop-filter:none;backdrop-filter:none}.header-optics,.site-wallpaper{display:none}}

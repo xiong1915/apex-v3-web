@@ -126,7 +126,7 @@ const widths = [320, 375, 390, 768, 1440, 1920];
   await page.getByRole('button', {name:'TOTP 绑定 / 验证',exact:true}).click();
   const code = page.locator('input[autocomplete="one-time-code"]');
   await code.waitFor(); await code.fill('123456');
-  assert.equal(await code.evaluate(e => getComputedStyle(e).color), 'rgb(23, 25, 29)');
+  assert.equal(await code.evaluate(e => getComputedStyle(e).color), 'rgb(245, 247, 250)');
   await page.screenshot({ path: path.join(out, 'admin-mfa-local-fixture.png') });
   results.checks.push('local-only AI streaming and admin layout fixtures; no real account writes');
   assert.deepEqual(results.errors, []);
