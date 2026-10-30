@@ -14,7 +14,7 @@ export interface PhysicsState {
 
 export class RevPhysicsSimulator {
   private preset: EnginePreset;
-  private currentRpm: number;
+  private currentRpm: number = 0;
   private currentThrottle: number = 0;
   private prevThrottle: number = 0;
   private limiterBounceOffset: number = 0;
@@ -22,16 +22,32 @@ export class RevPhysicsSimulator {
   private isBackfiring: boolean = false;
   private backfireTimer: number = 0;
   private backfireCount: number = 0;
+  private isIgnited: boolean = true;
 
-  constructor(preset: EnginePreset) {
+  constructor(preset: EnginePreset, autoIgnite: boolean = true) {
     this.preset = preset;
-    this.currentRpm = preset.idleRpm;
+    this.isIgnited = autoIgnite;
+    this.currentRpm = autoIgnite ? preset.idleRpm : 0;
+  }
+
+  public setIgnited(ignited: boolean): void {
+    this.isIgnited = ignited;
+    if (!ignited) {
+      this.isBackfiring = false;
+      this.backfireTimer = 0;
+      this.currentThrottle = 0;
+    }
+  }
+
+  public isRunning(): boolean {
+    return this.isIgnited;
   }
 
   public setPreset(newPreset: EnginePreset): void {
     this.preset = newPreset;
-    // 平滑自适应转速
-    this.currentRpm = Math.max(newPreset.idleRpm, Math.min(this.currentRpm, newPreset.redlineRpm));
+    if (this.isIgnited) {
+      this.currentRpm = Math.max(newPreset.idleRpm, Math.min(this.currentRpm, newPreset.redlineRpm));
+    }
   }
 
   /**
@@ -42,23 +58,46 @@ export class RevPhysicsSimulator {
   public step(dtSeconds: number, targetThrottle: number): PhysicsState {
     // 限制单步时间，防止后台标签唤醒时出现时间跳跃
     const dt = Math.max(0.001, Math.min(dtSeconds, 0.064));
+
+    // 1. 若处于熄火状态，转速快速衰减至 0
+    if (!this.isIgnited) {
+      this.currentThrottle = 0;
+      this.prevThrottle = 0;
+      this.isBackfiring = false;
+      if (this.currentRpm > 0) {
+        const decel = Math.max(20000 * dt, this.currentRpm * 6 * dt);
+        this.currentRpm = Math.max(0, this.currentRpm - decel);
+      }
+      return {
+        rpm: Math.round(this.currentRpm),
+        throttle: 0,
+        isLimiterActive: false,
+        isBackfiring: false,
+        backfireCount: 0,
+        engineLoad: 0
+      };
+    }
+
+    // 2. 处于已点火运行状态
     const throttle = Math.max(0, Math.min(1, targetThrottle));
 
-    // 1. 油门平滑追随（模拟机械与电子节气门延迟）
+    // 油门平滑追随（模拟电子节气门延迟）
     const throttleLag = throttle > this.currentThrottle ? 18 : 22;
     this.currentThrottle += (throttle - this.currentThrottle) * Math.min(1, dt * throttleLag);
 
-    // 2. 计算目标转速 (100% 油门时目标转速达到断油限制线)
-    const targetRpm = this.preset.idleRpm + this.currentThrottle * (this.preset.limiterRpm - this.preset.idleRpm);
+    // 初始点火若未到怠速，自动冲至怠速
+    const targetRpm =
+      this.preset.idleRpm + this.currentThrottle * (this.preset.limiterRpm - this.preset.idleRpm);
 
     // 3. 转速惯性计算（加速与降速阻尼分离）
     if (this.currentRpm < targetRpm) {
-      // 加速阶段（空载极速飙升）
+      // 加速阶段（空载高转速飙升）
       const stepAccel = this.preset.accelerationRate * dt * (0.6 + 0.4 * this.currentThrottle);
       this.currentRpm = Math.min(targetRpm, this.currentRpm + stepAccel);
     } else if (this.currentRpm > targetRpm) {
       // 降速阶段（轻量化飞轮惯性衰减）
-      const stepDecel = this.preset.decelerationRate * dt * (0.8 + 0.2 * (this.currentRpm / this.preset.redlineRpm));
+      const stepDecel =
+        this.preset.decelerationRate * dt * (0.8 + 0.2 * (this.currentRpm / this.preset.redlineRpm));
       this.currentRpm = Math.max(targetRpm, this.currentRpm - stepDecel);
     }
 
@@ -97,7 +136,7 @@ export class RevPhysicsSimulator {
 
     this.prevThrottle = throttle;
 
-    // 最终确保转速在怠速以上
+    // 确保已点火状态下转速在怠速以上
     this.currentRpm = Math.max(this.preset.idleRpm, this.currentRpm);
 
     return {
@@ -106,12 +145,19 @@ export class RevPhysicsSimulator {
       isLimiterActive,
       isBackfiring: this.isBackfiring,
       backfireCount: this.backfireCount,
-      engineLoad: Math.max(0, Math.min(1, (this.currentRpm - this.preset.idleRpm) / (this.preset.redlineRpm - this.preset.idleRpm)))
+      engineLoad: Math.max(
+        0,
+        Math.min(
+          1,
+          (this.currentRpm - this.preset.idleRpm) /
+            (this.preset.redlineRpm - this.preset.idleRpm)
+        )
+      )
     };
   }
 
   public reset(rpm?: number): void {
-    this.currentRpm = rpm ?? this.preset.idleRpm;
+    this.currentRpm = rpm ?? (this.isIgnited ? this.preset.idleRpm : 0);
     this.currentThrottle = 0;
     this.prevThrottle = 0;
     this.isBackfiring = false;

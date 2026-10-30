@@ -17,83 +17,149 @@ export function ThrottleControl({
 }: ThrottleControlProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPressing, setIsPressing] = useState(false);
-  const keysDownRef = useRef<{ space: boolean; w: boolean }>({ space: false, w: false });
 
-  // 1. 键盘监听 (Space / W 长按踩油门)
+  const onThrottleChangeRef = useRef(onThrottleChange);
+  onThrottleChangeRef.current = onThrottleChange;
+  const disabledRef = useRef(disabled);
+  disabledRef.current = disabled;
+
+  // 输入来源独立记录 (Pointer, Space, W)
+  const inputsRef = useRef({
+    pointerActive: false,
+    pointerValue: 0,
+    spaceActive: false,
+    wActive: false
+  });
+
+  // 综合计算有效油门开度
+  const updateEffectiveThrottle = useCallback(() => {
+    if (disabledRef.current) {
+      onThrottleChangeRef.current(0.0);
+      setIsPressing(false);
+      return;
+    }
+
+    const { pointerActive, pointerValue, spaceActive, wActive } = inputsRef.current;
+    let max = 0;
+    if (pointerActive) max = Math.max(max, pointerValue);
+    if (spaceActive) max = Math.max(max, 1.0);
+    if (wActive) max = Math.max(max, 1.0);
+
+    const clamped = Math.max(0, Math.min(1, Math.round(max * 1000) / 1000));
+    onThrottleChangeRef.current(clamped);
+    setIsPressing(clamped > 0);
+  }, []);
+
+  // 全量重置输入 (失焦、切后台、卸载、disabled 改变)
+  const clearAllInputs = useCallback(() => {
+    inputsRef.current = {
+      pointerActive: false,
+      pointerValue: 0,
+      spaceActive: false,
+      wActive: false
+    };
+    updateEffectiveThrottle();
+  }, [updateEffectiveThrottle]);
+
+  useEffect(() => {
+    if (disabled) {
+      clearAllInputs();
+    }
+  }, [disabled, clearAllInputs]);
+
+  // 1. 键盘监听 (Space / W 长按踩油门，独立状态释放)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (disabled) return;
-      // 避免输入框或交互组件内按键冲突
+      if (disabledRef.current) return;
+      if (e.repeat) return; // 忽略操作系统按键自动重复
+
+      // 避免输入框或可编辑区内按键冲突
       const target = e.target as HTMLElement;
-      if (target && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName)) return;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+
+      // 避免干扰外部普通导航链接跳转
+      if (e.code === 'Space' && target && target.tagName === 'A') {
+        return;
+      }
 
       if (e.code === 'Space' || e.code === 'KeyW') {
         e.preventDefault();
-        if (e.code === 'Space') keysDownRef.current.space = true;
-        if (e.code === 'KeyW') keysDownRef.current.w = true;
-        onThrottleChange(1.0);
-        setIsPressing(true);
+        if (e.code === 'Space') inputsRef.current.spaceActive = true;
+        if (e.code === 'KeyW') inputsRef.current.wActive = true;
+        updateEffectiveThrottle();
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') keysDownRef.current.space = false;
-      if (e.code === 'KeyW') keysDownRef.current.w = false;
+      let changed = false;
+      if (e.code === 'Space') {
+        inputsRef.current.spaceActive = false;
+        changed = true;
+      }
+      if (e.code === 'KeyW') {
+        inputsRef.current.wActive = false;
+        changed = true;
+      }
 
-      if (!keysDownRef.current.space && !keysDownRef.current.w && !isPressing) {
-        onThrottleChange(0.0);
-        setIsPressing(false);
+      if (changed) {
+        updateEffectiveThrottle();
       }
     };
 
     const handleBlur = () => {
-      keysDownRef.current.space = false;
-      keysDownRef.current.w = false;
-      setIsPressing(false);
-      onThrottleChange(0.0);
+      clearAllInputs();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        clearAllInputs();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown, { passive: false });
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
-    document.addEventListener('visibilitychange', handleBlur);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
-      document.removeEventListener('visibilitychange', handleBlur);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [disabled, onThrottleChange, isPressing]);
+  }, [updateEffectiveThrottle, clearAllInputs]);
 
-  // 2. 指针与触控事件处理 (基于 PointerCapture 实现顺滑拖拽与防误触)
-  const calculateThrottleFromPointer = useCallback(
-    (clientY: number) => {
-      if (!containerRef.current) return 0;
-      const rect = containerRef.current.getBoundingClientRect();
-      // 垂直滑块：底部为 0%，顶部为 100%
-      const raw = 1 - (clientY - rect.top) / rect.height;
-      return Math.max(0, Math.min(1, raw));
-    },
-    []
-  );
+  // 2. 指针与触控统一物理映射 (基于 PointerCapture，向上滑动增加油门)
+  const calculateThrottleFromPointer = useCallback((clientY: number) => {
+    if (!containerRef.current) return 0;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.height <= 0) return 0;
+
+    // 垂直滑块统一规则：底部为 0%，顶部为 100%
+    const raw = 1 - (clientY - rect.top) / rect.height;
+    // 增加底部 4% 和顶部 4% 的安全死区，防止边缘抖动
+    if (raw <= 0.04) return 0;
+    if (raw >= 0.96) return 1.0;
+    return Math.max(0, Math.min(1, raw));
+  }, []);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (disabled) return;
+    if (disabledRef.current) return;
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (_) {}
 
-    setIsPressing(true);
-    // 如果直接点击踏板下半部分，至少给予 80% 开度模拟踩踏感
     const val = calculateThrottleFromPointer(e.clientY);
-    onThrottleChange(val < 0.2 ? 0.85 : val);
+    inputsRef.current.pointerActive = true;
+    inputsRef.current.pointerValue = val;
+    updateEffectiveThrottle();
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isPressing || disabled) return;
+    if (!inputsRef.current.pointerActive || disabledRef.current) return;
     const val = calculateThrottleFromPointer(e.clientY);
-    onThrottleChange(val);
+    inputsRef.current.pointerValue = val;
+    updateEffectiveThrottle();
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -102,10 +168,10 @@ export function ThrottleControl({
         e.currentTarget.releasePointerCapture(e.pointerId);
       }
     } catch (_) {}
-    setIsPressing(false);
-    if (!keysDownRef.current.space && !keysDownRef.current.w) {
-      onThrottleChange(0.0);
-    }
+
+    inputsRef.current.pointerActive = false;
+    inputsRef.current.pointerValue = 0;
+    updateEffectiveThrottle();
   };
 
   const pct = Math.round(throttle * 100);
@@ -114,7 +180,7 @@ export function ThrottleControl({
     <div className={styles.throttleSection}>
       <div
         ref={containerRef}
-        className={`${styles.pedalWrapper} ${isPressing ? styles.pedalActive : ''}`}
+        className={`${styles.pedalWrapper} ${isPressing ? styles.pedalActive : ''} ${disabled ? styles.pedalDisabled : ''}`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -124,13 +190,13 @@ export function ThrottleControl({
         aria-valuenow={pct}
         aria-valuemin={0}
         aria-valuemax={100}
-        tabIndex={0}
+        aria-disabled={disabled}
+        tabIndex={disabled ? -1 : 0}
       >
         {/* 液态玻璃金属踏板主体 */}
         <div className={styles.pedalPlate}>
           {/* 防滑金属刻线 */}
           <div className={styles.pedalTreads}>
-            <span />
             <span />
             <span />
             <span />
@@ -145,18 +211,24 @@ export function ThrottleControl({
 
           <div className={styles.pedalFootprint}>
             <span className={styles.pedalActionText}>
-              {isPressing ? 'THROTTLE ENGAGED' : 'PRESS & HOLD'}
+              {disabled
+                ? 'ENGINE OFF'
+                : isPressing
+                ? 'THROTTLE ENGAGED'
+                : 'PUSH UP TO ACCEL'}
             </span>
-            <span className={styles.pedalValueText}>{pct}%</span>
+            <span className={styles.pedalValueText}>{disabled ? '0%' : `${pct}%`}</span>
           </div>
         </div>
       </div>
 
       <div className={styles.throttleHint}>
         <span className={styles.keyBadge}>SPACE</span>
-        <span className={styles.orText}>或</span>
+        <span className={styles.orText}>/</span>
         <span className={styles.keyBadge}>W</span>
-        <span className={styles.hintText}>按住长踩 · 触摸上下滑动控速</span>
+        <span className={styles.hintText}>
+          {disabled ? '请先点火启动引擎' : '按住提速 · 触摸向上滑动控速'}
+        </span>
       </div>
     </div>
   );

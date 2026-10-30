@@ -12,10 +12,15 @@ export default function RevPage() {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: 'radial-gradient(ellipse at top, #131720 0%, #090b10 100%)',
-        paddingTop: 'calc(var(--nav-height, 72px) + 20px)',
-        paddingBottom: '40px'
+        paddingTop: 'calc(var(--nav-height, 64px) + 12px)',
+        paddingBottom: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
+        boxSizing: 'border-box'
       }}
     >
       <RevDashboard />
