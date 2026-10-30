@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GlassSurface } from '@/components/glass/GlassSurface';
-import { CAR_SPECS, CarSpec } from '@/lib/arcade/car-specs';
+import { CAR_SPECS } from '@/lib/arcade/car-specs';
 import { DragPhysicsEngine, DragRaceTelemetry, ShiftQuality } from '@/lib/arcade/drag-physics';
 import { F1EngineSynthesizer } from '@/lib/audio/engine-synthesizer';
 import { F1StartLights, StartLightState } from './F1StartLights';
@@ -48,6 +48,9 @@ export function DragRaceView({
   const [reactionTimeMs, setReactionTimeMs] = useState<number | null>(null);
   const [isJumpStart, setIsJumpStart] = useState<boolean>(false);
 
+  // 自动换挡开关 (极大提升移动端和新手可玩性)
+  const [autoShift, setAutoShift] = useState<boolean>(false);
+
   // 换挡反馈浮字
   const [shiftFeedback, setShiftFeedback] = useState<{ text: string; color: string; id: number } | null>(null);
   const feedbackIdRef = useRef<number>(0);
@@ -86,7 +89,6 @@ export function DragRaceView({
     keyW: false,
     touch: 0
   });
-  const currentThrottleRef = useRef<number>(0);
 
   // 切换车型
   const handleSelectCar = (carId: 'v10-2004' | 'v8-2010' | 'v6-2026') => {
@@ -177,37 +179,7 @@ export function DragRaceView({
     }, 1200);
   };
 
-  // 启动发车程序
-  const startLaunchSequence = useCallback(() => {
-    if (raceStatus !== 'STAGING') return;
-    if (synth) synth.init();
-
-    setRaceStatus('COUNTDOWN');
-    setLightStage('SEQUENCE');
-    setLightCount(1);
-
-    let count = 1;
-    sequenceIntervalRef.current = setInterval(() => {
-      count++;
-      if (count <= 5) {
-        setLightCount(count);
-      } else {
-        if (sequenceIntervalRef.current) clearInterval(sequenceIntervalRef.current);
-        setLightStage('HOLD');
-        isHoldingRef.current = true;
-
-        // 随机等待 0.8s ~ 2.4s 瞬间熄灯
-        const randomHoldMs = 800 + Math.random() * 1600;
-        holdTimeoutRef.current = setTimeout(() => {
-          isHoldingRef.current = false;
-          lightsOutTimeRef.current = performance.now();
-          setLightStage('LIGHTS_OUT');
-        }, randomHoldMs);
-      }
-    }, 1000);
-  }, [raceStatus, synth]);
-
-  // 发车动作 (挂入 1 挡起步)
+  // 执行发车动作 (释放离合器挂入 1 挡)
   const performLaunch = useCallback(() => {
     const now = performance.now();
 
@@ -227,11 +199,9 @@ export function DragRaceView({
       const diffMs = Math.round(now - lightsOutTimeRef.current);
       setReactionTimeMs(diffMs);
 
-      // 发车品质
       const { quality } = engineRef.current.launch();
       if (quality === 'PERFECT') {
         triggerShiftFeedback('PERFECT');
-        // 成就判定: 200ms 且 PERFECT
         if (diffMs <= 200) {
           const ach = tryUnlockAchievement('perfect_launcher');
           if (ach) onUnlockAchievement(ach);
@@ -239,11 +209,46 @@ export function DragRaceView({
       }
       setRaceStatus('RACING');
     } else {
-      // 自由发车
       engineRef.current.launch();
       setRaceStatus('RACING');
     }
   }, [lightStage, onUnlockAchievement]);
+
+  // 启动发车程序 (点亮五盏发车灯)
+  const startLaunchSequence = useCallback(() => {
+    if (raceStatus !== 'STAGING') return;
+    if (synth) synth.init();
+
+    setRaceStatus('COUNTDOWN');
+    setLightStage('SEQUENCE');
+    setLightCount(1);
+
+    let count = 1;
+    sequenceIntervalRef.current = setInterval(() => {
+      count++;
+      if (count <= 5) {
+        setLightCount(count);
+      } else {
+        if (sequenceIntervalRef.current) clearInterval(sequenceIntervalRef.current);
+        setLightStage('HOLD');
+        isHoldingRef.current = true;
+
+        // 随机保持 0.8s ~ 2.4s 瞬间熄灯
+        const randomHoldMs = 800 + Math.random() * 1600;
+        holdTimeoutRef.current = setTimeout(() => {
+          isHoldingRef.current = false;
+          lightsOutTimeRef.current = performance.now();
+          setLightStage('LIGHTS_OUT');
+
+          // 【关键体验优化】如果玩家此时已经踩着油门，灭灯瞬间自动弹射起步！
+          const k = keyStateRef.current;
+          if (k.space || k.keyW || k.touch > 0) {
+            performLaunch();
+          }
+        }, randomHoldMs);
+      }
+    }, 1000);
+  }, [raceStatus, synth, performLaunch]);
 
   // 升挡
   const handleShiftUp = useCallback(() => {
@@ -252,7 +257,7 @@ export function DragRaceView({
       return;
     }
     if (raceStatus === 'COUNTDOWN') {
-      // 在倒计时阶段误触发升挡即为抢跑发车
+      // 倒计时阶段按发车/升挡即为发车操作 (若未灭灯则触发抢跑)
       performLaunch();
       return;
     }
@@ -277,6 +282,26 @@ export function DragRaceView({
     }
   }, [raceStatus]);
 
+  // 踩油门通用处理 (若灭灯后处于空挡，踩油门直接自动发车！)
+  const handleThrottleInputStart = useCallback((source: 'space' | 'keyW' | 'touch', val: number = 1.0) => {
+    if (synth) synth.init();
+
+    if (source === 'space') keyStateRef.current.space = true;
+    if (source === 'keyW') keyStateRef.current.keyW = true;
+    if (source === 'touch') keyStateRef.current.touch = val;
+
+    // 如果比赛已经灭灯且在空挡，踩油门直接发车！
+    if (lightStage === 'LIGHTS_OUT' && engineRef.current.getGear() === 0) {
+      performLaunch();
+    }
+  }, [synth, lightStage, performLaunch]);
+
+  const handleThrottleInputStop = useCallback((source: 'space' | 'keyW' | 'touch') => {
+    if (source === 'space') keyStateRef.current.space = false;
+    if (source === 'keyW') keyStateRef.current.keyW = false;
+    if (source === 'touch') keyStateRef.current.touch = 0;
+  }, []);
+
   // 键盘与事件监听
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -284,12 +309,10 @@ export function DragRaceView({
 
       if (e.code === 'Space') {
         e.preventDefault();
-        keyStateRef.current.space = true;
-        if (synth) synth.init();
+        handleThrottleInputStart('space', 1.0);
       } else if (e.code === 'KeyW' || e.code === 'ArrowUp') {
         e.preventDefault();
-        keyStateRef.current.keyW = true;
-        if (synth) synth.init();
+        handleThrottleInputStart('keyW', 1.0);
       } else if (e.code === 'KeyE') {
         e.preventDefault();
         handleShiftUp();
@@ -304,9 +327,9 @@ export function DragRaceView({
 
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
-        keyStateRef.current.space = false;
+        handleThrottleInputStop('space');
       } else if (e.code === 'KeyW' || e.code === 'ArrowUp') {
-        keyStateRef.current.keyW = false;
+        handleThrottleInputStop('keyW');
       }
     };
 
@@ -327,9 +350,9 @@ export function DragRaceView({
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('visibilitychange', handleBlur);
     };
-  }, [handleShiftUp, handleShiftDown, handleResetRace, synth]);
+  }, [handleThrottleInputStart, handleThrottleInputStop, handleShiftUp, handleShiftDown, handleResetRace]);
 
-  // 物理与音频主循环 (requestAnimationFrame)
+  // 物理与音频主循环
   useEffect(() => {
     let animId: number;
     let lastTime = performance.now();
@@ -338,15 +361,20 @@ export function DragRaceView({
       const dt = Math.min((currentTime - lastTime) / 1000, 0.05);
       lastTime = currentTime;
 
-      // 计算有效油门开度
       const k = keyStateRef.current;
       const keyThrottle = (k.space ? 1.0 : 0.0) || (k.keyW ? 1.0 : 0.0);
       const throttle = Math.max(keyThrottle, k.touch);
-      currentThrottleRef.current = throttle;
 
       const isRacing = raceStatus === 'RACING';
       const telem = engineRef.current.step(dt, throttle, isRacing);
       setTelemetry(telem);
+
+      // 自动换挡逻辑 (开启自动换挡时，达到最佳转速区间自动无缝升挡)
+      if (autoShift && isRacing && !telem.isFinished) {
+        if (telem.rpm >= spec.optimalShiftRpmMin && telem.gear < spec.totalGears) {
+          handleShiftUp();
+        }
+      }
 
       // 声音驱动
       if (synth) {
@@ -363,7 +391,6 @@ export function DragRaceView({
           gear: telem.gear
         });
 
-        // 匹配历史幽灵车位置
         if (ghostPoints && ghostPoints.length > 0) {
           const match = ghostPoints.find((p) => p.timeMs >= timeElapsedMs);
           if (match) {
@@ -399,7 +426,6 @@ export function DragRaceView({
           saveGhostTrajectory(selectedCarId, ghostTrajectoryRef.current);
         }
 
-        // 成就判定
         const firstAch = tryUnlockAchievement('first_race');
         if (firstAch) onUnlockAchievement(firstAch);
 
@@ -432,9 +458,8 @@ export function DragRaceView({
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [raceStatus, selectedCarId, spec, isJumpStart, reactionTimeMs, ghostPoints, synth, onUnlockAchievement]);
+  }, [raceStatus, selectedCarId, spec, isJumpStart, reactionTimeMs, ghostPoints, autoShift, synth, onUnlockAchievement, handleShiftUp]);
 
-  // 最佳升挡区间指示
   const isShiftOptimal =
     telemetry.rpm >= spec.optimalShiftRpmMin && telemetry.rpm <= spec.optimalShiftRpmMax;
   const rpmPercent = Math.min(
@@ -443,7 +468,7 @@ export function DragRaceView({
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-5 sm:gap-6 animate-in fade-in duration-300">
+    <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-4 sm:gap-6 animate-in fade-in duration-300 select-none">
       {/* 顶部车型选择与模式状态 */}
       <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-3 px-2">
         {/* 车型选择药丸 */}
@@ -467,14 +492,27 @@ export function DragRaceView({
           })}
         </div>
 
-        {/* 历史最佳成绩展示 */}
-        <div className="flex items-center gap-2 font-mono text-xs text-zinc-400 bg-white/[0.03] px-3.5 py-1.5 rounded-xl border border-white/5">
-          <span>{spec.shortName} 纪录:</span>
-          <span className="font-bold text-amber-400">
-            {getBestRecord(selectedCarId)?.time400m
-              ? `${getBestRecord(selectedCarId)!.time400m.toFixed(3)}s`
-              : '暂无'}
-          </span>
+        {/* 自动换挡开关与纪录 */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setAutoShift((prev) => !prev)}
+            className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold border transition-all cursor-pointer ${
+              autoShift
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(52,211,153,0.3)]'
+                : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+            }`}
+          >
+            {autoShift ? '⚙️ 自动换挡: ON' : '⚙️ 手动换挡: ON'}
+          </button>
+
+          <div className="flex items-center gap-2 font-mono text-xs text-zinc-400 bg-white/[0.03] px-3.5 py-1.5 rounded-xl border border-white/5">
+            <span>纪录:</span>
+            <span className="font-bold text-amber-400">
+              {getBestRecord(selectedCarId)?.time400m
+                ? `${getBestRecord(selectedCarId)!.time400m.toFixed(3)}s`
+                : '暂无'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -488,7 +526,7 @@ export function DragRaceView({
 
       {/* 直线加速主 HUD 视口 (Liquid Glass) */}
       <GlassSurface
-        className="relative w-full p-6 sm:p-8 rounded-3xl border border-white/15 bg-zinc-950/80 shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-2xl text-white overflow-hidden flex flex-col items-center"
+        className="relative w-full p-5 sm:p-8 rounded-3xl border border-white/15 bg-zinc-950/80 shadow-[0_16px_48px_rgba(0,0,0,0.6)] backdrop-blur-2xl text-white overflow-hidden flex flex-col items-center"
       >
         {/* 换挡浮动评价浮层 */}
         {shiftFeedback && (
@@ -500,7 +538,7 @@ export function DragRaceView({
         )}
 
         {/* 换挡指示灯组 (Shift Lights Bar) */}
-        <div className="w-full max-w-md flex items-center justify-between gap-1.5 mb-6 px-4 py-2 rounded-xl bg-black/40 border border-white/5">
+        <div className="w-full max-w-md flex items-center justify-between gap-1.5 mb-4 sm:mb-6 px-4 py-2 rounded-xl bg-black/40 border border-white/5">
           {[...Array(12)].map((_, idx) => {
             const threshold = (idx + 1) * (100 / 12);
             const isLit = rpmPercent >= threshold;
@@ -520,14 +558,14 @@ export function DragRaceView({
         </div>
 
         {/* 核心仪表：挡位 + 车速 + 转速 */}
-        <div className="flex flex-col sm:flex-row items-center justify-around w-full gap-6 my-2">
+        <div className="flex flex-row items-center justify-around w-full gap-2 sm:gap-6 my-2">
           {/* 当前挡位 */}
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center min-w-[70px]">
             <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
               GEAR · 挡位
             </span>
             <div
-              className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-4xl sm:text-5xl font-mono font-black border transition-all ${
+              className={`w-16 h-16 sm:w-24 sm:h-24 rounded-2xl flex items-center justify-center text-3xl sm:text-5xl font-mono font-black border transition-all ${
                 isShiftOptimal
                   ? 'border-purple-400 text-purple-300 bg-purple-500/20 shadow-[0_0_24px_rgba(192,132,252,0.6)] animate-pulse'
                   : 'border-white/10 text-white bg-white/[0.02]'
@@ -537,7 +575,7 @@ export function DragRaceView({
             </div>
             {isShiftOptimal && (
               <span className="text-[10px] font-mono font-bold text-purple-300 mt-1 animate-bounce">
-                ▲ SHIFT UP
+                ▲ 升挡!
               </span>
             )}
           </div>
@@ -545,13 +583,13 @@ export function DragRaceView({
           {/* 实时车速 */}
           <div className="flex flex-col items-center">
             <div className="flex items-baseline gap-1">
-              <span className="text-6xl sm:text-7xl font-mono font-black tracking-tight text-white">
+              <span className="text-5xl sm:text-7xl font-mono font-black tracking-tight text-white">
                 {Math.round(telemetry.speedKmh)}
               </span>
-              <span className="text-base font-mono text-zinc-400 font-bold">KM/H</span>
+              <span className="text-sm sm:text-base font-mono text-zinc-400 font-bold">KM/H</span>
             </div>
-            <div className="flex items-center gap-3 font-mono text-xs text-zinc-400 mt-1">
-              <span>加速度: {telemetry.accelerationG.toFixed(2)}G</span>
+            <div className="flex items-center gap-2 sm:gap-3 font-mono text-xs text-zinc-400 mt-1">
+              <span>{telemetry.accelerationG.toFixed(2)}G</span>
               {telemetry.isWheelSpinning && (
                 <span className="text-amber-400 font-semibold animate-pulse">轮胎打滑</span>
               )}
@@ -559,11 +597,11 @@ export function DragRaceView({
           </div>
 
           {/* 实时转速 */}
-          <div className="flex flex-col items-center min-w-[120px]">
+          <div className="flex flex-col items-center min-w-[80px] sm:min-w-[120px]">
             <span className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase">
               ENGINE · 转速
             </span>
-            <div className="text-3xl sm:text-4xl font-mono font-bold text-zinc-200 mt-1">
+            <div className="text-2xl sm:text-4xl font-mono font-bold text-zinc-200 mt-1">
               {telemetry.rpm.toLocaleString()}
             </div>
             <span className="text-xs font-mono text-zinc-500">RPM</span>
@@ -571,11 +609,11 @@ export function DragRaceView({
         </div>
 
         {/* 400 米冲刺赛道距离条与幽灵车对比 */}
-        <div className="w-full max-w-2xl mt-6 px-2">
+        <div className="w-full max-w-2xl mt-5 px-2">
           <div className="flex justify-between items-center text-xs font-mono text-zinc-400 mb-1.5">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
-              当前位置: {telemetry.distanceM.toFixed(1)}m
+              当前: {telemetry.distanceM.toFixed(1)}m
             </span>
             {ghostPoints && (
               <span className="flex items-center gap-1.5 text-zinc-500">
@@ -588,14 +626,12 @@ export function DragRaceView({
 
           {/* 进度轨道 */}
           <div className="relative w-full h-3 rounded-full bg-zinc-900 border border-white/10 overflow-hidden">
-            {/* 幽灵车位置指示条 */}
             {ghostPoints && (
               <div
                 className="absolute top-0 bottom-0 bg-cyan-500/40 rounded-full transition-all duration-75"
                 style={{ width: `${Math.min(100, (ghostDistanceM / 400) * 100)}%` }}
               />
             )}
-            {/* 当前赛车进度条 */}
             <div
               className="absolute top-0 bottom-0 bg-gradient-to-r from-rose-600 via-rose-500 to-amber-400 rounded-full shadow-[0_0_12px_rgba(244,63,94,0.7)] transition-all duration-75"
               style={{ width: `${Math.min(100, (telemetry.distanceM / 400) * 100)}%` }}
@@ -603,71 +639,88 @@ export function DragRaceView({
           </div>
         </div>
 
-        {/* 底部触控与键盘操作提示面板 */}
-        <div className="w-full max-w-2xl mt-8 pt-6 border-t border-white/10 flex flex-col gap-4">
-          {/* 大按键区域 (便于触屏与直观操作) */}
-          <div className="grid grid-cols-3 gap-3 w-full">
-            {/* 降挡按钮 */}
+        {/* 底部超醒目操作控制台 (针对手机触控与桌面键盘双重优化) */}
+        <div className="w-full max-w-2xl mt-6 pt-5 border-t border-white/10 flex flex-col gap-3">
+          {/* 核心操作主按键 */}
+          {raceStatus === 'STAGING' ? (
             <button
-              onClick={handleShiftDown}
-              className="py-4 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-[0.97] border border-white/10 flex flex-col items-center justify-center transition-all cursor-pointer text-white font-mono"
+              onClick={startLaunchSequence}
+              className="w-full py-5 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 active:scale-[0.98] shadow-[0_0_32px_rgba(225,29,72,0.6)] border border-rose-400 text-white font-mono flex flex-col items-center justify-center cursor-pointer transition-all"
             >
-              <span className="text-xl sm:text-2xl font-black">▼ 降挡</span>
-              <span className="text-[10px] text-zinc-400 mt-0.5">按键 [Q]</span>
+              <span className="text-2xl font-black tracking-wider flex items-center gap-2">
+                <span>🚦 点击开始发车程序</span>
+              </span>
+              <span className="text-xs text-rose-200 mt-1">点亮五盏发车灯 · 灭灯瞬间踩油门起步</span>
             </button>
-
-            {/* 发车 / 升挡核心动作按键 */}
-            {raceStatus === 'STAGING' ? (
-              <button
-                onClick={startLaunchSequence}
-                className="py-4 rounded-2xl bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 active:scale-[0.97] shadow-[0_0_24px_rgba(225,29,72,0.5)] border border-rose-400/50 flex flex-col items-center justify-center transition-all cursor-pointer text-white font-mono"
-              >
-                <span className="text-lg sm:text-xl font-black tracking-wider">🚦 发车准备</span>
-                <span className="text-[10px] text-rose-200 mt-0.5">点亮五盏红灯</span>
-              </button>
-            ) : (
+          ) : (
+            <div className="grid grid-cols-2 gap-3 w-full">
+              {/* 升挡按键 (如果是手动挡) */}
               <button
                 onClick={handleShiftUp}
-                className={`py-4 rounded-2xl border flex flex-col items-center justify-center transition-all cursor-pointer text-white font-mono active:scale-[0.97] ${
+                className={`py-5 rounded-2xl border flex flex-col items-center justify-center transition-all cursor-pointer text-white font-mono active:scale-[0.96] touch-manipulation ${
                   isShiftOptimal
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-400 shadow-[0_0_24px_rgba(192,132,252,0.6)] animate-pulse'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-400 shadow-[0_0_32px_rgba(192,132,252,0.8)] animate-pulse'
                     : 'bg-white/10 hover:bg-white/15 border-white/20'
                 }`}
               >
-                <span className="text-xl sm:text-2xl font-black">▲ 升挡</span>
-                <span className="text-[10px] text-zinc-300 mt-0.5">按键 [E] / [Space]</span>
+                <span className="text-2xl sm:text-3xl font-black">▲ 升挡 (E)</span>
+                <span className="text-xs text-zinc-300 mt-0.5">
+                  {isShiftOptimal ? '★ 立即升挡！' : '达到紫光时点击'}
+                </span>
               </button>
-            )}
 
-            {/* 模拟全油门触控踩踏板 */}
-            <button
-              onPointerDown={() => {
-                keyStateRef.current.touch = 1.0;
-                if (synth) synth.init();
-              }}
-              onPointerUp={() => {
-                keyStateRef.current.touch = 0;
-              }}
-              onPointerCancel={() => {
-                keyStateRef.current.touch = 0;
-              }}
-              className="py-4 rounded-2xl bg-gradient-to-br from-amber-600/40 to-amber-700/40 hover:from-amber-600/50 hover:to-amber-700/50 active:scale-[0.97] border border-amber-500/40 flex flex-col items-center justify-center transition-all cursor-pointer text-white font-mono select-none"
-            >
-              <span className="text-xl sm:text-2xl font-black text-amber-300">🔥 全油门</span>
-              <span className="text-[10px] text-amber-200/80 mt-0.5">按住 [Space] / [W]</span>
-            </button>
-          </div>
+              {/* 全油门踏板按键 (支持长按与防菜单) */}
+              <button
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleThrottleInputStart('touch', 1.0);
+                }}
+                onPointerUp={(e) => {
+                  e.preventDefault();
+                  handleThrottleInputStop('touch');
+                }}
+                onPointerCancel={() => handleThrottleInputStop('touch')}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleThrottleInputStart('touch', 1.0);
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handleThrottleInputStop('touch');
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                className="py-5 rounded-2xl bg-gradient-to-br from-amber-600 to-amber-700 active:from-amber-500 active:to-amber-600 active:scale-[0.96] shadow-[0_0_24px_rgba(245,158,11,0.5)] border border-amber-400 text-white font-mono flex flex-col items-center justify-center cursor-pointer select-none touch-manipulation"
+              >
+                <span className="text-2xl sm:text-3xl font-black text-amber-100">🔥 按住油门</span>
+                <span className="text-xs text-amber-200/90 mt-0.5">[Space / 触控按住]</span>
+              </button>
+            </div>
+          )}
 
-          {/* 辅助快捷键提示与大厅退出 */}
-          <div className="flex items-center justify-between text-xs font-mono text-zinc-400 px-1">
-            <span className="hidden sm:inline">
-              操作指南: [Space/W] 油门 · [E] 升挡 · [Q] 降挡 · [R] 重新发车
-            </span>
+          {/* 辅助按键行 */}
+          <div className="flex items-center justify-between text-xs font-mono text-zinc-400 pt-2 px-1">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleResetRace}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 cursor-pointer"
+              >
+                ↺ 重新发车 (R)
+              </button>
+              {raceStatus === 'RACING' && !autoShift && (
+                <button
+                  onClick={handleShiftDown}
+                  className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 cursor-pointer"
+                >
+                  ▼ 降挡 (Q)
+                </button>
+              )}
+            </div>
+
             <button
               onClick={onExitToLobby}
               className="text-zinc-500 hover:text-zinc-300 underline underline-offset-4 cursor-pointer"
             >
-              ← 返回模式选择
+              ← 切换其他模式
             </button>
           </div>
         </div>
@@ -678,9 +731,7 @@ export function DragRaceView({
         <RaceResultModal
           result={raceResult}
           onRestart={handleResetRace}
-          onSelectCar={() => {
-            handleResetRace();
-          }}
+          onSelectCar={handleResetRace}
           onExitLobby={onExitToLobby}
         />
       )}

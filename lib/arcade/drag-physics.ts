@@ -275,14 +275,20 @@ export class DragPhysicsEngine {
     // 轮速反算引擎 RPM
     const wheelCircumference = Math.PI * this.spec.wheelDiameterM;
     const currentRatio = this.spec.gearRatios[this.gear - 1] || 1.0;
-    let gearCalculatedRpm =
+    const gearCalculatedRpm =
       (this.speedMs * 60 * currentRatio * this.spec.finalDriveRatio) / wheelCircumference;
 
-    // 起步离合器微滑磨阶段：转速不能低于怠速，打滑时转速会偏高
-    if (this.isWheelSpinning) {
-      gearCalculatedRpm = Math.max(gearCalculatedRpm, this.rpm + 4000 * dt);
+    // 起步离合器滑磨阶段 (0 ~ 55 km/h)：保持高爆发转速，平滑过渡至轮速
+    if (this.gear === 1 && this.speedMs < 15) {
+      const slipRatio = Math.min(1, Math.max(0, this.speedMs / 15));
+      const targetLaunchRpm = Math.max(
+        this.spec.launchRpmMin,
+        this.spec.enginePreset.idleRpm + this.currentThrottle * (this.spec.enginePreset.redlineRpm * 0.75 - this.spec.enginePreset.idleRpm)
+      );
+      this.rpm = targetLaunchRpm * (1 - slipRatio) + gearCalculatedRpm * slipRatio;
+    } else {
+      this.rpm = Math.max(this.spec.enginePreset.idleRpm, gearCalculatedRpm);
     }
-    this.rpm = Math.max(this.spec.enginePreset.idleRpm, gearCalculatedRpm);
 
     // 断油限制器判定
     if (this.rpm >= this.spec.enginePreset.limiterRpm) {

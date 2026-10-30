@@ -22,7 +22,7 @@ export type EngineState = 'OFF' | 'STARTING' | 'RUNNING' | 'STOPPING';
 
 export function RevDashboard() {
   // 顶层模式切换: 默认进入直线加速赛或大厅，这里默认大厅以展现全新 Arcade 2.0 体验
-  const [activeMode, setActiveMode] = useState<ArcadeMode>('DRAG');
+  const [activeMode, setActiveMode] = useState<ArcadeMode>('LOBBY');
   const [activeAchievement, setActiveAchievement] = useState<AchievementDef | null>(null);
 
   const [selectedPresetId, setSelectedPresetId] = useState<string>('v10-2004');
