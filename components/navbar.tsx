@@ -16,8 +16,7 @@ const NAV_ITEMS = [
   { href: '/standings', label: '积分榜' },
   { href: '/live', label: '实时数据' },
   { href: '/drivers', label: '车手' },
-  { href: '/teams', label: '车队' },
-  { href: '/rev', label: '声浪室' }
+  { href: '/teams', label: '车队' }
 ];
 
 const clockFormatter = new Intl.DateTimeFormat('zh-CN', {
@@ -246,7 +245,7 @@ export function Navbar() {
     <nav className="nav-links desktop-nav" aria-label="主导航" style={{'--nav-index':Math.max(0,currentIndex),'--nav-active':currentIndex<0?0:1} as React.CSSProperties}>
      {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}<NavigationFeedback/></Link>)}
     </nav>
-    <div className="nav-actions"><BeijingClock className="desktop-nav"/><AILink className="nav-ai">APEX AI <span aria-hidden="true">↗</span></AILink>
+    <div className="nav-actions"><BeijingClock className="desktop-nav"/><Link href="/rev" className="nav-rev desktop-nav">🔊 声浪室</Link><AILink className="nav-ai">APEX AI <span aria-hidden="true">↗</span></AILink>
      {identityStatus !== 'ready' ? <span className="nav-login desktop-nav" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (
        <div className="account-wrap desktop-nav" ref={accountRef}>
          <button
@@ -307,6 +306,7 @@ export function Navbar() {
    {menuOpen&&<div id="mobile-menu" className="mobile-menu" role="dialog" aria-modal="true" aria-label="网站导航" ref={drawerRef}>
     <button type="button" className="mobile-menu-close" onClick={()=>{setMenuOpen(false);toggleRef.current?.focus()}}>网站导航 <span>关闭 ×</span></button>
     {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label}<NavigationFeedback/></Link>)}
+    <Link href="/rev" onClick={()=>setMenuOpen(false)}>🔊 声浪室<NavigationFeedback/></Link>
     <AILink onClick={()=>setMenuOpen(false)}>APEX AI</AILink>
     <div className="mobile-account">
       {logoutError&&<div className="nav-feedback" role="alert">{logoutError}</div>}
