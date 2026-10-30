@@ -51,8 +51,8 @@ function RegisterForm() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('密码长度至少为 6 位字符');
+    if (typeof password !== 'string' || password.length < 8 || !/(?=.*[a-zA-Z])(?=.*\d)/.test(password)) {
+      setError('密码强度不足：需至少 8 位字符，且必须同时包含字母和数字');
       return;
     }
 
@@ -187,7 +187,7 @@ function RegisterForm() {
 
                 <div>
                   <label htmlFor="auth-password" style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 500 }}>
-                    设置密码 (至少 6 位)
+                    设置密码 (至少 8 位，含字母和数字)
                   </label>
                   <PasswordInput
                     id="auth-password"
@@ -196,7 +196,7 @@ function RegisterForm() {
                     required
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="请设置密码（至少 6 位）"
+                    placeholder="请设置密码（至少 8 位，含字母和数字）"
                   />
                 </div>
 

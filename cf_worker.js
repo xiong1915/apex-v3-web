@@ -28,6 +28,7 @@ export default {
     if (clientIp) {
       reqHeaders.set('X-Real-IP', clientIp);
     }
+    reqHeaders.set('X-Origin-Verify-Secret', env.ORIGIN_VERIFY_SECRET || 'YOUR_LONG_RANDOM_SECRET_KEY');
 
     const hasBody = !['GET', 'HEAD'].includes(request.method);
 

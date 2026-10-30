@@ -41,3 +41,13 @@
 - 2026-10-16 只读检查：GitHub main 未配置经典分支保护，rulesets 列表为空；后续启用质量检查约束需明确授权。
 
 - V3.3：/live 采用 lib/f1/live/policy.ts 的公开许可门控；当前只发布真实赛程、倒计时与已收录成绩。不得通过配置开关或缓存绕过门控，不得将离线状态机测试当真实直播验收。参见 docs/live-timing.md。
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+## This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

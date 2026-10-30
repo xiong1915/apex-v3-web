@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCacheStore, getRateLimitStore } from '@/lib/storage';
 import { sendEmail } from '@/lib/auth/email';
+import { randomInt } from 'node:crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,8 +29,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. 生成 6 位高安全随机验证码
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // 2. 使用密码学安全随机发生器生成 6 位数字验证码
+    const code = randomInt(100000, 1000000).toString();
 
     // 3. 存入分布式/内存缓存 (10 分钟有效期)
     const cache = getCacheStore();

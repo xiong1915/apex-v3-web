@@ -581,7 +581,8 @@
 }
 .battle-rank {
   font:18px var(--font-mono);
-  opacity:.5
+  color:var(--text-dark-secondary);
+  font-weight:600
 }
 .battle-name strong {
   display:block;

@@ -20,7 +20,7 @@ test('actual signup route returns quota failure once without a second email send
  const source=fs.readFileSync(new URL('../app/api/auth/register/route.ts',import.meta.url),'utf8');
  const compiled=stripTypeScriptTypes(source,{mode:'strip'}).replace(/import \{([^}]+)\} from ['"]([^'"]+)['"];?/g,'const {$1}=require("$2");').replace(/export /g,'')+'\nmodule.exports=POST;';
  const module={exports:null as any};vm.runInNewContext(compiled,{module,require:(name:string)=>{if(!(name in dependencies))throw Error('Unexpected dependency '+name);return dependencies[name];}});
- const response=await module.exports(new NextRequest('https://example.invalid/api/auth/register',{method:'POST',body:JSON.stringify({email:'test@example.invalid',password:'test-only-password'})}));
+ const response=await module.exports(new NextRequest('https://example.invalid/api/auth/register',{method:'POST',body:JSON.stringify({email:'test@example.invalid',password:'test-only-password123'})}));
  assert.equal(response.status,429);assert.equal(response.headers.get('retry-after'),'60');assert.match((await response.json()).error,/验证邮件/);assert.equal(signups,1);
 });
 test('unauthorized recipient and unexpected upstream errors do not leak provider internals',()=>{

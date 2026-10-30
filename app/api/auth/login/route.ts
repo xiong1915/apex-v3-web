@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AUTH_CONFIG, isSupabaseConfigured, isMockAuthAllowed, isProduction } from '@/lib/auth/config';
 import { createSupabaseServerClient } from '@/lib/auth/server';
 import { mockAuthManager } from '@/lib/auth/mock';
+import { getRateLimitStore } from '@/lib/storage';
+import { extractClientIp } from '@/lib/auth/client-ip';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +16,20 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password } = body;
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const clientIp = extractClientIp(req.headers);
+    const limiter = getRateLimitStore();
+    const [ipCheck, userCheck] = await Promise.all([
+      limiter.checkRateLimit(`rate:login:ip:${clientIp}`, 10, 60), // 单 IP 每分钟限 10 次
+      limiter.checkRateLimit(`rate:login:acc:${normalizedEmail}`, 5, 60)  // 单账号每分钟限 5 次
+    ]);
+    if (!ipCheck.allowed || !userCheck.allowed) {
+      return NextResponse.json(
+        { error: '登录尝试过于频繁，请稍候 1 分钟后再试' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
+    }
 
     // 1. 真实 Supabase Auth 流程
     if (isSupabaseConfigured()) {

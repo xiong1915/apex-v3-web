@@ -16,8 +16,12 @@ export async function POST(req: NextRequest) {
     }
 
     const { email, password } = body;
-    if (typeof password !== 'string' || password.length < 6) {
-      return NextResponse.json({ error: '密码长度至少需 6 位字符' }, { status: 400 });
+    // 密码强度校验：至少 8 位，且包含字母与数字
+    if (typeof password !== 'string' || password.length < 8 || !/(?=.*[a-zA-Z])(?=.*\d)/.test(password)) {
+      return NextResponse.json(
+        { error: '密码强度不足：需至少 8 位字符，且必须同时包含字母和数字' },
+        { status: 400 }
+      );
     }
 
     const origin = getTrustedPublicOrigin(req);
