@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
 import { LiquidGlass } from '@/components/ui/liquid-glass';
 import { CAR_SPECS } from '@/lib/arcade/car-specs';
 import { RevSession, readRecords, saveRecord, readGhost, ghostGap, type RevMode, type RevPhase } from '@/lib/arcade/rev-session';
@@ -24,23 +24,29 @@ function TrackArt({kind}:{kind:RevMode}) {
   </svg>;
 }
 
+function SoundControls({volume,muted,onVolume,onMute,compact=false}:{volume:number;muted:boolean;onVolume:(value:number)=>void;onMute:()=>void;compact?:boolean}) {
+  return <LiquidGlass className={compact?styles.mobileAudio:styles.audio} optical={!compact}>
+    <button aria-label={muted?'取消静音':'静音'} aria-pressed={muted} onClick={onMute}>{compact?<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/>{muted?<path d="m17 9 5 6m0-6-5 6"/>:<path d="M17 8a6 6 0 0 1 0 8"/>}</svg>:muted?'静音中':'声音开启'}</button>
+    <input aria-label="主音量" type="range" min="0" max="1" step=".05" value={volume} onChange={event=>onVolume(+event.target.value)}/>
+  </LiquidGlass>;
+}
+
 export function RevDashboard() {
   const [mode,setMode]=useState<RevMode|null>(null);
   const [records,setRecords]=useState<Record<string,number>>({});
   const [volume,setVolume]=useState(.45),[muted,setMuted]=useState(false);
   const [audio]=useState(()=>new RevAudio());
+  const onVolume=(value:number)=>{setVolume(value);audio.setVolume(value);};
+  const onMute=()=>{setMuted(!muted);audio.setMuted(!muted);};
   useEffect(()=>{const id=requestAnimationFrame(()=>setRecords(localRecords()));return()=>{cancelAnimationFrame(id);audio.stop();};},[audio]);
   const exit=()=>{audio.stop();setMode(null);setRecords(localRecords());window.scrollTo({top:0,behavior:'instant'});};
   return <div className={styles.root} data-rev-active={Boolean(mode)}>
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.wordmark}><span className={styles.mark} aria-hidden="true">A</span><div><span className={styles.kicker}>APEX / INTERACTIVE</span><h1>Acoustic Rev<span className={styles.dot}>.</span></h1></div></div>
-        <LiquidGlass className={styles.audio} optical>
-          <button aria-label={muted?'取消静音':'静音'} aria-pressed={muted} onClick={()=>{setMuted(!muted);audio.setMuted(!muted);}}>{muted?'静音中':'声音开启'}</button>
-          <input aria-label="主音量" type="range" min="0" max="1" step=".05" value={volume} onChange={e=>{setVolume(+e.target.value);audio.setVolume(+e.target.value);}}/>
-        </LiquidGlass>
+        <SoundControls volume={volume} muted={muted} onVolume={onVolume} onMute={onMute}/>
       </header>
-      {mode?<SessionView key={mode} mode={mode} audio={audio} onExit={exit}/>:<section className={styles.lobby} aria-label="模式大厅">
+      {mode?<SessionView key={mode} mode={mode} audio={audio} onExit={exit} soundControls={<SoundControls compact volume={volume} muted={muted} onVolume={onVolume} onMute={onMute}/>}/>:<section className={styles.lobby} aria-label="模式大厅">
         <div className={styles.intro}><div><span className={styles.kicker}>THE SOUND. THE INSTINCT.</span><h2>听见本能。<br/><span>驶入你的节奏。</span></h2></div><p>从第一声点火，到最后一次升挡。<br/>四种方式，感受赛车的机械脉搏。</p></div>
         <div className={styles.modeGrid}>{MODES.map(m=><button key={m.id} className={`${styles.modeCard} ${m.id==='DRAG'?styles.featured:''}`} onClick={()=>{setMode(m.id);window.scrollTo({top:0,behavior:'instant'});}} aria-label={`${m.name} ${m.title}`}>
           <div className={styles.modeTop}><span>{m.number} / {m.name}</span><span className={styles.arrow}>↗</span></div><TrackArt kind={m.id}/><div className={styles.modeCopy}><span className={styles.modeTag}>{m.id==='DRAG'?'400 M · FEATURED':m.id==='FREE'?'NO LIMITS':m.id==='LAUNCH'?'REACTION / PRECISION':'10 ROUNDS / LISTEN'}</span><h3>{m.title}</h3><p>{m.description}</p><div className={styles.best}>{m.id==='FREE'?'自由探索 · 无计时':`PERSONAL BEST / ${formatBest(m.id,records[recordKey(m.id,specs[0].id)])}`}</div></div>
@@ -50,7 +56,7 @@ export function RevDashboard() {
   </div>;
 }
 
-function SessionView({mode,audio,onExit}:{mode:RevMode;audio:RevAudio;onExit:()=>void}) {
+function SessionView({mode,audio,onExit,soundControls}:{mode:RevMode;audio:RevAudio;onExit:()=>void;soundControls:ReactNode}) {
   const [game,setGame]=useState(()=>new RevSession(mode,specs[0]));
   const [phase,setPhase]=useState<RevPhase>('READY');
   const [error,setError]=useState('');
@@ -116,7 +122,7 @@ function SessionView({mode,audio,onExit}:{mode:RevMode;audio:RevAudio;onExit:()=
   const answer=(id:string)=>{game.answer(id);audio.stop();sync();};
   const isDriving=!['READY','RESULT','PAUSED'].includes(phase);
   return <section className={styles.session} data-mode={mode} data-phase={phase}>
-    <div className={styles.sessionHead}><button className={styles.back} onClick={onExit}>← 模式大厅</button><h2 ref={heading} tabIndex={-1}>{title.name}</h2>{isDriving?<button className={styles.back} onClick={()=>{invalidate();game.pause();audio.stop();sync();}}>暂停</button>:<span className={styles.kicker}>{mode==='DRAG'?'400 METRES':mode==='QUIZ'?'LISTEN / IDENTIFY':'APEX SOUND LAB'}</span>}</div>
+    <div className={styles.sessionHead}><button className={styles.back} onClick={onExit}>← 模式大厅</button><h2 ref={heading} tabIndex={-1}>{title.name}</h2>{soundControls}{isDriving?<button className={styles.back} onClick={()=>{invalidate();game.pause();audio.stop();sync();}}>暂停</button>:<span className={styles.kicker}>{mode==='DRAG'?'400 METRES':mode==='QUIZ'?'LISTEN / IDENTIFY':'APEX SOUND LAB'}</span>}</div>
     {error&&<p className={styles.error} role="alert">{error}</p>}
     {phase==='RESULT'?<Result game={game} best={best} newBest={newBest} retry={start} exit={onExit}/>:phase==='PAUSED'?<div className={styles.intermission}><span className={styles.kicker}>SESSION PAUSED</span><h3>回到你的节奏。</h3><p>游戏计时已冻结，油门已释放。准备好后继续。</p><button className={styles.primary} onClick={resume}>继续游戏</button><button className={styles.secondary} onClick={start}>重新开始</button></div>:mode==='QUIZ'?<div className={styles.quiz}>
       <div className={styles.quizTop}><span>声学识别 / {Math.min(10,game.question+1).toString().padStart(2,'0')} OF 10</span><span>得分 {game.score} · 连击 {game.streak}</span></div>
@@ -183,7 +189,7 @@ function Result({game,best,newBest,retry,exit}:{game:RevSession;best?:number;new
   const focus=useRef<HTMLHeadingElement>(null);
   useEffect(()=>{focus.current?.focus({preventScroll:true});},[]);
   const rank=result.failed?'—':game.mode==='QUIZ'?result.score!>=9?'S':result.score!>=6?'A':'B':game.mode==='LAUNCH'?result.quality==='PERFECT'&&result.reactionMs!<250?'S':result.quality==='PERFECT'?'A':'B':result.perfect!>=3?'S':result.perfect!>=1?'A':'B';
-  return <div className={styles.result}>
+  return <div className={styles.result} data-failed={Boolean(result.failed)}>
     <span className={styles.kicker}>{newBest?'NEW PERSONAL BEST':'SESSION COMPLETE'}</span><h3 ref={focus} tabIndex={-1}>{result.failed?'下一次，找准时机。':newBest?'快过从前的自己。':game.mode==='QUIZ'?'每一次聆听，都更敏锐。':'这一刻，值得记住。'}</h3>
     <div className={styles.resultHero}><strong>{result.failed?'抢跑 / 超时':game.mode==='QUIZ'?`${result.score} / 10`:game.mode==='LAUNCH'?result.reactionMs:result.time!.toFixed(3)}<small>{result.failed?'':game.mode==='QUIZ'?'CORRECT':game.mode==='LAUNCH'?'ms / REACTION':'s / 400 METRES'}</small></strong><div className={styles.rank}><span>RATING</span><b>{rank}</b></div></div>
     <p role="status">{result.quality?({PERFECT:'完美起步 · 转速在目标区间',GOOD:'良好起步',WHEEL_SPIN:'转速偏高 · 车轮打滑',BOG_DOWN:'转速偏低 · 动力迟滞'}[result.quality]||result.quality):game.mode==='QUIZ'?`识别正确 ${result.score} 题，继续磨练你的听觉。`:'计时从灯灭开始，包含反应时间。'}</p>
