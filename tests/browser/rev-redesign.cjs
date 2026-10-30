@@ -14,8 +14,10 @@ async function drag(p){
  await enter(p,'DRAG RACE');await p.getByRole('button',{name:/开始比赛/}).click();await phase(p,'COUNTDOWN');
  await p.keyboard.down('KeyW');await p.keyboard.down('ShiftLeft');await phase(p,'GO');await p.keyboard.up('ShiftLeft');await phase(p,'RACING');
  for(let i=0;i<500;i++){
-  if(await session(p).getAttribute('data-phase')==='RESULT')break;
-  const rpm=+(await p.locator('[data-rpm]').getAttribute('data-rpm'));
+  const sample=await p.evaluate(()=>({phase:document.querySelector('[data-phase]')?.getAttribute('data-phase'),rpm:Number(document.querySelector('[data-rpm]')?.getAttribute('data-rpm')||0)}));
+  if(sample.phase==='RESULT')break;
+  assert.notEqual(sample.phase,'PAUSED','desktop race must retain foreground focus');
+  const rpm=sample.rpm;
   if(rpm>=18300)await p.keyboard.press('KeyE');
   await p.waitForTimeout(40);
  }
@@ -85,8 +87,10 @@ async function quiz(p){
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[gas,cl]});await phase(m,'GO');
   await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[cl]});await phase(m,'RACING');
   for(let i=0;i<500;i++){
-   if(await session(m).getAttribute('data-phase')==='RESULT')break;
-   const rpm=+(await m.locator('[data-rpm]').getAttribute('data-rpm'));
+   const sample=await m.evaluate(()=>({phase:document.querySelector('[data-phase]')?.getAttribute('data-phase'),rpm:Number(document.querySelector('[data-rpm]')?.getAttribute('data-rpm')||0)}));
+   if(sample.phase==='RESULT')break;
+   assert.notEqual(sample.phase,'PAUSED','mobile race must retain foreground focus');
+   const rpm=sample.rpm;
    if(rpm>=18300){const b=await m.getByRole('button',{name:'升挡 E',exact:true}).boundingBox();const sh={id:3,x:b.x+b.width/2,y:b.y+b.height/2};await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[gas,sh]});await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[sh]});}
    await m.waitForTimeout(40);
   }

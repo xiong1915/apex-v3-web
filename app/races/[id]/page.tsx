@@ -47,7 +47,7 @@ export default async function RaceDetailPage({
           ← {season} 赛季日历
         </Link>
         <div className="race-detail-cover">
-          <div>
+          <div className="race-detail-info">
             <PageHeading
               category={`第 ${race.round} 站 / 共 ${calendar.length} 站 · ${season} 赛季`}
               title={race.nameZh || race.name}

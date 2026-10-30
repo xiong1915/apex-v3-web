@@ -63,3 +63,31 @@ html body .team-card-body p{color:var(--text-secondary)}
 html body .monitor-alert{background:transparent;color:#f3ca88;-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.site-wallpaper{display:none}body{background:#101318!important}}
 html body :is(.map-topline,.map-caption small,.map-specs small){color:var(--text-secondary)}
+
+/* Glass belongs to a composed, rounded information region, never a tight text patch. */
+html body :is(.page-heading,.profile-hero,.championship-context,.tool-ai,.tool-live,.home-history,.season-preview,.monitor-chart,.monitor-events){border-radius:var(--radius-md);padding:clamp(20px,2vw,32px);min-width:0}
+html body :is(.section-head,.home-intro,.history-footer,.navigation-feedback){border-radius:20px;padding:16px 20px;min-width:0}
+html body :is(.rules-note,.data-note,.source-links,.monitor-alert,.admin-notice,.subscription-notice:not(:empty)){border-radius:18px;padding:12px 16px;min-width:0;overflow-wrap:anywhere}
+html body :is(.page-heading-top,.page-heading-meta,.section-head){gap:16px;flex-wrap:wrap}
+html body :is(.page-heading-top,.page-heading-meta,.section-head)>*{min-width:0;max-width:100%}
+html body :is(.page-heading h1,.page-heading p,.profile-hero h1){overflow-wrap:anywhere;max-width:100%}
+html body .race-detail-info{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;min-width:0;border:1px solid var(--line-dark);border-radius:28px;padding:clamp(24px,3vw,40px);background:transparent;color:var(--text-primary);box-shadow:var(--glass-shadow);-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+html body :is(.race-detail-info,.profile-cover) .page-heading{padding:0;border:0;border-radius:0;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;width:100%}
+html body .race-detail-cover{gap:24px;align-items:stretch}
+html body .race-detail-map{border-radius:28px;border:1px solid var(--line-dark);padding:24px;min-width:0}
+html body .breadcrumb{background:transparent;border:1px solid var(--line-dark);border-radius:999px;padding:10px 18px;max-width:100%;white-space:normal;overflow-wrap:anywhere;-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+/* Text controls grow with their labels; alerts wrap rather than clipping essential copy. */
+html body :is(button,.btn-primary,.btn-secondary,.glass-button,.apex-btn-primary,.admin-button){min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal}
+html body :is(.btn-primary,.btn-secondary,.glass-button,.apex-btn-primary,.admin-button){height:auto!important;min-height:44px;line-height:1.5;text-align:center;flex-shrink:1}
+html body :is([role=alert],[role=status],.subscription-notice,.admin-notice,.monitor-alert,.history-save-status){min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal}
+html body :is([role=alert],.admin-notice,.monitor-alert)>*{min-width:0;max-width:100%}
+html body .navigation-feedback{max-width:min(440px,calc(100vw - 32px));right:16px;line-height:1.6}
+html body .subscription-notice:not(:empty){background:transparent;-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter)}
+/* An outer readable panel already supplies the glass behind its nested headings and notes. */
+html body :is(.glass-surface,.apex-card,.card-light,.card-dark,.race-cover,.table-panel,.admin-panel,.bio-card,.profile-feature,.tool-ai,.tool-live) :is(.section-head,.data-note,.source-links,.rules-note){padding-inline:0;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+@media(min-width:768px){html body .page-standings .page-heading{padding:16px 24px}}
+@media(max-width:767px){html body :is(.page-heading,.profile-hero,.championship-context,.tool-ai,.tool-live,.home-history,.season-preview){padding:20px;border-radius:24px}html body .race-detail-info{padding:24px;border-radius:24px}html body .race-detail-map{padding:20px;border-radius:24px}html body :is(.race-detail-info,.profile-cover) .page-heading{padding:0}html body :is(.section-head,.home-intro){padding:14px 16px;gap:12px}}
+@media(prefers-reduced-transparency:reduce){html body .race-detail-info{background:#181c22;-webkit-backdrop-filter:none;backdrop-filter:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html body .race-detail-info{background:#181c22}}
+/* Keep the standings overview compact enough to retain ten desktop ranking rows. */
+@media(min-width:1100px){html body .page-standings .page-heading{padding:12px 24px;margin-bottom:12px}html body .page-standings .section-jumps{margin-bottom:12px}html body .page-standings .podium-ribbon{margin:12px 0}html body .page-standings .podium-ribbon>div{padding:12px 20px}html body .page-standings .table-section .section-head{padding:8px 16px;margin-bottom:12px}}
