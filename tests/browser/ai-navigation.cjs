@@ -14,8 +14,8 @@ if(!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))throw Error('Localho
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base+'/drivers/antonelli');
  const driver=await page.locator('h1').innerText();
- const started=Date.now();await page.getByRole('link',{name:/向 APEX AI 了解这位车手/}).click();
- const input=page.getByRole('textbox',{name:'向 APEX AI 提问'});await input.waitFor();
+ const started=Date.now();await page.getByRole('link',{name:/向 tikeai 了解这位车手/}).click();
+ const input=page.getByRole('textbox',{name:'向 tikeai 提问'});await input.waitFor();
  await page.waitForFunction(name=>document.querySelector('textarea')?.value.includes(name),driver,{timeout:3000});
  assert.equal(await input.isEnabled(),true,'draft is editable before slow history completes');
  console.log(`AI draft available in ${Date.now()-started}ms while history remains pending (local fixture)`);
@@ -32,22 +32,22 @@ if(!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))throw Error('Localho
  for(const width of [390,1440]){
   await page.setViewportSize({width,height:900});
   await page.goto(base+'/teams/mercedes');const team=await page.locator('h1').innerText();
-  await page.getByRole('link',{name:/向 APEX AI 了解这支车队/}).click();await input.waitFor();
+  await page.getByRole('link',{name:/向 tikeai 了解这支车队/}).click();await input.waitFor();
   await page.waitForFunction(name=>document.querySelector('textarea')?.value.includes(name),team);
   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
   if(process.env.QA_ARTIFACT_DIR){const fs=require('node:fs'),path=require('node:path');fs.mkdirSync(process.env.QA_ARTIFACT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.QA_ARTIFACT_DIR,`ai-prefill-${width}.png`)});}
  }
  await page.goto(base+'/');await page.locator('#race-cockpit').getByRole('link',{name:/AI 赛事分析/}).click();
- await input.waitFor();assert.match(await input.inputValue(),/大奖赛/);assert.equal(chats,0);
+ await input.waitFor();await page.waitForFunction(()=>document.querySelector('textarea')?.value.includes('大奖赛'));assert.equal(chats,0);
  await page.goto(base+'/drivers/antonelli');await page.locator('.nav-ai').click();await input.waitFor();
  assert.equal(new URL(page.url()).pathname,'/ai');
  await page.setViewportSize({width:390,height:900});await page.goto(base+'/drivers/antonelli');
  await page.getByRole('button',{name:'切换导航菜单'}).click();
- await page.getByRole('dialog').getByRole('link',{name:/APEX AI/}).click();await input.waitFor();
+ await page.getByRole('dialog').getByRole('link',{name:'tikeai',exact:true}).click();await input.waitFor();
  assert.equal(await page.getByRole('dialog').count(),0,'mobile navigation closes after opening AI');
  await page.goto(base+'/teams');await page.locator('footer a[href="/ai"]').click();await input.waitFor();
  // Signed-out visitors must keep the draft through the real login form/callback.
- signedIn=false;await page.goto(base+'/drivers/antonelli');await page.getByRole('link',{name:/向 APEX AI 了解这位车手/}).click();
+ signedIn=false;await page.goto(base+'/drivers/antonelli');await page.getByRole('link',{name:/向 tikeai 了解这位车手/}).click();
  await page.waitForURL('**/login?**');const next=new URL(page.url()).searchParams.get('returnUrl');
  assert.ok(next.startsWith('/ai?draft='),'login return path preserves the question');
  await page.getByLabel('电子邮箱',{exact:true}).fill('navigation@example.invalid');

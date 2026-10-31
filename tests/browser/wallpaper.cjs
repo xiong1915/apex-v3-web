@@ -82,7 +82,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
  const aiPage=await ai.newPage();
  for(const width of [320,390,768,1100,1440]){
   await aiPage.setViewportSize({width,height:844});await aiPage.goto(base+'/ai');
-  await aiPage.getByRole('textbox',{name:'向 APEX AI 提问',exact:true}).fill('本地点击区域验收，不发送');
+  await aiPage.getByRole('textbox',{name:'向 tikeai 提问',exact:true}).fill('本地点击区域验收，不发送');
   const send=await aiPage.getByRole('button',{name:'发送',exact:true}).boundingBox(),control=await aiPage.getByRole('button',{name:'壁纸背景',exact:true}).boundingBox();
   assert.ok(!(send.x<control.x+control.width&&send.x+send.width>control.x&&send.y<control.y+control.height&&send.y+send.height>control.y),'wallpaper toggle must not overlap AI send/stop target at '+width);
   if(width===768){await aiPage.getByRole('button',{name:'切换导航菜单',exact:true}).click();const menu=await aiPage.getByRole('dialog',{name:'网站导航',exact:true}).boundingBox();assert.ok(menu.height>700,'tablet menu remains viewport-fixed');await aiPage.keyboard.press('Escape');}

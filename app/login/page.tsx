@@ -74,7 +74,7 @@ function LoginForm() {
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.08em' }}>APEX</span>
+              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.08em' }}>tikeai</span>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-red)' }}></span>
             </div>
             <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '4px 0 8px', color: 'var(--text-primary)' }}>

@@ -57,7 +57,7 @@ export const AUTH_CONFIG = {
     return process.env.RESEND_API_KEY || '';
   },
   get smtpFrom(): string {
-    return process.env.SMTP_FROM || 'APEX V3 <tikef1@qq.com>';
+    return process.env.SMTP_FROM || 'tikeai <tikef1@qq.com>';
   },
   get smtpHost(): string {
     return process.env.SMTP_HOST || 'smtp.qq.com';

@@ -97,7 +97,7 @@ const widths = [320, 375, 390, 768, 1440, 1920];
   });
   await page.route('**/api/ai/chat', r => r.fulfill({ contentType: 'text/event-stream', body: 'data: {"type":"delta","content":"浏览器测试：策略解读。"}\n\ndata: {"type":"done"}\n\n' }));
   await capture('ai-local-fixture', '/ai');
-  const input = page.getByRole('textbox', { name: '向 APEX AI 提问' });
+  const input = page.getByRole('textbox', { name: '向 tikeai 提问' });
   await input.fill('解释轮胎策略'); await input.press('Enter');
   await page.getByText('浏览器测试：策略解读。', { exact: true }).waitFor();
   await page.screenshot({ path: path.join(out, 'ai-stream-local-fixture.png') });

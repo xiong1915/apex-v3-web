@@ -1,1 +1,1 @@
-export default function Loading(){return <div className="loading-state" role="status" aria-live="polite" aria-busy="true"><span className="loading-mark" aria-hidden="true">A</span><h2>正在打开页面</h2><p>正在读取页面所需的数据，请稍候…</p></div>}
+export default function Loading(){return <div className="loading-state" role="status" aria-live="polite" aria-busy="true"><span className="loading-mark" aria-hidden="true">t</span><h2>正在打开页面</h2><p>正在读取页面所需的数据，请稍候…</p></div>}

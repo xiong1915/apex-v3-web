@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 </head>
 <body>
   <div class="card">
-    <div style="font-size: 14px; color: #888; margin-bottom: 8px;">正在连接 APEX 安全验证中心...</div>
+    <div style="font-size: 14px; color: #888; margin-bottom: 8px;">正在连接 tikeai 安全验证中心...</div>
     <div style="font-size: 16px; font-weight: 600;">正在安全跳转至重置页面</div>
   </div>
   <script>

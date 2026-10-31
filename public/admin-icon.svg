@@ -23,9 +23,8 @@
   <!-- Center Speedometer / Telemetry Curve -->
   <path d="M 136 330 A 140 140 0 1 1 376 330" fill="none" stroke="url(#redGrad)" stroke-width="20" stroke-linecap="round" filter="url(#glow)" />
 
-  <!-- APEX V3 Control Stylized 'A' Motif -->
-  <path d="M 256 160 L 324 316 L 284 316 L 256 248 L 228 316 L 188 316 Z" fill="#ffffff" />
-  <circle cx="256" cy="304" r="10" fill="url(#redGrad)" />
+  <!-- tikeai lowercase t monogram -->
+  <path d="M 220 160 H 258 V 210 H 320 V 244 H 258 V 300 H 314 V 334 H 258 Q 220 334 220 296 V 244 H 190 V 210 H 220 Z" fill="#ffffff" />
 
   <!-- Tick Marks -->
   <circle cx="256" cy="116" r="6" fill="#ff453a" />

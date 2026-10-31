@@ -20,7 +20,7 @@ test('APEX Control 权限安全与管理后台功能测试', async (t) => {
     assert.ok(fs.existsSync(manifestPath), '必须存在 public/manifest.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
-    assert.equal(manifest.name, 'APEX Control');
+    assert.equal(manifest.name, 'tikeai Control');
     assert.equal(manifest.display, 'standalone', 'PWA 必须配置 standalone 全屏主屏幕启动');
     assert.equal(manifest.start_url, '/admin', '启动路径必须直接指向 /admin');
     assert.ok(manifest.icons && manifest.icons.length > 0, '必须包含应用图标');

@@ -51,9 +51,9 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw Error('Local
   assert.equal(creations,1,'fast completion during slow draft save must not create another conversation');
   assert.equal((await service.list('v31')).length,1);
   await page.reload();
-  await page.getByRole('textbox',{name:'向 APEX AI 提问'}).waitFor();
+  await page.getByRole('textbox',{name:'向 tikeai 提问'}).waitFor();
   assert.equal(requests,1,'consumed q must not send after reload');
-  const input=page.getByRole('textbox',{name:'向 APEX AI 提问'});
+  const input=page.getByRole('textbox',{name:'向 tikeai 提问'});
   await input.fill('一次同步双击测试');
   await page.getByRole('button',{name:'发送',exact:true}).evaluate(button=>{
    button.click(); button.click();
@@ -80,7 +80,7 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw Error('Local
   const sameAccountStarted=new Promise(resolve=>{chatStarted=resolve;});
   await input.fill('同账号焦点切换不中断'); await input.press('Enter'); await sameAccountStarted;
   await page.evaluate(()=>window.dispatchEvent(new Event('apex:identity-changed')));
-  await page.getByRole('textbox',{name:'向 APEX AI 提问'}).waitFor();
+  await page.getByRole('textbox',{name:'向 tikeai 提问'}).waitFor();
   releaseChat();
   await page.getByText('已保存到云端 · AI 参考最近的对话上下文',{exact:true}).waitFor();
   assert.equal((await service.list('v31')).some(c=>c.messageCount>=2),true);
@@ -94,7 +94,7 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) throw Error('Local
   const beforeSwitch=historyRequests.length;
   account='v31-account-b';
   await page.evaluate(()=>window.dispatchEvent(new Event('apex:identity-changed')));
-  await page.getByRole('textbox',{name:'向 APEX AI 提问'}).waitFor();
+  await page.getByRole('textbox',{name:'向 tikeai 提问'}).waitFor();
   await page.waitForFunction(()=>document.querySelector('textarea') && !document.querySelector('textarea').disabled);
   releaseHistory();
   await page.waitForFunction(()=>!document.querySelector('.history-save-status')?.textContent.includes('正在保存'));

@@ -30,7 +30,7 @@ export default async function DriverDetailPage({ params }: { params: Promise<{ i
               question={`请介绍 ${driver.name}（${driver.nameEn}）在 2026 赛季的表现、技术特点和已确认的成绩。`}
               className="btn-primary"
             >
-              向 APEX AI 了解这位车手 ↗
+              向 tikeai 了解这位车手 ↗
             </AILink>
           </div>
           <span className="profile-number mono" aria-label={`车号 ${driver.number}`}>

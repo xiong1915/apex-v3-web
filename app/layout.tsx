@@ -9,11 +9,11 @@ import { Navbar } from '@/components/navbar';
 import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
-  title: 'APEX · F1 赛事、积分与赛事分析',
+  title: 'tikeai · F1 赛事、积分与赛事分析',
   description: '一级方程式赛车数据与赛事分析平台。实时分站倒计时、车手与车队积分榜及 AI 问答。',
   keywords: ['F1', 'Formula 1', 'TIKE', '2026 F1', '一级方程式', '赛车', '赛历', '积分榜'],
   openGraph: {
-    title: 'APEX · F1 赛事与数据',
+    title: 'tikeai · F1 赛事与数据',
     description: '一级方程式赛车数据与赛事分析平台。',
     type: 'website',
     url: 'https://f1.tike69.cc.cd'

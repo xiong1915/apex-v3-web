@@ -51,8 +51,8 @@ const profile={...user,display_name:'围场测试车迷',avatar_url:null,avatar_
   await paddock.getByRole('alert').waitFor();assert.match(await paddock.innerText(),/测试资料读取失败/);
   state='ready';await paddock.getByRole('button',{name:'重新加载'}).click();await paddock.locator('article').first().waitFor();
   state='auth-error';await page.evaluate(()=>window.dispatchEvent(new Event('apex:identity-changed')));
-  await paddock.getByRole('alert').waitFor();assert.equal(await paddock.getByRole('link',{name:/登录 APEX ID/}).count(),0);
-  state='signed-out';await paddock.getByRole('button',{name:'重新加载'}).click();await paddock.getByRole('link',{name:/登录 APEX ID/}).waitFor();
+  await paddock.getByRole('alert').waitFor();assert.equal(await paddock.getByRole('link',{name:/登录 tikeai ID/}).count(),0);
+  state='signed-out';await paddock.getByRole('button',{name:'重新加载'}).click();await paddock.getByRole('link',{name:/登录 tikeai ID/}).waitFor();
   state='profile-error';await page.goto(base+'/profile',{waitUntil:'domcontentloaded'});await page.getByRole('heading',{name:'个人资料暂不可用'}).waitFor();
   assert.equal(await page.locator('#nickname-input').count(),0,'failed profile must not show editable invented defaults');
   state='ready';await page.getByRole('button',{name:'重新连接'}).click();await page.locator('#nickname-input').waitFor();assert.equal(await page.locator('#nickname-input').inputValue(),profile.display_name);

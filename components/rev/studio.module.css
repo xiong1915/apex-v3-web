@@ -47,6 +47,42 @@
 @media(prefers-reduced-transparency:reduce){.root :is(.modeCard,.cockpit,.quiz,.result,.intermission,.intro,.header,.sessionHead,.engineRow,.lobbyFoot,.drivingFoot){background:#181c22!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.root :is(.modeCard,.cockpit,.quiz,.result,.intermission,.intro,.header,.sessionHead,.engineRow,.lobbyFoot,.drivingFoot){background:#181c22!important}}
 .mobileAudio{display:none!important}
+/* A composed masthead, one horizontal feature, then three equal choices at every desktop width. */
+.root .header{display:block;padding:24px;border:1px solid var(--rev-line);border-radius:28px;margin-bottom:24px}
+.headingRow{display:flex;align-items:center;justify-content:space-between;gap:24px;min-width:0}
+.wordmark,.wordmark>div{min-width:0}.wordmark h1{overflow-wrap:anywhere}
+.root .intro{background:none;padding:20px 0 0;margin-top:20px;border-top:1px solid var(--rev-line);border-radius:0;gap:24px;-webkit-backdrop-filter:none;backdrop-filter:none}
+.root .intro h2{font-size:clamp(24px,2.5vw,34px);line-height:1.35;margin:0;letter-spacing:-.035em;min-width:0}
+.root .intro p{font-size:13px;line-height:1.7;margin:0;min-width:0;max-width:320px}
+.root .modeGrid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:stretch}
+.root .modeCard{grid-column:auto;grid-row:auto;min-height:224px;padding:24px;gap:24px;min-width:0;border-radius:24px}
+.root .modeCard .modeTop{font-size:10px;gap:16px;letter-spacing:.08em}
+.root .modeCard .arrow{width:40px;height:40px;flex-shrink:0}
+.root .modeCard .art{position:absolute;right:-15%;bottom:0;width:65%;height:85%;opacity:.1}
+.root .modeCard .modeCopy{max-width:100%;min-width:0}
+.root .modeCard .modeCopy h3{font-size:21px;line-height:1.4;margin:8px 0;overflow-wrap:anywhere}
+.root .modeCard .modeCopy p{font-size:13px;line-height:1.8;max-width:none;overflow-wrap:anywhere}
+.root .modeCard .best{margin-top:16px;padding-top:12px;line-height:1.6;overflow-wrap:anywhere}
+.root .featured{grid-column:1/-1;min-height:244px;padding:28px 32px;border-left:3px solid #f27972}
+.root .featured .modeCopy{max-width:58%}
+.root .featured .modeCopy h3{font-size:32px}
+.root .featured .art{width:42%;height:100%;right:5%;bottom:0;opacity:.25}
+.root .lobbyFoot{padding:16px 20px;margin-top:20px;border-radius:20px;line-height:1.7}
+.root .audio{border:1px solid var(--rev-line);padding:4px 8px!important;gap:12px;min-height:52px;flex-shrink:0;box-shadow:none!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+.root .audio button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;min-width:44px;padding:8px 12px;line-height:1.5;white-space:nowrap}
+.root .audio input{width:96px;min-width:64px;height:44px;flex-shrink:0;margin-right:8px}
+@media(max-width:900px) and (min-width:601px){.root .modeGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.root .modeCard:last-child{grid-column:1/-1;min-height:200px}.root .modeCard:last-child .modeCopy{max-width:75%}}
+@media(max-width:600px){
+ .root .header{padding:16px;margin-bottom:16px;border-radius:24px}
+ .headingRow{gap:12px}.root .wordmark{gap:10px}.root .mark{font-size:30px;padding-right:10px}.root .wordmark h1{font-size:19px}.root .wordmark .kicker{font-size:8px;letter-spacing:.08em}
+ .root .intro{padding-top:16px;margin-top:16px;display:block}.root .intro h2{font-size:24px}.root .intro p{margin-top:10px;font-size:12px}
+ .root .audio{gap:4px;padding:0 4px!important;min-height:44px}.root .audio button{padding:0;width:44px}.root .audio button span{display:none}.root .audio input{width:48px;min-width:48px;margin-right:4px}
+ .root .modeGrid{grid-template-columns:minmax(0,1fr);gap:12px}.root .modeCard,.root .modeCard:last-child{grid-column:auto;min-height:200px;padding:20px;gap:18px}
+ .root .featured{min-height:244px;padding:22px}.root .featured .modeCopy{max-width:100%}.root .featured .modeCopy h3{font-size:27px}.root .featured .art{width:70%;right:-12%;bottom:20%;height:75%;opacity:.12}
+ .root .modeCard .modeCopy h3{font-size:22px}.root .lobbyFoot{margin-top:16px;padding:14px 16px}
+ .root[data-rev-active=true] .header{display:none}
+}
+@media(orientation:landscape) and (max-height:600px){.root[data-rev-active=true] .header{display:none}}
 .resultHero>strong{min-width:0;overflow-wrap:anywhere}.result[data-failed=true] .resultHero>strong{font-size:clamp(28px,4vw,46px)}
 .feedback{height:auto;min-height:24px;white-space:normal;overflow-wrap:anywhere;line-height:1.5}
 @media(max-width:600px),(orientation:landscape) and (max-height:600px){.mobileAudio{display:flex!important;align-items:center;gap:4px;background:transparent;border-radius:14px;padding:0;box-shadow:none!important;flex-shrink:0}.mobileAudio button{display:grid;place-items:center;min-width:44px;width:44px;min-height:44px;padding:0;flex-shrink:0}.mobileAudio input{width:44px;min-width:44px;height:44px;accent-color:#f49a95}.sessionHead{gap:4px}.sessionHead h2{font-size:11px;letter-spacing:.04em;min-width:0}.sessionHead>.kicker{display:none}.resultHero{gap:12px}.result[data-failed=true] .resultHero>strong{font-size:28px}.feedback{min-height:21px}}

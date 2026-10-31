@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const verified = totp.find(f => f.status === 'verified');
     if (verified) return adminJson({ enrolled: true, verified: true, factorId: verified.id, message: '请使用已绑定的验证器完成验证；暂不支持安全更换验证器' });
     // Never delete factors here: an unverified factor can become verified concurrently.
-    const { data, error } = await client.auth.mfa.enroll({ factorType: 'totp', issuer: 'APEX V3 Control', friendlyName: auth.user.email || 'Admin' });
+    const { data, error } = await client.auth.mfa.enroll({ factorType: 'totp', issuer: 'tikeai Control', friendlyName: auth.user.email || 'Admin' });
     if (error || !data) return adminJson({ error: '验证器绑定暂不可用，请稍后重试' }, 503);
     return adminJson({ enrolled: true, verified: false, factorId: data.id, qrCode: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri, message: '请扫码绑定并输入 6 位动态验证码' });
   } catch {

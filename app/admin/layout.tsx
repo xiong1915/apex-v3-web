@@ -7,13 +7,13 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: 'APEX · 管理后台',
-  description: 'APEX 网站运行监控、用户查询与赛事数据管理',
+  title: 'tikeai · 管理后台',
+  description: 'tikeai 网站运行监控、用户查询与赛事数据管理',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'APEX Control'
+    title: 'tikeai Control'
   },
   icons: {
     apple: '/apple-touch-icon.png',

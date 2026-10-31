@@ -17,8 +17,8 @@ function fold(line: string): string {
 export function renderCalendar(meetings: F1Meeting[], season: string, updatedAt: string): string {
  const modified = Date.parse(updatedAt);
  if (!Number.isFinite(modified)) throw new Error('Calendar update time unavailable');
- const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//APEX//F1 Calendar//ZH', 'CALSCALE:GREGORIAN',
-  'METHOD:PUBLISH', `X-WR-CALNAME:APEX F1 ${season}`, 'X-WR-TIMEZONE:Asia/Shanghai', 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
+ const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//tikeai//F1 Calendar//ZH', 'CALSCALE:GREGORIAN',
+  'METHOD:PUBLISH', `X-WR-CALNAME:tikeai F1 ${season}`, 'X-WR-TIMEZONE:Asia/Shanghai', 'REFRESH-INTERVAL;VALUE=DURATION:PT1H', 'X-PUBLISHED-TTL:PT1H'];
  const seen = new Set<string>();
  for (const meeting of meetings) {
   for (const session of meeting.sessions || []) {
@@ -33,7 +33,7 @@ export function renderCalendar(meetings: F1Meeting[], season: string, updatedAt:
    lines.push('BEGIN:VEVENT', `UID:${uid}@f1.tike69.cc.cd`, `DTSTAMP:${utc(modified)}`, `LAST-MODIFIED:${utc(modified)}`,
     `DTSTART:${utc(start)}`, `DTEND:${utc(end)}`, `SUMMARY:${escapeText(`${meeting.nameZh || meeting.name} · ${session.name}`)}`,
     `LOCATION:${escapeText(meeting.circuitName || meeting.locality || '')}`,
-    `DESCRIPTION:${escapeText(`APEX F1 ${season} · 第 ${meeting.round} 站。开赛时间随上游赛历更新；结束时间如未官方公布则按预计时长计算。订阅客户端自行决定刷新频率。${link}`)}`,
+    `DESCRIPTION:${escapeText(`tikeai F1 ${season} · 第 ${meeting.round} 站。开赛时间随上游赛历更新；结束时间如未官方公布则按预计时长计算。订阅客户端自行决定刷新频率。${link}`)}`,
     `URL:${link}`, 'TRANSP:TRANSPARENT', 'END:VEVENT');
   }
  }

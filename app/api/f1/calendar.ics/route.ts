@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
    return NextResponse.json({ error: '赛历时间暂不可用，请稍后重试' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   return new Response(renderCalendar(result.data, season, result.fetchedAt), { headers: {
    'Content-Type': 'text/calendar; charset=utf-8',
-   'Content-Disposition': `${req.nextUrl.searchParams.has('download') ? 'attachment' : 'inline'}; filename="apex-f1-${season}.ics"`,
+   'Content-Disposition': `${req.nextUrl.searchParams.has('download') ? 'attachment' : 'inline'}; filename="tikeai-f1-${season}.ics"`,
    'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=300',
    'X-APEX-Data-Source': result.source, 'X-APEX-Data-Stale': String(Boolean(result.isStale))
   }});

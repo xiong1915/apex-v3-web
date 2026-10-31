@@ -78,6 +78,7 @@ export default async function RaceDetailPage({
         </div>
 
         <RaceDetailTabs
+          key={`${season}:${race.round}`}
           raceResults={raceResults}
           qualiResults={qualiResults}
           sprintResults={sprintResults}
