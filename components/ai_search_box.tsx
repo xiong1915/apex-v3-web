@@ -75,7 +75,7 @@ export function AISearchBox({ defaultLight = false }: { defaultLight?: boolean }
         >
           <input
             type="text"
-            aria-label="向 APEX AI 提问"
+            aria-label="向 tikeai 提问"
             name="question"
             autoComplete="off"
             value={query}

@@ -55,15 +55,15 @@ function resolveInitialProfileData(user: User): {
     'email';
 
   const thirdPartyAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
-  const rawName = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'APEX 车迷';
+  const rawName = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'tikeai 车迷';
   const validated = validateDisplayName(rawName);
-  const displayName = validated.valid && validated.value ? validated.value : (user.email?.split('@')[0] || 'APEX 车迷');
+  const displayName = validated.valid && validated.value ? validated.value : (user.email?.split('@')[0] || 'tikeai 车迷');
 
   return { displayName, thirdPartyAvatar, provider };
 }
 
 /**
- * 获取或自动补全用户的 APEX ID 个人资料
+ * 获取或自动补全用户的 tikeai ID 个人资料
  */
 export async function getUserProfile(user: User, retryProvision = true): Promise<UserProfile> {
   const { displayName: defaultName, thirdPartyAvatar, provider } = resolveInitialProfileData(user);
@@ -207,7 +207,7 @@ export async function updateUserProfile(
       profile: {
         id: user.id,
         email: user.email,
-        display_name: user.email?.split('@')[0] || 'APEX 车迷',
+        display_name: user.email?.split('@')[0] || 'tikeai 车迷',
         avatar_url: null,
         avatar_path: null,
         favorite_team_ids: [],
@@ -318,7 +318,7 @@ export async function uploadUserAvatar(
       profile: {
         id: user.id,
         email: user.email,
-        display_name: user.email?.split('@')[0] || 'APEX 车迷',
+        display_name: user.email?.split('@')[0] || 'tikeai 车迷',
         avatar_url: null,
         avatar_path: null,
         favorite_team_ids: [],
@@ -423,7 +423,7 @@ export async function deleteUserAvatar(
       profile: {
         id: user.id,
         email: user.email,
-        display_name: user.email?.split('@')[0] || 'APEX 车迷',
+        display_name: user.email?.split('@')[0] || 'tikeai 车迷',
         avatar_url: null,
         avatar_path: null,
         favorite_team_ids: [],

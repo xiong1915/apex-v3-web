@@ -14,7 +14,7 @@ const out=process.env.QA_ARTIFACT_DIR||path.join(require('node:os').tmpdir(),'ap
    if(route.startsWith('/races/19')){assert.equal(await p.locator('.race-detail-info').count(),1);const inner=await p.locator('.race-detail-info .page-heading').evaluate(el=>getComputedStyle(el).backdropFilter);assert.equal(inner,'none','one composed information panel, no nested title patch');await p.screenshot({path:path.join(out,`race-detail-${width}.png`)});}
    // Long localized copy is a DOM-only stress fixture, never sent to any API.
    const overflow=await p.evaluate(()=>{
-    const nodes=[...document.querySelectorAll('.btn-primary,.btn-secondary,.glass-button,.admin-button,.subscription-notice,[role="alert"]')].filter(el=>el.getBoundingClientRect().width>0);
+    const nodes=[...document.querySelectorAll('.btn-primary,.btn-secondary,.glass-button,.admin-button,.text-link,.badge-pill,.subscription-notice,[role="alert"]')].filter(el=>el.getBoundingClientRect().width>0);
     for(const node of nodes){node.textContent='这是一段用于检查窄屏自动换行的较长操作说明，请确认所有文字完整保留且不会超出边界。https://example.invalid/averylongunbrokenmessage';}
     return nodes.filter(el=>el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2).map(el=>({tag:el.tagName,className:el.className,width:el.clientWidth,scrollWidth:el.scrollWidth,height:el.clientHeight,scrollHeight:el.scrollHeight}));
    });

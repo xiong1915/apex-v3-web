@@ -112,7 +112,7 @@ export function useConversationHistory(enabled: boolean, messages: ChatTurn[], s
  };
  const downloadDraft = () => {
   const url = URL.createObjectURL(new Blob([JSON.stringify({ title: active.current?.title || '未保存对话', messages }, null, 2)], { type: 'application/json' }));
-  const link = document.createElement('a'); link.href = url; link.download = 'apex-chat-draft.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const link = document.createElement('a'); link.href = url; link.download = 'tikeai-chat-draft.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
  };
  const rename = async (item: ConversationSummary, title: string) => {
   if (generating || generationLock?.current || saving || !(await save(messages))) return;

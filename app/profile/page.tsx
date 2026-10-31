@@ -354,7 +354,7 @@ export default function ProfilePage() {
     return (
       <div className="profile-page-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
         <div style={{ textAlign: 'center', color: '#8E929C' }}>
-          <div className="mono" style={{ fontSize: '13px', letterSpacing: '0.1em' }}>APEX ID 载入中…</div>
+          <div className="mono" style={{ fontSize: '13px', letterSpacing: '0.1em' }}>tikeai ID 载入中…</div>
         </div>
       </div>
     );
@@ -402,7 +402,7 @@ export default function ProfilePage() {
 
   if (!user || !profile) return <div className="profile-page-shell" role="status">正在转到登录页面…</div>;
 
-  const currentDisplayName = profile?.display_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'APEX 车迷';
+  const currentDisplayName = profile?.display_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'tikeai 车迷';
   const currentAvatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || null;
   const initialLetter = currentDisplayName.trim().charAt(0).toUpperCase();
 
@@ -426,7 +426,7 @@ export default function ProfilePage() {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
               <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
             </svg>
-            APEX ID · 账号设置
+            tikeai ID · 账号设置
           </div>
           <h1 className="profile-hero-title">个人资料</h1>
           <p className="profile-hero-subtitle">管理头像、昵称和关注车队。</p>

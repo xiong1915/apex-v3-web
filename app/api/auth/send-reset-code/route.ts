@@ -39,12 +39,12 @@ export async function POST(req: NextRequest) {
     // 4. 向用户邮箱投递真实邮件
     let emailSent = false;
     let sendErrorMsg = '';
-    const subject = `【APEX V3】您的密码重置验证码是：${code}`;
+    const subject = `【tikeai】您的密码重置验证码是：${code}`;
     const htmlText = `
       <div style="background:#0a0a0c; color:#fff; padding:32px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; border-radius:16px; max-width:480px; margin:0 auto; border:1px solid #222;">
-        <h2 style="color:#ff2d20; margin-top:0; margin-bottom:16px; font-size:20px;">APEX V3 密码重置验证码</h2>
+        <h2 style="color:#ff2d20; margin-top:0; margin-bottom:16px; font-size:20px;">tikeai 密码重置验证码</h2>
         <p style="color:#a1a1aa; font-size:14px; line-height:1.6; margin-bottom:24px;">
-          您正在申请重置 APEX V3 账号登录密码。您的 6 位数字验证码为：
+          您正在申请重置 tikeai 账号登录密码。您的 6 位数字验证码为：
         </p>
         <div style="background:#16161a; border:1px solid #ff2d2040; border-radius:12px; padding:20px; text-align:center; margin-bottom:24px;">
           <span style="font-size:32px; font-weight:800; letter-spacing:8px; color:#ff2d20; font-family:monospace;">${code}</span>

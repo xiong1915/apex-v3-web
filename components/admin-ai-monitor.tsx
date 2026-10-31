@@ -47,7 +47,7 @@ export function AdminAIMonitor({
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
     const link = document.createElement('a');
     link.href = url;
-    link.download = `apex-ai-monitor-${new Date().toISOString().slice(0, 10)}.json`;
+    link.download = `tikeai-monitor-${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };

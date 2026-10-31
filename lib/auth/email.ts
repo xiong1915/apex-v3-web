@@ -84,10 +84,10 @@ export async function sendEmail({
 }
 
 export async function sendVerificationEmail(to: string, confirmUrl: string): Promise<EmailSendResult> {
-  const subject = '【APEX V3】请验证您的注册邮箱';
+  const subject = '【tikeai】请验证您的注册邮箱';
   const htmlText = `
     <div style="background:#0a0a0b; color:#fff; padding:32px; font-family:sans-serif; border-radius:12px;">
-      <h2 style="color:#ff2d20; margin-bottom:16px;">欢迎加入 APEX V3 赛车智能平台</h2>
+      <h2 style="color:#ff2d20; margin-bottom:16px;">欢迎加入 tikeai 赛车智能平台</h2>
       <p style="color:#a1a1aa; font-size:14px; line-height:1.6;">
         请点击下方链接完成您的邮箱验证。验证完成后即可畅享 2026 赛季赛事实时动态与 AI 智能策略分析。
       </p>
@@ -105,10 +105,10 @@ export async function sendVerificationEmail(to: string, confirmUrl: string): Pro
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<EmailSendResult> {
-  const subject = '【APEX V3】重置您的账号密码';
+  const subject = '【tikeai】重置您的账号密码';
   const htmlText = `
     <div style="background:#0a0a0b; color:#fff; padding:32px; font-family:sans-serif; border-radius:12px;">
-      <h2 style="color:#ff2d20; margin-bottom:16px;">APEX V3 密码重置请求</h2>
+      <h2 style="color:#ff2d20; margin-bottom:16px;">tikeai 密码重置请求</h2>
       <p style="color:#a1a1aa; font-size:14px; line-height:1.6;">
         我们收到了您账号的密码重置申请。链接有效期为 1 小时，请点击下方按钮完成重置：
       </p>

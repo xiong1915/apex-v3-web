@@ -45,7 +45,7 @@ function UserAvatar({
   size?: number;
 }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const initial = (name || 'A').trim().charAt(0).toUpperCase();
+  const initial = (name || 't').trim().charAt(0).toUpperCase();
 
   useEffect(() => {
     setImgFailed(false);
@@ -241,11 +241,11 @@ export function Navbar() {
   return <header ref={headerRef} className={`site-header ${menuOpen ? 'menu-open' : ''}`}>
    <LiquidGlass optical className="header-optics" aria-hidden="true"/>
    <div className="container nav-inner">
-    <Link href="/" className="nav-brand" aria-label="APEX 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19L11 4h6l4 15h-5l-1-4H9l-2 4zM11 11h3l-1-4z" fill="currentColor"/></svg><span>APEX</span></Link>
+    <Link href="/" className="nav-brand" aria-label="tikeai 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h5v5h9v4h-9v5h8v4h-8a5 5 0 0 1-5-5v-4H2V9h3z" fill="currentColor"/></svg><span>tikeai</span></Link>
     <nav className="nav-links desktop-nav" aria-label="主导航" style={{'--nav-index':Math.max(0,currentIndex),'--nav-active':currentIndex<0?0:1} as React.CSSProperties}>
      {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}<NavigationFeedback/></Link>)}
     </nav>
-    <div className="nav-actions"><BeijingClock className="desktop-nav"/><Link href="/rev" className="nav-rev desktop-nav">🔊 声浪室</Link><AILink className="nav-ai">APEX AI <span aria-hidden="true">↗</span></AILink>
+    <div className="nav-actions"><BeijingClock className="desktop-nav"/><Link href="/rev" className="nav-rev desktop-nav">🔊 声浪室</Link><AILink className="nav-ai">tikeai <span aria-hidden="true">↗</span></AILink>
      {identityStatus !== 'ready' ? <span className="nav-login desktop-nav" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (
        <div className="account-wrap desktop-nav" ref={accountRef}>
          <button
@@ -278,7 +278,7 @@ export function Navbar() {
                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                  <circle cx="12" cy="7" r="4"/>
                </svg>
-               APEX ID 个人中心
+               tikeai ID 个人中心
              </Link>
              {user.isAdmin && (
                <Link href="/admin" className="btn-secondary" onClick={() => setUserDropdownOpen(false)}>
@@ -307,7 +307,7 @@ export function Navbar() {
     <button type="button" className="mobile-menu-close" onClick={()=>{setMenuOpen(false);toggleRef.current?.focus()}}>网站导航 <span>关闭 ×</span></button>
     {NAV_ITEMS.map(item=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} onClick={()=>setMenuOpen(false)}>{item.label}<NavigationFeedback/></Link>)}
     <Link href="/rev" onClick={()=>setMenuOpen(false)}>🔊 声浪室<NavigationFeedback/></Link>
-    <AILink onClick={()=>setMenuOpen(false)}>APEX AI</AILink>
+    <AILink onClick={()=>setMenuOpen(false)}>tikeai</AILink>
     <div className="mobile-account">
       {logoutError&&<div className="nav-feedback" role="alert">{logoutError}</div>}
       {identityStatus !== 'ready' ? <span className="data-note" role="status">{identityStatus === 'loading' ? '账户加载中…' : <button type="button" className="text-link" onClick={()=>window.dispatchEvent(new Event('apex:identity-changed'))}>账户暂不可用 · 重试</button>}</span> : user ? (
@@ -324,7 +324,7 @@ export function Navbar() {
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
               <circle cx="12" cy="7" r="4"/>
             </svg>
-            APEX ID 个人中心
+            tikeai ID 个人中心
           </Link>
           {user.isAdmin && <Link href="/admin" onClick={()=>setMenuOpen(false)}>管理工作台</Link>}
           <button type="button" className="btn-secondary" ref={mobileLogoutRef} disabled={loggingOut} onClick={async()=>{if(await handleLogout())setMenuOpen(false)}}>

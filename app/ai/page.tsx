@@ -418,7 +418,7 @@ function AIWorkspace() {
   if (authChecking) {
     return (
       <section className="ai-entry-skeleton container" aria-busy="true" aria-label="AI 对话准备中">
-        <div className="ai-entry-heading"><span className="eyebrow">APEX AI · 赛事助手</span><h1>想了解哪一场比赛？</h1><p>赛程、积分与规则，从一个问题开始。</p></div>
+        <div className="ai-entry-heading"><span className="eyebrow">tikeai · 赛事助手</span><h1>想了解哪一场比赛？</h1><p>赛程、积分与规则，从一个问题开始。</p></div>
         <div className="ai-example-grid" aria-hidden="true">{['下一节比赛什么时候开始？','车手积分榜前三名是谁？','解释本赛季的积分规则'].map(question=><div key={question}>{question}<span>↗</span></div>)}</div>
         <div className="ai-skeleton-composer"><label htmlFor="ai-pending-input">你的问题</label><textarea id="ai-pending-input" placeholder="正在准备对话…" disabled rows={2}/><span role="status">正在确认登录状态，准备 AI 对话…</span></div>
       </section>
@@ -444,7 +444,7 @@ function AIWorkspace() {
         <div className="container" style={{ maxWidth: '880px', width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ fontSize: 'clamp(20px, 3.5vw, 26px)', fontWeight: 800, margin: 0, lineHeight: 1.2 }}>
-              APEX AI · 赛事助手
+              tikeai · 赛事助手
             </h1>
           </div>
 
@@ -487,7 +487,7 @@ function AIWorkspace() {
         <div className="container" style={{ maxWidth: '880px', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {messages.length === 0 && !isGenerating && (
             <div className="ai-welcome" style={{ textAlign: 'center', padding: '48px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '20px', border: '1px dashed var(--line-dark)' }}>
-              <div className="ai-welcome-mark" aria-hidden="true">A</div>
+              <div className="ai-welcome-mark" aria-hidden="true">t</div>
               <h3 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>今天想了解哪场比赛？</h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '480px', margin: '0 auto 20px', lineHeight: 1.6 }}>
                 查询赛程与积分，或讨论赛车技术和比赛策略。
@@ -710,7 +710,7 @@ function AIWorkspace() {
         <div className="container" style={{ maxWidth: '880px', width: '100%' }}>
           <GlassComposer isFocused={isFocused} style={{ padding: '8px 10px 8px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px' }}>
-              <textarea aria-label="向 APEX AI 提问" name="message"
+              <textarea aria-label="向 tikeai 提问" name="message"
                 ref={textareaRef}
                 rows={1}
                 value={input}
@@ -729,7 +729,7 @@ function AIWorkspace() {
                   isComposingRef.current = false;
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="向 APEX AI 提问 F1 赛程、积分或规则..."
+                placeholder="向 tikeai 提问 F1 赛程、积分或规则..."
                 disabled={isGenerating || history.saving}
                 style={{
                   flex: 1,

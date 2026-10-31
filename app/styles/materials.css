@@ -79,6 +79,8 @@ html body .breadcrumb{background:transparent;border:1px solid var(--line-dark);b
 /* Text controls grow with their labels; alerts wrap rather than clipping essential copy. */
 html body :is(button,.btn-primary,.btn-secondary,.glass-button,.apex-btn-primary,.admin-button){min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal}
 html body :is(.btn-primary,.btn-secondary,.glass-button,.apex-btn-primary,.admin-button){height:auto!important;min-height:44px;line-height:1.5;text-align:center;flex-shrink:1}
+html body :is(.text-link,.badge-pill,.provider-badge,.session-label,.nav-link,.section-jumps a,.subscription-actions a){min-width:0;max-width:100%;height:auto;white-space:normal;overflow-wrap:anywhere}
+html body :is(.page-shell,.editorial-home,.profile-page-shell,.admin-shell,.ai-chat-console) :is(h1,h2,h3,h4,p,dt,dd,label,figcaption){min-width:0;overflow-wrap:anywhere}
 html body :is([role=alert],[role=status],.subscription-notice,.admin-notice,.monitor-alert,.history-save-status){min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:normal}
 html body :is([role=alert],.admin-notice,.monitor-alert)>*{min-width:0;max-width:100%}
 html body .navigation-feedback{max-width:min(440px,calc(100vw - 32px));right:16px;line-height:1.6}
@@ -120,3 +122,16 @@ html body :is(.glass-surface,.apex-card,.card-light,.card-dark,.race-cover,.tabl
 }
 @media(prefers-reduced-transparency:reduce){html body .mobile-menu{background:#181c22!important;-webkit-backdrop-filter:none;backdrop-filter:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html body .mobile-menu{background:#181c22!important}}
+
+/* Team identity is an accent on the shared clear glass, rather than a different card material. */
+html body .page-teams .team-tile{position:relative;overflow:hidden;border-top-width:1px}
+.page-teams .team-tile::before{content:'';position:absolute;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--team-color),var(--team-color) 40%,transparent);pointer-events:none}
+.page-teams .team-tile-top{gap:16px}
+html body .page-teams .rank-chip{color:color-mix(in srgb,var(--team-color) 55%,white);border:1px solid color-mix(in srgb,var(--team-color) 60%,transparent);border-radius:12px}
+.team-livery{display:flex;gap:5px;margin-left:auto;padding-right:4px;transform:skewX(-22deg)}
+.team-livery i{display:block;width:24px;height:8px;background:var(--team-color);border-radius:2px}.team-livery i:nth-child(2){width:14px;opacity:.6}.team-livery i:last-child{width:7px;opacity:.3}
+.page-teams .team-tile h2{display:flex;align-items:flex-start;gap:12px;min-width:0;overflow-wrap:anywhere}
+.team-color-mark{display:block;flex:0 0 5px;width:5px;height:1em;margin-top:.2em;background:var(--team-color);border-radius:999px}
+.page-teams .team-stat-row>div{min-width:0;overflow-wrap:anywhere}
+.page-teams .team-stat-row>div:first-child strong{color:color-mix(in srgb,var(--team-color) 50%,white)}
+@media(forced-colors:active){.page-teams .team-tile::before,.team-livery,.team-color-mark{display:none}html body .page-teams .rank-chip,.page-teams .team-stat-row>div:first-child strong{color:CanvasText;border-color:ButtonText}}

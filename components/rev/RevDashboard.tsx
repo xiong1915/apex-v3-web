@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react';
-import { LiquidGlass } from '@/components/ui/liquid-glass';
 import { CAR_SPECS } from '@/lib/arcade/car-specs';
 import { RevSession, readRecords, saveRecord, readGhost, ghostGap, type RevMode, type RevPhase } from '@/lib/arcade/rev-session';
 import { RevAudio } from '@/lib/audio/rev-audio';
 import styles from './studio.module.css';
 
 const MODES: {id: RevMode; name: string; title: string; description: string; number: string}[] = [
-  {id:'DRAG',name:'DRAG RACE',title:'四百米，只争一瞬。',description:'五灯熄灭，释放离合。用每一次精准换挡，挑战你的最快纪录。',number:'01'},
+  {id:'DRAG',name:'DRAG RACE',title:'四百米，只争一瞬。',description:'五灯熄灭，释放离合。精准换挡，挑战你的 400 米最佳成绩。',number:'01'},
   {id:'FREE',name:'FREE REV',title:'让引擎，放声。',description:'V10 / V8 / V6。三种时代，一块属于你的油门。',number:'02'},
   {id:'LAUNCH',name:'LAUNCH CONTROL',title:'抓住起步的临界点。',description:'稳住目标转速，在灯灭的一刻释放离合。',number:'03'},
   {id:'QUIZ',name:'SOUND QUIZ',title:'闭上眼，听见答案。',description:'十段声浪，三个选项。你能认出多少种引擎？',number:'04'},
@@ -25,10 +24,10 @@ function TrackArt({kind}:{kind:RevMode}) {
 }
 
 function SoundControls({volume,muted,onVolume,onMute,compact=false}:{volume:number;muted:boolean;onVolume:(value:number)=>void;onMute:()=>void;compact?:boolean}) {
-  return <LiquidGlass className={compact?styles.mobileAudio:styles.audio} optical={!compact}>
-    <button aria-label={muted?'取消静音':'静音'} aria-pressed={muted} onClick={onMute}>{compact?<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/>{muted?<path d="m17 9 5 6m0-6-5 6"/>:<path d="M17 8a6 6 0 0 1 0 8"/>}</svg>:muted?'静音中':'声音开启'}</button>
+  return <div className={compact?styles.mobileAudio:styles.audio}>
+    <button aria-label={muted?'取消静音':'静音'} aria-pressed={muted} onClick={onMute}><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/>{muted?<path d="m17 9 5 6m0-6-5 6"/>:<path d="M17 8a6 6 0 0 1 0 8"/>}</svg>{!compact&&<span>{muted?'静音中':'声音开启'}</span>}</button>
     <input aria-label="主音量" type="range" min="0" max="1" step=".05" value={volume} onChange={event=>onVolume(+event.target.value)}/>
-  </LiquidGlass>;
+  </div>;
 }
 
 export function RevDashboard() {
@@ -43,11 +42,13 @@ export function RevDashboard() {
   return <div className={styles.root} data-rev-active={Boolean(mode)}>
     <div className={styles.shell}>
       <header className={styles.header}>
-        <div className={styles.wordmark}><span className={styles.mark} aria-hidden="true">A</span><div><span className={styles.kicker}>APEX / INTERACTIVE</span><h1>Acoustic Rev<span className={styles.dot}>.</span></h1></div></div>
+        <div className={styles.headingRow}>
+        <div className={styles.wordmark}><span className={styles.mark} aria-hidden="true">t</span><div><span className={styles.kicker}>tikeai / INTERACTIVE</span><h1>Acoustic Rev<span className={styles.dot}>.</span></h1></div></div>
         <SoundControls volume={volume} muted={muted} onVolume={onVolume} onMute={onMute}/>
+        </div>
+        {!mode&&<div className={styles.intro}><h2>听见引擎，驶入赛道。</h2><p>选择一种玩法，立即进入驾驶舱。<br/>你的每一次起步与换挡，都有回应。</p></div>}
       </header>
       {mode?<SessionView key={mode} mode={mode} audio={audio} onExit={exit} soundControls={<SoundControls compact volume={volume} muted={muted} onVolume={onVolume} onMute={onMute}/>}/>:<section className={styles.lobby} aria-label="模式大厅">
-        <div className={styles.intro}><div><span className={styles.kicker}>THE SOUND. THE INSTINCT.</span><h2>听见本能。<br/><span>驶入你的节奏。</span></h2></div><p>从第一声点火，到最后一次升挡。<br/>四种方式，感受赛车的机械脉搏。</p></div>
         <div className={styles.modeGrid}>{MODES.map(m=><button key={m.id} className={`${styles.modeCard} ${m.id==='DRAG'?styles.featured:''}`} onClick={()=>{setMode(m.id);window.scrollTo({top:0,behavior:'instant'});}} aria-label={`${m.name} ${m.title}`}>
           <div className={styles.modeTop}><span>{m.number} / {m.name}</span><span className={styles.arrow}>↗</span></div><TrackArt kind={m.id}/><div className={styles.modeCopy}><span className={styles.modeTag}>{m.id==='DRAG'?'400 M · FEATURED':m.id==='FREE'?'NO LIMITS':m.id==='LAUNCH'?'REACTION / PRECISION':'10 ROUNDS / LISTEN'}</span><h3>{m.title}</h3><p>{m.description}</p><div className={styles.best}>{m.id==='FREE'?'自由探索 · 无计时':`PERSONAL BEST / ${formatBest(m.id,records[recordKey(m.id,specs[0].id)])}`}</div></div>
         </button>)}</div><div className={styles.lobbyFoot}><span>三种引擎时代 / 一次纯粹的驾驶体验</span><span>程序化合成声浪 · 建议使用耳机</span></div>
@@ -122,7 +123,7 @@ function SessionView({mode,audio,onExit,soundControls}:{mode:RevMode;audio:RevAu
   const answer=(id:string)=>{game.answer(id);audio.stop();sync();};
   const isDriving=!['READY','RESULT','PAUSED'].includes(phase);
   return <section className={styles.session} data-mode={mode} data-phase={phase}>
-    <div className={styles.sessionHead}><button className={styles.back} onClick={onExit}>← 模式大厅</button><h2 ref={heading} tabIndex={-1}>{title.name}</h2>{soundControls}{isDriving?<button className={styles.back} onClick={()=>{invalidate();game.pause();audio.stop();sync();}}>暂停</button>:<span className={styles.kicker}>{mode==='DRAG'?'400 METRES':mode==='QUIZ'?'LISTEN / IDENTIFY':'APEX SOUND LAB'}</span>}</div>
+    <div className={styles.sessionHead}><button className={styles.back} onClick={onExit}>← 模式大厅</button><h2 ref={heading} tabIndex={-1}>{title.name}</h2>{soundControls}{isDriving?<button className={styles.back} onClick={()=>{invalidate();game.pause();audio.stop();sync();}}>暂停</button>:<span className={styles.kicker}>{mode==='DRAG'?'400 METRES':mode==='QUIZ'?'LISTEN / IDENTIFY':'tikeai SOUND LAB'}</span>}</div>
     {error&&<p className={styles.error} role="alert">{error}</p>}
     {phase==='RESULT'?<Result game={game} best={best} newBest={newBest} retry={start} exit={onExit}/>:phase==='PAUSED'?<div className={styles.intermission}><span className={styles.kicker}>SESSION PAUSED</span><h3>回到你的节奏。</h3><p>游戏计时已冻结，油门已释放。准备好后继续。</p><button className={styles.primary} onClick={resume}>继续游戏</button><button className={styles.secondary} onClick={start}>重新开始</button></div>:mode==='QUIZ'?<div className={styles.quiz}>
       <div className={styles.quizTop}><span>声学识别 / {Math.min(10,game.question+1).toString().padStart(2,'0')} OF 10</span><span>得分 {game.score} · 连击 {game.streak}</span></div>

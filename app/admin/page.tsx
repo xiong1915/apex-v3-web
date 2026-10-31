@@ -382,7 +382,7 @@ export default function AdminPage() {
       <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-red)' }}></span>
-          正在校验 APEX Control 管理员权限...
+          正在校验 tikeai Control 管理员权限...
         </div>
       </div>
     );
@@ -395,7 +395,7 @@ export default function AdminPage() {
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔒</div>
           <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '8px' }}>访问被拒绝 (403 Forbidden)</h2>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
-            APEX Control 为单人私人网站管理中枢，当前登录账号无权访问此页面。
+            tikeai Control 为单人私人网站管理中枢，当前登录账号无权访问此页面。
           </p>
           <Link href="/">
             <GlassButton variant="primary" style={{ width: '100%' }}>返回首页</GlassButton>
@@ -415,7 +415,7 @@ export default function AdminPage() {
       className="admin-page-container"
     >
       <header className="admin-header" inert={showTotpModal}>
-        <Link href="/" className="admin-brand">APEX <span>管理后台</span></Link>
+        <Link href="/" className="admin-brand">tikeai <span>管理后台</span></Link>
         <div className="admin-header-actions"><span className="admin-access" data-verified={aalLevel==='aal2'}>{aalLevel==='aal2'?'已通过双重验证':'需要双重验证'}</span>
           {aalLevel!=='aal2'&&<button className="admin-button primary" onClick={()=>openTotpModal()}>TOTP 绑定 / 验证</button>}
           <Link href="/">返回网站 ↗</Link>
@@ -479,7 +479,7 @@ export default function AdminPage() {
                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>
                   {enrollData?.verified
                     ? '请输入手机身份验证器中当前的 6 位动态验证码以解锁管理权限。'
-                    : 'APEX Control 仅限专属管理员使用。请使用手机身份验证器扫描二维码完成绑定。'}
+                    : 'tikeai Control 仅限专属管理员使用。请使用手机身份验证器扫描二维码完成绑定。'}
                 </p>
               </div>
               <button

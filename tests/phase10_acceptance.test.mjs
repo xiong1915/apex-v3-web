@@ -163,6 +163,6 @@ test('Phase 10 专项验收与严谨性核验', async (t) => {
     assert.equal(fs.existsSync('components/title_simulator.tsx'), false, '用户要求移除专用试算界面');
     assert.equal(fs.existsSync('components/lazy_simulator.tsx'), false, '用户要求移除专用试算入口');
     const aiSource = fs.readFileSync('app/ai/page.tsx', 'utf8');
-    assert.ok(aiSource.includes('aria-label="向 APEX AI 提问"'), '保留 AI 输入框的明确可访问名称');
+    assert.ok(aiSource.includes('aria-label="向 tikeai 提问"'), '保留 AI 输入框的明确可访问名称');
   });
 });

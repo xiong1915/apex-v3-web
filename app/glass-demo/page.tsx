@@ -21,7 +21,7 @@ export default function GlassDemoPage() {
     <div className="container" style={{ padding: '40px 16px', maxWidth: '1100px', margin: '0 auto' }}>
       <header style={{ marginBottom: '32px' }}>
         <span className="badge-pill badge-red" style={{ marginBottom: '12px' }}>
-          APEX OPTICAL LAB
+          tikeai OPTICAL LAB
         </span>
         <h1 style={{ fontSize: '32px', fontWeight: 800, margin: '8px 0', letterSpacing: '-0.03em' }}>
           Liquid Glass 质感与交互诊断展厅

@@ -108,7 +108,7 @@ export function LiveTimingCenter({initialData}:LiveTimingCenterProps={}){
  const rainfall=rawSnapshot?.weather?.rainfall??null;
 
  return <div className={styles.shell}><div className="container">
-  <header className={styles.heading}><div><span className="eyebrow">APEX · 赛事数据中心</span><h1>APEX <span>LIVE TIMING</span></h1><p>赛程、节次状态与已收录成绩，一处查看。</p></div><Link className="text-link" href="/races">全季赛历与订阅 ↗</Link></header>
+  <header className={styles.heading}><div><span className="eyebrow">tikeai · 赛事数据中心</span><h1>tikeai <span>LIVE TIMING</span></h1><p>赛程、节次状态与已收录成绩，一处查看。</p></div><Link className="text-link" href="/races">全季赛历与订阅 ↗</Link></header>
   {isSessionSwitch?<p className={styles.switchNotice} role="status">{error?'切换失败，正在重试；当前仍显示上一节数据。':'正在切换节次；当前仍显示上一节数据。'}</p>:null}
   {params.has('legacySession')?<p className={styles.source} role="note">旧回放已升级，请选择分站和节次；历史回放编号不代表当前直播。</p>:null}
   

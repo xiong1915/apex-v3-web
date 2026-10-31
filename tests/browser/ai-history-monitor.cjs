@@ -54,7 +54,7 @@ async function fixtures(context, owner = 'test-owner') {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); await fixtures(context);
   const page = await context.newPage(); page.on('pageerror', e => errors.push(e.message)); page.on('dialog', d => d.accept());
   const saved = () => page.getByText('已保存到云端 · AI 参考最近的对话上下文').waitFor();
-  const ask = async text => { const input = page.getByRole('textbox', { name: '向 APEX AI 提问' }); await input.fill(text); await input.press('Enter'); await page.getByText('本地验收：轮胎策略需要结合赛道。', { exact: true }).waitFor(); await saved(); };
+  const ask = async text => { const input = page.getByRole('textbox', { name: '向 tikeai 提问' }); await input.fill(text); await input.press('Enter'); await page.getByText('本地验收：轮胎策略需要结合赛道。', { exact: true }).waitFor(); await saved(); };
   await page.goto(base + '/ai'); await page.locator('.history-footer button').waitFor({ state: 'visible' });
   await page.waitForFunction(() => !document.querySelector('.history-footer button').disabled);
   draftDelay=800;
@@ -74,16 +74,16 @@ async function fixtures(context, owner = 'test-owner') {
   assert.equal((await service.list('test-owner')).length, 1);
   await page.screenshot({ path: path.join(out, 'ai-history-1440.png') });
   modelFailure = true;
-  await page.getByRole('textbox', { name: '向 APEX AI 提问' }).fill('本地验收：模型失败后的新对话');
-  await page.getByRole('textbox', { name: '向 APEX AI 提问' }).press('Enter');
+  await page.getByRole('textbox', { name: '向 tikeai 提问' }).fill('本地验收：模型失败后的新对话');
+  await page.getByRole('textbox', { name: '向 tikeai 提问' }).press('Enter');
   await page.getByRole('button', { name: '重试', exact: true }).waitFor();
   await page.locator('.conversation-sidebar').getByRole('button', { name: /新建对话/ }).click();
   await page.getByRole('heading', { name: '今天想了解哪场比赛？', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: '重试', exact: true }).count(), 0, 'new conversation must clear previous model error');
   modelFailure = false;
   partialFailure = true;
-  await page.getByRole('textbox', {name:'向 APEX AI 提问'}).fill('中途断流测试');
-  await page.getByRole('textbox', {name:'向 APEX AI 提问'}).press('Enter');
+  await page.getByRole('textbox', {name:'向 tikeai 提问'}).fill('中途断流测试');
+  await page.getByRole('textbox', {name:'向 tikeai 提问'}).press('Enter');
   await page.getByRole('button',{name:'重试',exact:true}).waitFor();
   await page.getByText('保留这段未完整回答',{exact:true}).waitFor();
   await page.getByText('已保存到云端 · AI 参考最近的对话上下文').waitFor();
@@ -98,7 +98,7 @@ async function fixtures(context, owner = 'test-owner') {
   await page.locator('.history-select').filter({ hasText: long.title }).click(); await ask('这是最新的问题');
   assert.ok(modelContext.length <= 20); assert.ok(modelContext.reduce((sum, item) => sum + item.content.length, 0) <= 4000); assert.equal(modelContext.at(-1).content, '这是最新的问题');
   failWrites = true;
-  const input = page.getByRole('textbox', { name: '向 APEX AI 提问' }); await input.fill('云端故障时保留我的输入'); await input.press('Enter');
+  const input = page.getByRole('textbox', { name: '向 tikeai 提问' }); await input.fill('云端故障时保留我的输入'); await input.press('Enter');
   await page.getByText('本地验收：云端保存失败，当前内容尚未保存').waitFor();
   await page.screenshot({ path: path.join(out, 'ai-history-save-error.png') });
   await page.locator('.conversation-sidebar').getByRole('button', { name: /新建对话/ }).click();
@@ -121,7 +121,7 @@ async function fixtures(context, owner = 'test-owner') {
   const conflictingContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); await fixtures(conflictingContext, 'conflict-owner');
   const c = await conflictingContext.newPage(); await c.goto(base + '/ai'); await c.getByRole('button', { name: /跨设备测试.*条/ }).click();
   await service.update('conflict-owner', conflict.id, { revision: conflict.revision, title: '另一设备已更新' });
-  await c.getByRole('textbox', { name: '向 APEX AI 提问' }).fill('保留本窗口未保存的更改'); await c.getByRole('textbox', { name: '向 APEX AI 提问' }).press('Enter');
+  await c.getByRole('textbox', { name: '向 tikeai 提问' }).fill('保留本窗口未保存的更改'); await c.getByRole('textbox', { name: '向 tikeai 提问' }).press('Enter');
   await c.getByText('另一个窗口已更新这段对话，请重新打开后继续').waitFor();
   await c.getByRole('button', { name: '刷新列表', exact: true }).click();
   await c.getByRole('button', { name: /另一设备已更新.*条/ }).waitFor();
@@ -132,7 +132,7 @@ async function fixtures(context, owner = 'test-owner') {
   const fullContext = await browser.newContext({ viewport: { width: 1440, height: 1000 } }); await fixtures(fullContext, 'full-owner');
   const full = await fullContext.newPage(); full.on('dialog', d => d.accept()); await full.goto(base + '/ai');
   await full.waitForFunction(() => document.querySelector('.history-footer button') && !document.querySelector('.history-footer button').disabled);
-  await full.getByRole('textbox', { name: '向 APEX AI 提问' }).fill('容量已满仍保留本次内容'); await full.getByRole('textbox', { name: '向 APEX AI 提问' }).press('Enter');
+  await full.getByRole('textbox', { name: '向 tikeai 提问' }).fill('容量已满仍保留本次内容'); await full.getByRole('textbox', { name: '向 tikeai 提问' }).press('Enter');
   await full.getByText('最多保存 30 段对话，请先删除不需要的记录').waitFor();
   await full.getByText('本地验收：轮胎策略需要结合赛道。', { exact: true }).waitFor();
   await full.locator('.history-item-actions button[aria-label^="删除"]').first().click();

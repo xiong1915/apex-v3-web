@@ -98,14 +98,14 @@ function RegisterForm() {
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.08em' }}>APEX</span>
+              <span style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '0.08em' }}>tikeai</span>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-red)' }}></span>
             </div>
             <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '4px 0 8px', color: 'var(--text-primary)' }}>
               注册新账号
             </h1>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: 0 }}>
-              加入 APEX V3，体验 2026 赛季尖端赛车数据与大模型智能
+              加入 tikeai，体验 2026 赛季尖端赛车数据与大模型智能
             </p>
           </div>
 
@@ -131,7 +131,7 @@ function RegisterForm() {
               </h3>
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
                 {autoConfirmed ? (
-                  <>账号 <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> 已创建并激活，现在即可直接登录体验 APEX V3。</>
+                  <>账号 <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> 已创建并激活，现在即可直接登录体验 tikeai。</>
                 ) : (
                   <>我们已向 <strong style={{ color: 'var(--text-primary)' }}>{email}</strong> 发送了激活确认邮件。请点击邮件中的链接完成验证后即可登录。</>
                 )}

@@ -35,7 +35,7 @@ export default async function TeamDetailPage({ params }: { params: Promise<{ id:
               question={`请介绍 ${team.name}（${team.nameEn}）在 2026 赛季的表现、赛车特点和已确认的成绩。`}
               className="btn-primary"
             >
-              向 APEX AI 了解这支车队 ↗
+              向 tikeai 了解这支车队 ↗
             </AILink>
           </div>
           <span className="profile-number mono" aria-label={`车队排名 ${team.rank}`}>
