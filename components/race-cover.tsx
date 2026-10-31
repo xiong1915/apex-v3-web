@@ -15,6 +15,7 @@ export function RaceCover({ overview, seasonEnded, serverTimeMs }: { overview: P
  return <>
   <LiquidGlass className="race-cover" id="race">
    <div className="race-cover-copy">
+    <p className="race-cover-series"><i aria-hidden="true"/><span>{season} 世界一级方程式锦标赛</span></p>
     <div className="race-status"><i className="status-dot" aria-hidden="true"/><span>{nextSession?.status === 'IN_PROGRESS' ? '赛程计划时段' : seasonEnded ? '赛季回顾' : '下一站大奖赛'}</span><span>第 {meeting.round || '—'} 站 · {season} 赛季</span></div>
     <h1>{meeting.nameZh || meeting.name || '分站信息待同步'}</h1>
     <p className="race-cover-subtitle">{meeting.circuitName} · {meeting.locality} {meeting.country && `/ ${meeting.country}`}</p>

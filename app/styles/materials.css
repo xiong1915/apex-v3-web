@@ -27,8 +27,8 @@ html body :is(.editorial-home,.section-dark,.section-secondary,.section-light,.p
 html body :is(.profile-hero-title,.apex-card-title,.meta-val,.team-card-name,.modal-header h3,.profile-hero-subtitle,.profile-hero-badge,.form-label,.form-counter,.meta-key,.team-card-meta,.team-card-foot,.favorite-empty-hint){color:var(--text-primary)}
 html body :is(.profile-page-shell,.admin-shell){--admin-border:var(--line-dark);--admin-muted:var(--text-secondary);--admin-ink:var(--text-primary);--admin-accent:#f49a95}
 html body :is(.race-cover-visual,.calendar-track,.team-card-visual,.driver-portrait,.bio-visual,.history-item.is-active,.rank-chip){background:transparent!important;color:var(--text-primary);border-color:var(--line-dark)}
-html body :is(.race-cover,.profile-hero,.section-head,.home-intro,.championship-context,.home-history,.history-footer,.navigation-feedback,.ai-chat-console>div:first-child){color:var(--text-primary)}
-html body :is(.home-intro,.profile-hero,.championship-context,.section-head,.driving-copy,.source-links,.data-note,.history-footer,.navigation-feedback){-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter);border-radius:12px}
+html body :is(.race-cover,.profile-hero,.section-head,.championship-context,.home-history,.history-footer,.navigation-feedback,.ai-chat-console>div:first-child){color:var(--text-primary)}
+html body :is(.profile-hero,.championship-context,.section-head,.driving-copy,.source-links,.data-note,.history-footer,.navigation-feedback){-webkit-backdrop-filter:var(--glass-filter);backdrop-filter:var(--glass-filter);border-radius:12px}
 html body :is(.table-panel,.admin-users,.history-scroll) :is(th,td){background:transparent;color:var(--text-primary);border-color:var(--line-dark)}
 html body :is(.table-panel,.admin-users,.history-scroll) thead th{background:#00000024;color:var(--text-secondary)}
 html body :is(.badge-pill,.provider-badge,.monitor-outcome,.admin-status){background:#ffffff0b;border-color:var(--line-dark)}
@@ -66,7 +66,7 @@ html body :is(.map-topline,.map-caption small,.map-specs small){color:var(--text
 
 /* Glass belongs to a composed, rounded information region, never a tight text patch. */
 html body :is(.page-heading,.profile-hero,.championship-context,.tool-ai,.tool-live,.home-history,.season-preview,.monitor-chart,.monitor-events){border-radius:var(--radius-md);padding:clamp(20px,2vw,32px);min-width:0}
-html body :is(.section-head,.home-intro,.history-footer,.navigation-feedback){border-radius:20px;padding:16px 20px;min-width:0}
+html body :is(.section-head,.history-footer,.navigation-feedback){border-radius:20px;padding:16px 20px;min-width:0}
 html body :is(.rules-note,.data-note,.source-links,.monitor-alert,.admin-notice,.subscription-notice:not(:empty)){border-radius:18px;padding:12px 16px;min-width:0;overflow-wrap:anywhere}
 html body :is(.page-heading-top,.page-heading-meta,.section-head){gap:16px;flex-wrap:wrap}
 html body :is(.page-heading-top,.page-heading-meta,.section-head)>*{min-width:0;max-width:100%}
@@ -88,7 +88,7 @@ html body .subscription-notice:not(:empty){background:transparent;-webkit-backdr
 /* An outer readable panel already supplies the glass behind its nested headings and notes. */
 html body :is(.glass-surface,.apex-card,.card-light,.card-dark,.race-cover,.table-panel,.admin-panel,.bio-card,.profile-feature,.tool-ai,.tool-live) :is(.section-head,.data-note,.source-links,.rules-note){padding-inline:0;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 @media(min-width:768px){html body .page-standings .page-heading{padding:16px 24px}}
-@media(max-width:767px){html body :is(.page-heading,.profile-hero,.championship-context,.tool-ai,.tool-live,.home-history,.season-preview){padding:20px;border-radius:24px}html body .race-detail-info{padding:24px;border-radius:24px}html body .race-detail-map{padding:20px;border-radius:24px}html body :is(.race-detail-info,.profile-cover) .page-heading{padding:0}html body :is(.section-head,.home-intro){padding:14px 16px;gap:12px}}
+@media(max-width:767px){html body :is(.page-heading,.profile-hero,.championship-context,.tool-ai,.tool-live,.home-history,.season-preview){padding:20px;border-radius:24px}html body .race-detail-info{padding:24px;border-radius:24px}html body .race-detail-map{padding:20px;border-radius:24px}html body :is(.race-detail-info,.profile-cover) .page-heading{padding:0}html body :is(.section-head){padding:14px 16px;gap:12px}}
 @media(prefers-reduced-transparency:reduce){html body .race-detail-info{background:#181c22;-webkit-backdrop-filter:none;backdrop-filter:none}}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){html body .race-detail-info{background:#181c22}}
 /* Keep the standings overview compact enough to retain ten desktop ranking rows. */
