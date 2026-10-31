@@ -1,6 +1,9 @@
 import { execFileSync } from 'node:child_process';
 let buildSha=process.env.NEXT_PUBLIC_GIT_SHA || process.env.VERCEL_GIT_COMMIT_SHA || '';
+let buildSubject=process.env.NEXT_PUBLIC_RELEASE_SUBJECT || process.env.VERCEL_GIT_COMMIT_MESSAGE || '';
 try {if(!buildSha)buildSha=execFileSync('git',['-c',`safe.directory=${process.cwd().replaceAll('\\','/')}`,'rev-parse','HEAD'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();} catch {}
+try {if(!buildSubject)buildSubject=execFileSync('git',['-c',`safe.directory=${process.cwd().replaceAll('\\','/')}`,'log','-1','--format=%s'],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();} catch {}
+buildSubject=buildSubject.split(/\r?\n/,1)[0].trim();
 /** @type {import('next').NextConfig} */
 const securityHeaders = [
   {
@@ -37,7 +40,7 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
-  env: { NEXT_PUBLIC_GIT_SHA: buildSha, NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(), NEXT_PUBLIC_REPOSITORY:'xiong1915/apex-v3-web' },
+  env: { NEXT_PUBLIC_GIT_SHA: buildSha, NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(), NEXT_PUBLIC_REPOSITORY:'xiong1915/apex-v3-web', NEXT_PUBLIC_RELEASE_SUBJECT:buildSubject },
   poweredByHeader: false,
   async headers() {
     return [
