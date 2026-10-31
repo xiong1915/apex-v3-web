@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { LiquidGlass } from '@/components/ui/liquid-glass';
 import { teamStyle } from '@/lib/ui/team-colors';
+import { RankingList } from '@/components/ranking-list';
 import type { DriverStanding, ConstructorStanding } from '@/lib/f1/types';
 
 export interface StandingsTabsProps {
@@ -103,7 +104,7 @@ export function StandingsTabs({
             {!drivers.length ? (
               <p className="empty-state">该赛季暂无车手积分榜数据</p>
             ) : (
-              <div className="table-panel">
+              <RankingList key={`drivers:${season}`} count={drivers.length}><div className="table-panel">
                 <table className="data-table driver-standings">
                   <caption className="sr-only">{season} 赛季车手积分榜</caption>
                   <thead>
@@ -146,7 +147,7 @@ export function StandingsTabs({
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </div></RankingList>
             )}
           </section>
         </>
@@ -165,7 +166,7 @@ export function StandingsTabs({
           ) : !constructors.length ? (
             <p className="empty-state">该赛季暂无车队积分榜数据</p>
           ) : (
-            <div className="table-panel">
+            <RankingList key={`teams:${season}`} count={constructors.length} noun="支车队"><div className="table-panel">
               <table className="data-table team-standings">
                 <caption className="sr-only">{season} 赛季车队积分榜</caption>
                 <thead>
@@ -199,7 +200,7 @@ export function StandingsTabs({
                   ))}
                 </tbody>
               </table>
-            </div>
+            </div></RankingList>
           )}
         </section>
       )}

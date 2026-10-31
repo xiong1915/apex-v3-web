@@ -15,7 +15,7 @@
     "check:copy": "node scripts/check-copy.mjs",
     "check:dates": "node ./node_modules/tsx/dist/cli.mjs --test tests/date-rules.test.mjs",
     "quality": "npm run lint && npm run check:copy && npm run check:dates && npm run typecheck && npm run test && npm run build",
-    "lint": "eslint components/ui/liquid-glass.tsx lib/glass/refraction.ts components/glass/GlassSurface.tsx components/race-cover.tsx components/rev/RevDashboard.tsx lib/arcade/rev-session.ts lib/audio/rev-audio.ts lib/audio/engine-synthesizer.ts app/rev/page.tsx --max-warnings 0",
+    "lint": "eslint components/ui/liquid-glass.tsx lib/glass/refraction.ts components/glass/GlassSurface.tsx components/race-cover.tsx components/rev/RevDashboard.tsx lib/arcade/rev-session.ts lib/audio/rev-audio.ts lib/audio/engine-synthesizer.ts app/rev/page.tsx components/ranking-list.tsx --max-warnings 0",
     "test:glass": "node tests/browser/liquid-glass.cjs"
   },
   "dependencies": {
