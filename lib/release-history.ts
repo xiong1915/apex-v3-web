@@ -1,6 +1,12 @@
 // Verified main-branch updates; feature commits included in a merge are not listed twice.
 export const releaseHistory = [
   {
+    "sha": "0329f798e1540e426f64e5e8ae56a5fa469a55e0",
+    "date": "2026-10-31T08:47:42.000Z",
+    "version": "更新",
+    "summary": "补齐底部历史更新，校正提交链接与时间；左侧网站标识改为 tike，AI 入口保留 tikeai，当前版本随构建显示提交说明。"
+  },
+  {
     "sha": "e851fa7c347381841c57d1fffc50fadf81955b6e",
     "date": "2026-10-31T08:31:52.000Z",
     "version": "更新",

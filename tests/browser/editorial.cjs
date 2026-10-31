@@ -25,6 +25,13 @@ const widths = [320, 375, 390, 768, 1440, 1920];
     const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
     results.routes.push({ route, width, status: response.status(), scroll });
     assert.ok(scroll <= width + 1, `${route}: ${scroll}px at ${width}px`);
+    if (name === 'home') {
+     assert.equal(await page.locator('.home-intro').count(), 0, 'no separate season banner');
+     const series = page.locator('#race .race-cover-series');
+     assert.equal(await series.count(), 1, 'season heading belongs to the race cover');
+     const heading = await series.boundingBox(), cover = await page.locator('#race').boundingBox();
+     assert.ok(heading.x >= cover.x && heading.x + heading.width <= cover.x + cover.width, 'season heading stays inside the glass cover');
+    }
     if (name === 'login') {
      assert.equal(await page.locator('.auth-frame').evaluate(e => getComputedStyle(e).display), 'grid');
      assert.equal(await page.locator('.auth-intro').isVisible(), width >= 768);
