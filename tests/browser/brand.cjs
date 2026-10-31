@@ -7,8 +7,8 @@ if(!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base))throw Error('Localho
  await p.route('**/api/auth/session',r=>r.fulfill({json:{user:null,session:null}}));
  for(const route of ['/login','/register','/rev','/live','/ai']){
   await p.goto(base+route);await p.locator('main h1').first().waitFor();
-  assert.equal(await p.locator('.nav-brand').innerText(),'tikeai');
-  assert.equal(await p.locator('.nav-brand').getAttribute('aria-label'),'tikeai 首页');
+  assert.equal(await p.locator('.nav-brand').innerText(),'tike');
+  assert.equal(await p.locator('.nav-brand').getAttribute('aria-label'),'tike 首页');
   assert.ok(!/\bAPEX\b/.test(await p.locator('main').innerText()),route+': visible copy uses current brand');
   assert.ok(!/\bAPEX\b/.test(await p.title()),route+': metadata uses current brand');
   assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));

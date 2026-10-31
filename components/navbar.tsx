@@ -241,7 +241,7 @@ export function Navbar() {
   return <header ref={headerRef} className={`site-header ${menuOpen ? 'menu-open' : ''}`}>
    <LiquidGlass optical className="header-optics" aria-hidden="true"/>
    <div className="container nav-inner">
-    <Link href="/" className="nav-brand" aria-label="tikeai 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h5v5h9v4h-9v5h8v4h-8a5 5 0 0 1-5-5v-4H2V9h3z" fill="currentColor"/></svg><span>tikeai</span></Link>
+    <Link href="/" className="nav-brand" aria-label="tike 首页"><svg className="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h5v5h9v4h-9v5h8v4h-8a5 5 0 0 1-5-5v-4H2V9h3z" fill="currentColor"/></svg><span>tike</span></Link>
     <nav className="nav-links desktop-nav" aria-label="主导航" style={{'--nav-index':Math.max(0,currentIndex),'--nav-active':currentIndex<0?0:1} as React.CSSProperties}>
      {NAV_ITEMS.map((item,i)=><Link key={item.href} prefetch={item.href === '/live' ? false : undefined} href={item.href} className="nav-link" aria-current={currentIndex === i ? 'page' : undefined}>{item.label}<NavigationFeedback/></Link>)}
     </nav>
