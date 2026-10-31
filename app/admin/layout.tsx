@@ -29,7 +29,7 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: '#F4F3EF'
+  themeColor: '#101318'
 };
 
 export default function AdminLayout({
