@@ -5,13 +5,23 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GlassCard, GlassButton } from '@/components/glass';
-import { fetchCurrentSession, apiLogout } from '@/lib/auth/client';
+import { fetchCurrentSession } from '@/lib/auth/client';
 import { formatBeijingDisplay } from '@/lib/f1/time';
 import { AdminAIMonitor } from '@/components/admin-ai-monitor';
 
 type AdminTab = 'overview' | 'users' | 'ai' | 'f1';
 const adminTabs = [{id:'overview',label:'网站概览',short:'概览',description:'服务状态、发布版本与数据更新时间。'}, {id:'users',label:'用户管理',short:'用户',description:'查询账号、验证状态和关联的 AI 记录。'}, {id:'ai',label:'AI 监控与用量',short:'AI 监控',description:'查看运行指标和请求记录。'}, {id:'f1',label:'F1 数据调度',short:'F1 调度',description:'核对数据状态，按需重新同步。'}] as const;
 function tabFromLocation():AdminTab {const value=new URLSearchParams(window.location.search).get('tab');return adminTabs.some(tab=>tab.id===value)?value as AdminTab:'overview';}
+
+function AdminNavIcon({tab}:{tab:AdminTab}) {
+  const paths:Record<AdminTab,React.ReactNode>={
+    overview:<><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></>,
+    users:<><circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3M16 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v3"/></>,
+    ai:<><path d="M3 12h4l3-7 4 14 3-7h4"/></>,
+    f1:<><path d="M4 20V4m0 1c5-4 11 4 16 0v10c-5 4-11-4-16 0"/></>
+  };
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[tab]}</svg>;
+}
 
 function renderTotpQr(qr?: string) {
   if (!qr) return null;
@@ -325,6 +335,7 @@ export default function AdminPage() {
 
   const selectTab=useCallback((tab:AdminTab,auditUserId?:string)=>{
     setCurrentTab(tab);setSelectedAuditUserId(auditUserId);
+    window.scrollTo({top:0,behavior:'instant'});
     const url=new URL(window.location.href);
     if(url.searchParams.get('tab')!==tab){url.searchParams.set('tab',tab);history.pushState(null,'',url.pathname+url.search);}
   },[]);
@@ -414,7 +425,7 @@ export default function AdminPage() {
         <aside className="admin-sidebar"><p>工作区</p><nav className="admin-tabs" aria-label="后台栏目" onKeyDown={onNavKey}>
           {adminTabs.map((tab,index)=><button key={tab.id} onClick={()=>selectTab(tab.id)} aria-pressed={currentTab===tab.id}><span aria-hidden="true">{String(index+1).padStart(2,'0')}</span>{tab.label}</button>)}
         </nav><div className="admin-account"><small>当前账号</small><span>{adminUser?.email||'管理员'}</span><Link href="/system">系统诊断 ↗</Link></div></aside>
-        <div className="admin-workspace">
+        <div className="admin-workspace" aria-label={activeTab.label}>
           <div className="admin-page-heading"><div><span className="admin-breadcrumb">管理后台 / {activeTab.short}</span><h1>{activeTab.label}</h1><p>{activeTab.description}</p></div>
             {aalLevel==='aal2'&&currentTab!=='ai'&&<div className="admin-refresh"><small aria-live="polite">{updatedAt[currentTab]?`最近读取 ${formatBeijingDisplay(updatedAt[currentTab]!)}`:'尚未读取数据'}</small><button className="admin-button" onClick={()=>loadData(currentTab)} disabled={loading}>{loading?'正在读取…':'刷新当前栏目'}</button></div>}
           </div>
@@ -432,7 +443,7 @@ export default function AdminPage() {
           {aalLevel==='aal2'&&currentTab==='users'&&usersData&&<section className="admin-panel admin-users">
             <div className="admin-panel-heading"><h2>注册用户 <span className="admin-count">{usersData.total??'—'}</span></h2><span>当前载入 {usersData.users?.length||0} 位</span></div>
             <div className="admin-filter-bar"><label>搜索用户<input type="search" aria-label="搜索用户" value={userSearch} onChange={e=>setUserSearch(e.target.value)} placeholder="邮箱、名称或用户 ID"/></label><label>邮箱验证状态<select value={userVerification} onChange={e=>setUserVerification(e.target.value)}><option value="all">全部状态</option><option value="verified">已验证</option><option value="pending">待验证</option></select></label>{(userSearch||userVerification!=='all')&&<button className="admin-button" onClick={()=>{setUserSearch('');setUserVerification('all');}}>清除筛选</button>}</div>
-            <div className="admin-table-scroll" role="region" aria-label="用户列表，可横向滚动" tabIndex={0}><table><caption className="sr-only">注册用户及账号状态</caption><thead><tr>{['用户','角色','邮箱验证','登录来源','注册时间','操作'].map(label=><th scope="col" key={label}>{label}</th>)}</tr></thead><tbody>{shownUsers.map(user=><tr key={user.id}><th scope="row"><strong>{user.displayName||user.email}</strong>{user.displayName&&<span>{user.email}</span>}<small className="admin-mono">{user.id}</small></th><td>{user.role||'未报告'}</td><td><span className="admin-status" data-state={user.isVerified?'healthy':'pending'}>{user.isVerified?'已验证':'待激活'}</span></td><td>{user.provider||'未报告'}</td><td className="admin-date">{formatBeijingDisplay(user.createdAt)}</td><td><button className="admin-button" onClick={()=>selectTab('ai',user.id)} aria-label={`查看 ${user.email} 的 AI 对话`}>查看 AI 对话</button></td></tr>)}{!shownUsers.length&&<tr><td colSpan={6} className="admin-empty">{usersData.users?.length?'没有符合筛选条件的用户':'暂无注册用户'}</td></tr>}</tbody></table></div>
+            <div className="admin-table-scroll" role="region" aria-label="用户列表" tabIndex={0}><table role="table"><caption className="sr-only">注册用户及账号状态</caption><thead role="rowgroup"><tr role="row">{['用户','角色','邮箱验证','登录来源','注册时间','操作'].map(label=><th role="columnheader" scope="col" key={label}>{label}</th>)}</tr></thead><tbody role="rowgroup">{shownUsers.map(user=><tr role="row" key={user.id}><th role="rowheader" scope="row"><strong>{user.displayName||user.email}</strong>{user.displayName&&<span>{user.email}</span>}<small className="admin-mono">{user.id}</small></th><td role="cell" data-label="角色">{user.role||'未报告'}</td><td role="cell" data-label="邮箱验证"><span className="admin-status" data-state={user.isVerified?'healthy':'pending'}>{user.isVerified?'已验证':'待激活'}</span></td><td role="cell" data-label="登录来源">{user.provider||'未报告'}</td><td role="cell" data-label="注册时间" className="admin-date">{formatBeijingDisplay(user.createdAt)}</td><td role="cell" className="admin-user-action"><button className="admin-button" onClick={()=>selectTab('ai',user.id)} aria-label={`查看 ${user.email} 的 AI 对话`}>查看 AI 对话 <span aria-hidden="true">↗</span></button></td></tr>)}{!shownUsers.length&&<tr role="row"><td role="cell" colSpan={6} className="admin-empty">{usersData.users?.length?'没有符合筛选条件的用户':'暂无注册用户'}</td></tr>}</tbody></table></div>
             <div className="admin-pagination"><span>匹配 {filteredUsers.length} 位 · 第 {safeUserPage} / {userPages} 页</span><div><button className="admin-button" disabled={safeUserPage<=1} onClick={()=>setUserPage(safeUserPage-1)}>上一页</button><button className="admin-button" disabled={safeUserPage>=userPages} onClick={()=>setUserPage(safeUserPage+1)}>下一页</button></div></div>
           </section>}
           {aalLevel==='aal2'&&currentTab==='ai'&&<AdminAIMonitor data={aiData} loading={aiRefreshing||loading} error={aiMonitorError||dataErrors.ai||null} refresh={refreshAIMonitor} automatic={autoRefreshAI} setAutomatic={setAutoRefreshAI} users={usersData?.users} initialUserId={selectedAuditUserId} onUnauthorized={()=>{clearPrivateData();setAalLevel('aal1');setErrorMsg('管理权限或双重验证已失效，请重新验证身份');}}/>}
@@ -505,7 +516,7 @@ export default function AdminPage() {
               <>
                 {/* 错误提示 */}
                 {totpError && (
-                  <div style={{
+                  <div role="alert" style={{
                     background: 'rgba(255, 45, 32, 0.12)',
                     border: '1px solid rgba(255, 45, 32, 0.35)',
                     color: 'var(--accent-red)',
@@ -669,6 +680,7 @@ export default function AdminPage() {
                   </div>
 
                   <input
+                    aria-label="6 位动态验证码"
                     type="text"
                     inputMode="numeric"
                     pattern="[0-9]*"
@@ -721,7 +733,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <nav className="mobile-admin-bottom-nav" aria-label="后台移动导航" inert={showTotpModal} onKeyDown={onNavKey}>{adminTabs.map((tab,index)=><button key={tab.id} onClick={()=>selectTab(tab.id)} aria-pressed={currentTab===tab.id}><span aria-hidden="true">{String(index+1).padStart(2,'0')}</span>{tab.short}</button>)}</nav>
+      <nav className="mobile-admin-bottom-nav" aria-label="后台移动导航" inert={showTotpModal} onKeyDown={onNavKey}>{adminTabs.map(tab=><button key={tab.id} onClick={()=>selectTab(tab.id)} aria-pressed={currentTab===tab.id}><AdminNavIcon tab={tab.id}/><span>{tab.short}</span></button>)}</nav>
     </div>
   );
 }
